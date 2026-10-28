@@ -1,5 +1,164 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Template</string>
+    <string name="app_name">MystMusic</string>
 
+    <string name="nav_home">Navegação</string>
+    <string name="nav_playlists">Playlists</string>
+    <string name="nav_settings">Configurações</string>
+
+    <string name="search_hint">Buscar músicas</string>
+    <string name="search_title">Buscar</string>
+
+    <string name="section_recent">Recentes</string>
+    <string name="section_trending">Em Alta</string>
+    <string name="section_recommended">Recomendados</string>
+    <string name="section_recent_subtitle">O que você acabou de ouvir</string>
+    <string name="section_personalize_hint">Ouça músicas para personalizar</string>
+
+    <string name="state_loading">Carregando…</string>
+    <string name="state_empty">Nada por aqui ainda</string>
+    <string name="state_error">Não foi possível carregar</string>
+    <string name="state_retry">Tentar novamente</string>
+    <string name="state_offline">Verifique sua conexão e tente novamente.</string>
+
+    <string name="auth_welcome">Sua música, do seu jeito</string>
+    <string name="auth_subtitle">Entre para ouvir, criar playlists e sincronizar com a TV.</string>
+    <string name="auth_youtube">Entrar com YouTube</string>
+    <string name="auth_myst">Conta Myst</string>
+    <string name="auth_disclaimer">O acesso ao YouTube Music usa cookies da sua conta no aparelho.</string>
+    <string name="auth_login_title">Entrar na conta Myst</string>
+    <string name="auth_register_title">Criar conta Myst</string>
+    <string name="auth_username">Usuário</string>
+    <string name="auth_password">Senha</string>
+    <string name="auth_password_confirm">Confirmar senha</string>
+    <string name="auth_login">Entrar</string>
+    <string name="auth_register">Criar conta</string>
+    <string name="auth_back">Voltar</string>
+    <string name="auth_switch_register">Ainda não tem conta? Criar agora</string>
+    <string name="auth_switch_login">Já tem conta? Entrar</string>
+    <string name="auth_error_username">Use de 3 a 20 caracteres.</string>
+    <string name="auth_error_password">A senha precisa ter pelo menos 8 caracteres.</string>
+    <string name="auth_error_password_match">As senhas não coincidem.</string>
+    <string name="auth_error_exists">Esse usuário já existe.</string>
+    <string name="auth_error_invalid">Usuário ou senha inválidos.</string>
+    <string name="auth_error_generic">Não foi possível concluir. Tente novamente.</string>
+    <string name="youtube_login_title">Entrar com YouTube</string>
+    <string name="youtube_login_loading">Aguardando o login do Google…</string>
+    <string name="youtube_login_success">Login concluído</string>
+    <string name="youtube_login_error">Não foi possível ler a sessão do YouTube. Tente novamente.</string>
+
+    <string name="playlists_title">Playlists</string>
+    <string name="playlists_empty">Crie sua primeira playlist ou importe uma do Spotify.</string>
+    <string name="playlists_new">Nova playlist</string>
+    <string name="playlists_spotify">Integrar do Spotify</string>
+    <string name="playlist_name">Nome da playlist</string>
+    <string name="playlist_create">Criar</string>
+    <string name="playlist_rename">Renomear playlist</string>
+    <string name="playlist_save">Salvar</string>
+    <string name="playlist_delete">Excluir playlist</string>
+    <string name="playlist_delete_confirm">Excluir “%1$s”? Essa ação não pode ser desfeita.</string>
+    <string name="playlist_default_cover">Capa da playlist</string>
+    <string name="playlist_change_cover">Trocar imagem</string>
+    <string name="playlist_play_all">Tocar tudo</string>
+    <string name="playlist_shuffle">Embaralhar</string>
+    <string name="playlist_empty">Playlist vazia. Adicione músicas pelo menu de qualquer faixa.</string>
+    <string name="playlist_track_count">%1$d músicas</string>
+    <string name="playlist_track_removed">Música removida</string>
+    <string name="playlist_undo">Desfazer</string>
+    <string name="common_cancel">Cancelar</string>
+    <string name="common_delete">Excluir</string>
+    <string name="common_close">Fechar</string>
+    <string name="common_more">Mais opções</string>
+    <string name="common_move_up">Mover para cima</string>
+    <string name="common_move_down">Mover para baixo</string>
+    <string name="common_remove">Remover</string>
+    <string name="common_add">Adicionar</string>
+    <string name="common_save">Salvar</string>
+
+    <string name="settings_title">Configurações</string>
+    <string name="settings_account">Conta</string>
+    <string name="settings_logout">Deslogar</string>
+    <string name="settings_logout_confirm">Sair da conta %1$s? Suas playlists continuam neste aparelho.</string>
+    <string name="settings_discord">Discord</string>
+    <string name="settings_discord_off">Rich Presence desativado</string>
+    <string name="settings_discord_on">Rich Presence ativo</string>
+    <string name="settings_tv">Conectar à TV</string>
+    <string name="settings_tv_subtitle">Pareie pelo código de 5 dígitos na mesma rede Wi-Fi</string>
+    <string name="settings_about">Sobre</string>
+    <string name="settings_version">Versão %1$s</string>
+
+    <string name="discord_warning_title">Discord Rich Presence</string>
+    <string name="discord_warning">O Rich Presence usa um token de usuário do Discord via conexão não oficial. Isso fica na zona cinzenta dos termos do Discord e pode levar a bloqueio da conta. Ative apenas se aceitar o risco. O MystMusic funciona normalmente sem isso.</string>
+    <string name="discord_accept">Entendi, ativar</string>
+    <string name="discord_connect">Conectar com Discord</string>
+    <string name="discord_disconnect">Desconectar</string>
+    <string name="discord_token_hint">Ou cole um token de usuário (avançado)</string>
+    <string name="discord_error">Não foi possível conectar ao Discord. Verifique o token e tente novamente.</string>
+    <string name="discord_login_title">Login do Discord</string>
+    <string name="discord_login_help">Entre na sua conta. O token é lido do próprio WebView e salvo criptografado no aparelho.</string>
+
+    <string name="player_unknown_artist">Artista desconhecido</string>
+    <string name="player_unknown_title">Faixa desconhecida</string>
+    <string name="player_play">Reproduzir</string>
+    <string name="player_pause">Pausar</string>
+    <string name="player_next">Próxima</string>
+    <string name="player_previous">Anterior</string>
+    <string name="player_shuffle">Aleatório</string>
+    <string name="player_repeat">Repetir</string>
+    <string name="player_add_playlist">Adicionar à playlist</string>
+    <string name="player_error_stream">Não foi possível reproduzir esta faixa. Tente novamente.</string>
+    <string name="player_queue">Fila</string>
+
+    <string name="track_menu_add">Adicionar à playlist</string>
+    <string name="track_menu_play">Tocar agora</string>
+    <string name="track_menu_play_next">Tocar em seguida</string>
+    <string name="sheet_add_title">Adicionar à playlist</string>
+    <string name="sheet_no_playlists">Nenhuma playlist ainda. Crie uma.</string>
+    <string name="track_added">Adicionada a “%1$s”</string>
+    <string name="track_already_added">Essa música já está na playlist</string>
+
+    <string name="spotify_title">Integrar do Spotify</string>
+    <string name="spotify_hint">Cole o link da playlist</string>
+    <string name="spotify_import">Importar</string>
+    <string name="spotify_invalid">Link de playlist inválido</string>
+    <string name="spotify_private">Só playlists públicas do Spotify são suportadas.</string>
+    <string name="spotify_loading">Lendo playlist…</string>
+    <string name="spotify_mapping">Importando %1$d/%2$d</string>
+    <string name="spotify_success">Playlist importada: %1$d faixas encontradas</string>
+    <string name="spotify_partial">%1$d faixas não encontradas no YouTube Music</string>
+    <string name="spotify_error">Não foi possível importar. Tente novamente.</string>
+    <string name="spotify_cancel">Cancelar importação</string>
+
+    <string name="pairing_title">Conectar à TV</string>
+    <string name="pairing_phone_help">Escolha sua TV na mesma rede Wi-Fi. Um código de 5 dígitos aparecerá no celular.</string>
+    <string name="pairing_searching">Procurando TVs…</string>
+    <string name="pairing_none">Nenhuma TV encontrada. Verifique se o MystMusic está aberto na TV e se estão na mesma rede Wi-Fi.</string>
+    <string name="pairing_retry">Procurar novamente</string>
+    <string name="pairing_code_title">Digite este código na TV</string>
+    <string name="pairing_code_help">O código expira em 2 minutos.</string>
+    <string name="pairing_waiting">Aguardando confirmação da TV…</string>
+    <string name="pairing_success">TV conectada!</string>
+    <string name="pairing_error">Não foi possível parear. Tente novamente.</string>
+    <string name="pairing_expired">O código expirou. Gere um novo.</string>
+    <string name="pairing_tv_title">Parear com o celular</string>
+    <string name="pairing_tv_waiting">Abra o MystMusic no celular → Configurações → Conectar à TV.</string>
+    <string name="pairing_tv_enter_code">Digite o código exibido no celular</string>
+    <string name="pairing_tv_confirm">Confirmar</string>
+    <string name="pairing_tv_wrong">Código incorreto. Tentativas restantes: %1$d</string>
+    <string name="pairing_tv_blocked">Muitas tentativas. Aguarde 60 segundos.</string>
+    <string name="pairing_tv_success">Pareado! Entrando…</string>
+    <string name="pairing_tv_no_request">Aguardando o celular iniciar a conexão…</string>
+    <string name="pairing_tv_pin_title">Código do celular</string>
+
+    <string name="tv_nav_home">Início</string>
+    <string name="tv_nav_playlists">Playlists</string>
+    <string name="tv_nav_settings">Ajustes</string>
+
+    <string name="error_generic">Algo deu errado. Tente novamente.</string>
+    <string name="error_network">Falha de rede. Verifique sua conexão.</string>
+    <string name="error_youtube">O YouTube Music não respondeu. Tente novamente.</string>
+    <string name="error_login_required">Entre na sua conta para continuar.</string>
+    <string name="content_cover">Capa de %1$s</string>
+    <string name="content_song">Música: %1$s</string>
+    <string name="loading">Carregando</string>
 </resources>

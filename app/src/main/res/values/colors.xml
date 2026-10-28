@@ -1,2 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources></resources>
+<resources>
+    <color name="sky_400">#38BDF8</color>
+    <color name="sky_500">#0EA5E9</color>
+    <color name="sky_200">#BAE6FD</color>
+    <color name="bg">#0B1220</color>
+    <color name="surface">#111A2E</color>
+    <color name="surface_alt">#16223A</color>
+    <color name="text">#F1F5F9</color>
+    <color name="text_dim">#94A3B8</color>
+    <color name="error">#F87171</color>
+    <color name="success">#4ADE80</color>
+    <color name="transparent">#00000000</color>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+    <color name="sky_alpha_16">#2938BDF8</color>
+    <color name="sky_alpha_24">#3D38BDF8</color>
+    <color name="white_8">#14FFFFFF</color>
+    <color name="white_12">#1FFFFFFF</color>
+    <color name="white_20">#33FFFFFF</color>
+    <color name="surface_92">#EB111A2E</color>
+    <color name="scrim">#B3000000</color>
+</resources>

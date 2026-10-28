@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/miniPlayerRoot"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/mini_player_height"
+    app:cardBackgroundColor="@color/surface_92"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="10dp"
+    app:strokeColor="@color/white_8"
+    app:strokeWidth="1dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingStart="@dimen/space_s"
+        android:paddingEnd="@dimen/space_s">
+
+        <ImageView
+            android:id="@+id/miniCover"
+            android:layout_width="@dimen/mini_cover"
+            android:layout_height="@dimen/mini_cover"
+            android:background="@drawable/bg_cover_placeholder"
+            android:contentDescription="@string/player_play"
+            android:scaleType="centerCrop"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/miniTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/space_s"
+            android:layout_marginEnd="@dimen/space_s"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:maxLines="1"
+            android:textColor="@color/text"
+            android:textSize="@dimen/text_body"
+            app:layout_constraintBottom_toTopOf="@id/miniArtist"
+            app:layout_constraintEnd_toStartOf="@id/miniPlay"
+            app:layout_constraintStart_toEndOf="@id/miniCover"
+            app:layout_constraintTop_toTopOf="@id/miniCover" />
+
+        <TextView
+            android:id="@+id/miniArtist"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/text_dim"
+            android:textSize="@dimen/text_small"
+            app:layout_constraintBottom_toBottomOf="@id/miniCover"
+            app:layout_constraintEnd_toEndOf="@id/miniTitle"
+            app:layout_constraintStart_toStartOf="@id/miniTitle"
+            app:layout_constraintTop_toBottomOf="@id/miniTitle" />
+
+        <ImageButton
+            android:id="@+id/miniPlay"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/player_play"
+            android:src="@drawable/ic_play"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/sky_400" />
+
+        <ProgressBar
+            android:id="@+id/miniProgress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="2dp"
+            android:layout_marginStart="@dimen/space_s"
+            android:layout_marginEnd="@dimen/space_s"
+            android:layout_marginBottom="6dp"
+            android:max="1000"
+            android:progressTint="@color/sky_400"
+            android:progressBackgroundTint="@color/white_12"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</com.google.android.material.card.MaterialCardView>

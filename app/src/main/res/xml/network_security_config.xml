@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  O pareamento celular<->TV usa HTTP apenas na rede local (IP privado). O Android
+  não permite restringir cleartext por faixa de IP no network-security-config, então
+  o tráfego HTTP é permitido e usado exclusivamente por PairingServer/PairingClient.
+  Todo o tráfego de Internet (InnerTube, Spotify, Discord) usa HTTPS.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

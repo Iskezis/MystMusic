@@ -83,3 +83,7 @@ lint/tmp/
 # lint/reports/
 release.keystore
 release.properties
+
+# APKs de entrega (obrigatórios no repositório)
+!apks/
+!apks/*.apk

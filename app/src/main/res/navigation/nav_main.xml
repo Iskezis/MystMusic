@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_main"
+    app:startDestination="@id/homeFragment">
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.iskezis.myst.ui.home.HomeFragment"
+        android:label="@string/nav_home" />
+
+    <fragment
+        android:id="@+id/playlistsFragment"
+        android:name="com.iskezis.myst.ui.playlists.PlaylistsFragment"
+        android:label="@string/nav_playlists" />
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.iskezis.myst.ui.settings.SettingsFragment"
+        android:label="@string/nav_settings" />
+</navigation>
