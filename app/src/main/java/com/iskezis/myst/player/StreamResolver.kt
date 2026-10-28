@@ -26,17 +26,10 @@ class StreamResolver(private val app: MystApp) : ResolvingDataSource.Resolver {
             throw IOException("Faixa sem identificador")
         }
         val url = resolve(videoId)
-        val cookies = app.session.youtubeCookies
-        val headers = buildMap {
-            put(
-                "User-Agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            )
-            put("Referer", "https://music.youtube.com/")
-            put("Origin", "https://music.youtube.com")
-            if (!cookies.isNullOrBlank()) put("Cookie", cookies)
-        }
+        val headers = mapOf(
+            "Referer" to "https://www.youtube.com/",
+            "Origin" to "https://www.youtube.com",
+        )
         return dataSpec.buildUpon()
             .setUri(Uri.parse(url))
             .setHttpRequestHeaders(headers)

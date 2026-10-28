@@ -23,6 +23,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
@@ -42,9 +43,9 @@ class InnerTubeClient(
     }
 
     private val http = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .callTimeout(25, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .callTimeout(20, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .build()
 
@@ -150,6 +151,7 @@ class InnerTubeClient(
                 lastError = MusicException("Sem URL de áudio")
             } catch (t: Throwable) {
                 lastError = t
+                if (t is IOException || t.cause is IOException) break
             }
         }
         throw MusicException("Não foi possível obter o áudio desta faixa.", lastError)
@@ -400,7 +402,7 @@ class InnerTubeClient(
             .build()
 
         var lastError: Throwable? = null
-        for (attempt in 0 until 3) {
+        for (attempt in 0 until 2) {
             try {
                 http.newCall(request).execute().use { response ->
                     val text = response.body?.string().orEmpty()
@@ -422,9 +424,9 @@ class InnerTubeClient(
                 lastError = t
                 if (t is MusicException && t.message?.startsWith("HTTP 4") == true) break
             }
-            if (attempt < 2) {
+            if (attempt < 1) {
                 try {
-                    Thread.sleep(400L * (attempt + 1))
+                    Thread.sleep(300L)
                 } catch (ignored: InterruptedException) {
                     Thread.currentThread().interrupt()
                     break
@@ -450,14 +452,16 @@ class InnerTubeClient(
             .add("X-YouTube-Client-Name", clientId(clientName))
             .add("X-YouTube-Client-Version", clientVersion(clientName))
             .add("User-Agent", userAgent(clientName))
-        session.youtubeCookies?.takeIf { it.isNotBlank() }?.let { builder.add("Cookie", it) }
-        session.youtubeSapisid?.takeIf { it.isNotBlank() }?.let { sapisid ->
-            val timestamp = System.currentTimeMillis() / 1000
-            val hash = sha1Hex("$timestamp $sapisid https://music.youtube.com")
-            builder.add("Authorization", "SAPISIDHASH ${timestamp}_$hash")
-        }
         session.youtubeVisitorData?.takeIf { it.isNotBlank() }?.let {
             builder.add("X-Goog-Visitor-Id", it)
+        }
+        if (clientName == WEB_REMIX) {
+            session.youtubeCookies?.takeIf { it.isNotBlank() }?.let { builder.add("Cookie", it) }
+            session.youtubeSapisid?.takeIf { it.isNotBlank() }?.let { sapisid ->
+                val timestamp = System.currentTimeMillis() / 1000
+                val hash = sha1Hex("$timestamp $sapisid https://music.youtube.com")
+                builder.add("Authorization", "SAPISIDHASH ${timestamp}_$hash")
+            }
         }
         return builder.build()
     }

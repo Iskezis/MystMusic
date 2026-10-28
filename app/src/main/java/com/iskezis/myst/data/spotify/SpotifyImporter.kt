@@ -101,20 +101,21 @@ class SpotifyImporter(
         val mappedSlots = arrayOfNulls<Track>(limited.size)
         var failures = 0
         var processed = 0
+        var slotOffset = 0
         onProgress(0, limited.size)
 
-        limited.chunked(MAPPING_CONCURRENCY).forEachIndexed { chunkIndex, chunk ->
+        limited.chunked(MAPPING_CONCURRENCY).forEach { chunk ->
             currentCoroutineContext().ensureActive()
             val results = coroutineScope {
                 chunk.map { spotifyTrack ->
                     async(Dispatchers.IO) { mapTrack(spotifyTrack) }
                 }.awaitAll()
             }
-            val base = chunkIndex * MAPPING_CONCURRENCY
             results.forEachIndexed { index, result ->
                 if (result.failed) failures++
-                mappedSlots[base + index] = result.track
+                mappedSlots[slotOffset + index] = result.track
             }
+            slotOffset += chunk.size
             processed += chunk.size
             onProgress(processed, limited.size)
         }
@@ -465,11 +466,11 @@ class SpotifyImporter(
             "remix",
             "acoustic",
         )
-        if (blocked.any { word -> candidate.contains(word) && !spotify.contains(word) }) {
+        if (blocked.any { word -> containsWord(candidate, word) && !containsWord(spotify, word) }) {
             return true
         }
-        val liveMarkers = listOf(" live at ", " live from ", " live version", " live session")
-        if (liveMarkers.any { marker -> candidate.contains(marker) && !spotify.contains("live") }) {
+        val liveMarkers = listOf("live at", "live from", "live version", "live session")
+        if (liveMarkers.any { marker -> containsWord(candidate, marker) && !spotify.contains("live") }) {
             return true
         }
         if (Regex("""\((live|ao vivo)\)""", RegexOption.IGNORE_CASE).containsMatchIn(candidateTitle) &&
@@ -485,6 +486,11 @@ class SpotifyImporter(
         val diff = abs(spotifyMs - candidateMs)
         if (diff > MAX_DURATION_DIFF_MS) return null
         return (1.0 - diff.toDouble() / MAX_DURATION_DIFF_MS).coerceIn(0.0, 1.0)
+    }
+
+    private fun containsWord(text: String, word: String): Boolean {
+        if (text.isBlank() || word.isBlank()) return false
+        return " $text ".contains(" $word ")
     }
 
     private suspend fun downloadCover(url: String, playlistId: Long): String? =
@@ -572,8 +578,8 @@ class SpotifyImporter(
         private const val MAPPING_CONCURRENCY = 4
         private const val MATCH_THRESHOLD = 0.68
         private const val MIN_TITLE_SCORE = 0.62
-        private const val MIN_ARTIST_SCORE = 0.45
-        private const val MAX_DURATION_DIFF_MS = 20_000L
+        private const val MIN_ARTIST_SCORE = 0.55
+        private const val MAX_DURATION_DIFF_MS = 8_000L
         private const val COVER_MAX_SIDE = 1024
         private const val BROWSER_UA =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
