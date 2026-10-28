@@ -23,6 +23,7 @@ import com.iskezis.myst.data.discord.DiscordState
 import com.iskezis.myst.databinding.FragmentSettingsBinding
 import com.iskezis.myst.ui.auth.AuthActivity
 import com.iskezis.myst.ui.auth.DiscordLoginActivity
+import com.iskezis.myst.ui.logs.LogsActivity
 import com.iskezis.myst.ui.pairing.PhonePairingActivity
 import com.iskezis.myst.ui.pairing.TvPairingActivity
 import com.iskezis.myst.util.AppLog
@@ -94,6 +95,13 @@ class SettingsFragment : Fragment() {
         }
         binding.settingsLogout.pressScale()
         binding.settingsDiscordAction.pressScale()
+        binding.settingsLogsCard.setOnClickListener {
+            runCatching {
+                startActivity(Intent(requireContext(), LogsActivity::class.java))
+            }.onFailure {
+                AppLog.failure(AppLog.TAG_UI, "Falha abrindo tela de logs", it)
+            }
+        }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {

@@ -46,8 +46,14 @@ class MystApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        AppLog.attach(this)
         installCrashLogger()
-        AppLog.i(AppLog.TAG, "MystMusic iniciado (${BuildConfig.VERSION_NAME})")
+        AppLog.i(
+            AppLog.TAG,
+            "MystMusic iniciado (${BuildConfig.VERSION_NAME}, ${BuildConfig.FLAVOR}, " +
+                "Android ${android.os.Build.VERSION.RELEASE}) em " +
+                (AppLog.logFilePath() ?: "<sem arquivo de log>"),
+        )
         AppLog.i(
             AppLog.TAG,
             "Sessão: ${session.session?.type ?: "nenhuma"} | YouTube cookies: " +
@@ -78,7 +84,7 @@ class MystApp : Application() {
                     "Thread ${thread.name}\n${throwable.javaClass.name}: " +
                         "${throwable.message.orEmpty()}\n${stack.take(12_000)}",
                 )
-                AppLog.e(
+                AppLog.failureSync(
                     AppLog.TAG_CRASH,
                     "Crash não tratado na thread ${thread.name}",
                     throwable,

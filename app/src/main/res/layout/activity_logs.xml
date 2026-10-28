@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/logsRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_app"
+    android:orientation="vertical"
+    android:paddingStart="@dimen/screen_margin"
+    android:paddingTop="@dimen/screen_margin_small"
+    android:paddingEnd="@dimen/screen_margin"
+    android:paddingBottom="@dimen/screen_margin_small">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/logsBack"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/common_back"
+            android:src="@drawable/ic_back"
+            app:tint="@color/text" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/space_s"
+            android:layout_weight="1"
+            android:fontFamily="sans-serif-medium"
+            android:text="@string/logs_title"
+            android:textColor="@color/text"
+            android:textSize="@dimen/text_title" />
+
+        <ImageButton
+            android:id="@+id/logsShare"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/logs_share"
+            android:src="@drawable/ic_share"
+            app:tint="@color/sky_400" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/logsPath"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_s"
+        android:textColor="@color/text_dim"
+        android:textSize="@dimen/text_small" />
+
+    <TextView
+        android:id="@+id/logsHint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_xs"
+        android:text="@string/logs_logcat_hint"
+        android:textColor="@color/text_dim"
+        android:textSize="@dimen/text_small" />
+
+    <ScrollView
+        android:id="@+id/logsScroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/space_m"
+        android:layout_weight="1"
+        android:background="@drawable/bg_card"
+        android:fillViewport="true"
+        android:focusable="true"
+        android:padding="@dimen/space_m"
+        android:scrollbars="vertical">
+
+        <TextView
+            android:id="@+id/logsText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textColor="@color/text"
+            android:textIsSelectable="true"
+            android:textSize="@dimen/text_small" />
+    </ScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_m"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/logsRefresh"
+            style="@style/Widget.MystMusic.Button.Secondary"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/touch_target"
+            android:layout_weight="1"
+            android:text="@string/logs_refresh"
+            app:icon="@drawable/ic_sync"
+            app:iconGravity="textStart"
+            app:iconPadding="@dimen/space_xs" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/logsCopy"
+            style="@style/Widget.MystMusic.Button.Secondary"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/touch_target"
+            android:layout_marginStart="@dimen/space_s"
+            android:layout_weight="1"
+            android:text="@string/logs_copy" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/logsClear"
+            style="@style/Widget.MystMusic.Button.Secondary"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/touch_target"
+            android:layout_marginStart="@dimen/space_s"
+            android:layout_weight="1"
+            android:text="@string/logs_clear" />
+    </LinearLayout>
+</LinearLayout>

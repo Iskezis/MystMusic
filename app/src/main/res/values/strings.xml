@@ -95,6 +95,24 @@
     <string name="settings_discord_on">Rich Presence ativo</string>
     <string name="settings_tv">Conectar à TV</string>
     <string name="settings_tv_subtitle">Pareie pelo código de 5 dígitos na mesma rede Wi-Fi</string>
+    <string name="settings_logs">Logs e diagnóstico</string>
+    <string name="settings_logs_subtitle">Ver, copiar e compartilhar os logs do app</string>
+    <string name="logs_title">Logs e diagnóstico</string>
+    <string name="logs_share">Compartilhar</string>
+    <string name="logs_share_title">Compartilhar logs do MystMusic</string>
+    <string name="logs_share_subject">Logs do MystMusic</string>
+    <string name="logs_share_error">Não foi possível compartilhar os logs. Tente novamente.</string>
+    <string name="logs_copy">Copiar</string>
+    <string name="logs_copied">Logs copiados</string>
+    <string name="logs_copy_error">Não foi possível copiar os logs. Tente novamente.</string>
+    <string name="logs_refresh">Atualizar</string>
+    <string name="logs_clear">Limpar</string>
+    <string name="logs_clear_confirm">Apagar todos os logs salvos neste aparelho?</string>
+    <string name="logs_cleared">Logs apagados</string>
+    <string name="logs_empty">Nenhum log registrado ainda. Use o app e toque em Atualizar.</string>
+    <string name="logs_path">Arquivo completo: %1$s</string>
+    <string name="logs_no_file">Arquivo completo: ainda não criado</string>
+    <string name="logs_logcat_hint">O Android só mostra os logs de um app para leitores externos com a permissão READ_LOGS, concedida por ADB ou root. Para ver os logs sem ADB, use esta tela ou o botão Compartilhar.</string>
     <string name="settings_about">Sobre</string>
     <string name="settings_version">Versão %1$s</string>
 
