@@ -89,7 +89,7 @@ class PhonePairingActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleConfirm(body: String): LocalPairingServer.HttpResult {
+    private suspend fun handleConfirm(body: String): LocalPairingServer.HttpResult {
         val activeCode = code
         if (activeCode == null || paired || expired) {
             return LocalPairingServer.HttpResult(
