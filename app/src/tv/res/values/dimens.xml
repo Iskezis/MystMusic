@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="screen_margin">48dp</dimen>
+    <dimen name="screen_margin_small">32dp</dimen>
+    <dimen name="nav_margin_bottom">24dp</dimen>
+    <dimen name="nav_height">96dp</dimen>
+    <dimen name="nav_item_width">128dp</dimen>
+    <dimen name="nav_center_size">64dp</dimen>
+    <dimen name="content_bottom_padding">168dp</dimen>
+    <dimen name="content_bottom_padding_playing">216dp</dimen>
+    <dimen name="mini_player_bottom_margin">32dp</dimen>
+    <dimen name="mini_player_height">84dp</dimen>
+    <dimen name="mini_player_margin">48dp</dimen>
+    <dimen name="corner_small">16dp</dimen>
+    <dimen name="corner_medium">20dp</dimen>
+    <dimen name="corner_large">28dp</dimen>
+    <dimen name="corner_pill">32dp</dimen>
+    <dimen name="card_cover">180dp</dimen>
+    <dimen name="card_cover_small">148dp</dimen>
+    <dimen name="track_thumb">72dp</dimen>
+    <dimen name="track_row_height">92dp</dimen>
+    <dimen name="mini_cover">56dp</dimen>
+    <dimen name="player_cover">380dp</dimen>
+    <dimen name="text_title">28sp</dimen>
+    <dimen name="text_section">28sp</dimen>
+    <dimen name="text_body">20sp</dimen>
+    <dimen name="text_small">16sp</dimen>
+    <dimen name="text_label">16sp</dimen>
+    <dimen name="text_button">18sp</dimen>
+    <dimen name="touch_target">56dp</dimen>
+    <dimen name="space_xs">6dp</dimen>
+    <dimen name="space_s">12dp</dimen>
+    <dimen name="space_m">24dp</dimen>
+    <dimen name="space_l">32dp</dimen>
+    <dimen name="space_xl">48dp</dimen>
+</resources>

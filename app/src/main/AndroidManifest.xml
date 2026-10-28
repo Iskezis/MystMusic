@@ -53,6 +53,18 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
+        <activity
+            android:name=".ui.pairing.PhonePairingActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.pairing.TvPairingActivity"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize"
+            android:windowSoftInputMode="adjustPan" />
+
         <service
             android:name=".player.PlaybackService"
             android:exported="true"

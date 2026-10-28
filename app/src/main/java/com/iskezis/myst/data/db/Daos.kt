@@ -50,6 +50,9 @@ interface PlaylistDao {
     @Query("DELETE FROM playlists WHERE id = :id")
     suspend fun delete(id: Long)
 
+    @Query("DELETE FROM playlists WHERE userId = :userId")
+    suspend fun deleteAll(userId: Long)
+
     @Query("SELECT * FROM playlist_tracks WHERE playlistId = :playlistId ORDER BY position ASC")
     fun observeTracks(playlistId: Long): Flow<List<PlaylistTrackEntity>>
 

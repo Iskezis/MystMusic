@@ -34,6 +34,44 @@ data class PairAck(
     val error: String? = null,
 )
 
+/**
+ * Dados transferidos do celular para a TV. A sessão não carrega a senha local:
+ * o objetivo do pareamento é entrar na mesma conta e receber as playlists, não
+ * copiar credenciais que a TV não precisa.
+ */
+@Serializable
+data class PairAccount(
+    val type: String,
+    val username: String,
+    val displayName: String,
+)
+
+@Serializable
+data class PairTrack(
+    val videoId: String,
+    val title: String,
+    val artist: String,
+    val thumbnailUrl: String? = null,
+    val durationMs: Long = 0L,
+)
+
+@Serializable
+data class PairPlaylist(
+    val name: String,
+    val coverUri: String? = null,
+    val tracks: List<PairTrack> = emptyList(),
+)
+
+@Serializable
+data class PairBundle(
+    val account: PairAccount? = null,
+    val youtubeCookies: String? = null,
+    val youtubeSapisid: String? = null,
+    val youtubeVisitorData: String? = null,
+    val youtubeDataSyncId: String? = null,
+    val playlists: List<PairPlaylist> = emptyList(),
+)
+
 object PairingCrypto {
 
     private const val SALT = "MystMusicPairing-v1"
@@ -53,6 +91,13 @@ object PairingCrypto {
 
     fun hashCode(code: String, nonce: String): String =
         com.iskezis.myst.util.sha256Hex("$code:$nonce")
+
+    /** Comparação em tempo constante para não vazar o código por timing. */
+    fun matchesHash(code: String, nonce: String, expected: String): Boolean =
+        java.security.MessageDigest.isEqual(
+            hashCode(code, nonce).toByteArray(Charsets.UTF_8),
+            expected.toByteArray(Charsets.UTF_8),
+        )
 
     fun encrypt(code: String, plaintext: String): String {
         val iv = ByteArray(IV_BYTES)

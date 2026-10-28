@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -22,6 +23,7 @@ import com.iskezis.myst.data.discord.DiscordState
 import com.iskezis.myst.databinding.FragmentSettingsBinding
 import com.iskezis.myst.ui.auth.AuthActivity
 import com.iskezis.myst.ui.auth.DiscordLoginActivity
+import com.iskezis.myst.ui.pairing.PhonePairingActivity
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.applyFadeThrough
 import com.iskezis.myst.util.UiAnimations.pressScale
@@ -81,6 +83,14 @@ class SettingsFragment : Fragment() {
 
         binding.settingsDiscordAction.setOnClickListener { onDiscordAction() }
         binding.settingsDiscordCard.setOnClickListener { onDiscordAction() }
+        binding.settingsTvCard.isVisible = BuildConfig.FLAVOR != "tv"
+        binding.settingsTvCard.setOnClickListener {
+            runCatching {
+                startActivity(Intent(requireContext(), PhonePairingActivity::class.java))
+            }.onFailure {
+                AppLog.failure(AppLog.TAG_PAIRING, "Falha abrindo pareamento", it)
+            }
+        }
         binding.settingsLogout.pressScale()
         binding.settingsDiscordAction.pressScale()
 

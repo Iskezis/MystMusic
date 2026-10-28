@@ -10,6 +10,7 @@ import kotlinx.coroutines.withContext
 data class PlaylistExport(
     val name: String,
     val tracks: List<Track>,
+    val coverUri: String? = null,
 )
 
 class PlaylistRepository(private val database: AppDatabase) {
@@ -98,14 +99,38 @@ class PlaylistRepository(private val database: AppDatabase) {
             PlaylistExport(
                 name = playlist.name,
                 tracks = dao.tracks(playlist.id).map(::toTrack),
+                coverUri = playlist.coverUri,
             )
         }
     }
 
+    suspend fun replaceAll(userId: Long, exports: List<PlaylistExport>) =
+        withContext(Dispatchers.IO) {
+            database.withTransaction {
+                dao.deleteAll(userId)
+                exports.forEach { export ->
+                    val playlistId = dao.insert(
+                        PlaylistEntity(
+                            userId = userId,
+                            name = export.name.take(40),
+                            coverUri = export.coverUri,
+                        ),
+                    )
+                    export.tracks.forEachIndexed { index, track ->
+                        dao.insertTrack(track.toEntity(playlistId, index))
+                    }
+                }
+            }
+        }
+
     suspend fun import(userId: Long, exports: List<PlaylistExport>) = withContext(Dispatchers.IO) {
         exports.forEach { export ->
             val playlistId = dao.insert(
-                PlaylistEntity(userId = userId, name = export.name.take(40)),
+                PlaylistEntity(
+                    userId = userId,
+                    name = export.name.take(40),
+                    coverUri = export.coverUri,
+                ),
             )
             export.tracks.forEachIndexed { index, track ->
                 dao.insertTrack(track.toEntity(playlistId, index))

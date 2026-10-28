@@ -23,6 +23,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.iskezis.myst.databinding.ActivityMainBinding
 import com.iskezis.myst.player.PlayerState
 import com.iskezis.myst.ui.auth.AuthActivity
+import com.iskezis.myst.ui.pairing.TvPairingActivity
 import com.iskezis.myst.ui.player.PlayerActivity
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.animatePlayIcon
@@ -49,6 +50,16 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         AppLog.i(AppLog.TAG_UI, "MainActivity.onCreate savedInstanceState=${savedInstanceState != null}")
         val app = application as MystApp
+        if (BuildConfig.FLAVOR == "tv" && !app.session.tvPaired) {
+            AppLog.i(AppLog.TAG_UI, "TV ainda não pareada; abrindo TvPairingActivity")
+            startActivity(
+                Intent(this, TvPairingActivity::class.java).addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK,
+                ),
+            )
+            finish()
+            return
+        }
         if (!app.session.isLoggedIn) {
             AppLog.i(AppLog.TAG_UI, "Sem sessão; abrindo AuthActivity")
             startActivity(

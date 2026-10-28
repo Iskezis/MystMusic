@@ -189,6 +189,18 @@
     <string name="pairing_tv_success">Pareado! Entrando…</string>
     <string name="pairing_tv_no_request">Aguardando o celular iniciar a conexão…</string>
     <string name="pairing_tv_pin_title">Código do celular</string>
+    <string name="pairing_choose_tv">Escolha a TV abaixo</string>
+    <string name="pairing_connecting_tv">Conectando à %1$s…</string>
+    <string name="pairing_login_required">Entre em uma conta antes de parear a TV.</string>
+    <string name="pairing_tv_service">TV MystMusic</string>
+    <string name="pairing_tv_seconds">Código válido por 2 minutos</string>
+    <string name="pairing_tv_backspace">Apagar</string>
+    <string name="pairing_tv_retry">Tentar outro código</string>
+    <string name="pairing_tv_error">Não foi possível confirmar. Tente novamente.</string>
+    <string name="pairing_tv_connecting_phone">Validando código com o celular…</string>
+    <string name="pairing_tv_request_received">Conexão de %1$s. Digite o código do celular.</string>
+    <string name="pairing_tv_network_error">Não foi possível anunciar a TV na rede. Verifique o Wi-Fi.</string>
+    <string name="common_back">Voltar</string>
 
     <string name="tv_nav_home">Início</string>
     <string name="tv_nav_playlists">Playlists</string>
