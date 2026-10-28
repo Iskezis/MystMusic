@@ -1,10 +1,13 @@
 package com.iskezis.myst.ui.settings
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -14,8 +17,11 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.R
 import com.iskezis.myst.data.account.SessionManager
+import com.iskezis.myst.data.discord.DiscordConnection
+import com.iskezis.myst.data.discord.DiscordState
 import com.iskezis.myst.databinding.FragmentSettingsBinding
 import com.iskezis.myst.ui.auth.AuthActivity
+import com.iskezis.myst.ui.auth.DiscordLoginActivity
 import kotlinx.coroutines.launch
 
 class SettingsFragment : Fragment() {
@@ -24,6 +30,17 @@ class SettingsFragment : Fragment() {
     private val binding get() = checkNotNull(_binding)
     private val viewModel: SettingsViewModel by viewModels {
         SettingsViewModel.factory(requireActivity().application)
+    }
+
+    private val discordLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val token = result.data
+                ?.getStringExtra(DiscordLoginActivity.EXTRA_TOKEN)
+                .orEmpty()
+            if (token.isNotBlank()) viewModel.connectDiscord(token)
+        }
     }
 
     override fun onCreateView(
@@ -53,6 +70,9 @@ class SettingsFragment : Fragment() {
                 .show()
         }
 
+        binding.settingsDiscordAction.setOnClickListener { onDiscordAction() }
+        binding.settingsDiscordCard.setOnClickListener { onDiscordAction() }
+
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
@@ -79,6 +99,9 @@ class SettingsFragment : Fragment() {
                         }
                     }
                 }
+                launch {
+                    viewModel.discord.collect { discord -> renderDiscord(discord) }
+                }
             }
         }
     }
@@ -87,4 +110,73 @@ class SettingsFragment : Fragment() {
         super.onDestroyView()
         _binding = null
     }
+
+    private fun onDiscordAction() {
+        val state = viewModel.discord.value
+        when {
+            state.connection == DiscordConnection.CONNECTED ||
+                state.connection == DiscordConnection.CONNECTING -> viewModel.disconnectDiscord()
+
+            viewModel.hasDiscordToken() -> viewModel.retryDiscord()
+
+            else -> showDiscordWarning()
+        }
+    }
+
+    private fun showDiscordWarning() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.discord_warning_title)
+            .setMessage(R.string.discord_warning)
+            .setNegativeButton(R.string.common_cancel, null)
+            .setPositiveButton(R.string.discord_accept) { _, _ ->
+                discordLauncher.launch(Intent(requireContext(), DiscordLoginActivity::class.java))
+            }
+            .show()
+    }
+
+    private fun renderDiscord(state: DiscordState) {
+        val context = requireContext()
+        val (statusRes, colorRes, buttonRes, iconRes) = when (state.connection) {
+            DiscordConnection.CONNECTED -> Quad(
+                R.string.settings_discord_on,
+                R.color.sky_400,
+                R.string.discord_disconnect,
+                R.drawable.ic_close,
+            )
+            DiscordConnection.CONNECTING -> Quad(
+                R.string.settings_discord_connecting,
+                R.color.text_dim,
+                R.string.discord_disconnect,
+                R.drawable.ic_close,
+            )
+            DiscordConnection.ERROR -> Quad(
+                R.string.settings_discord_error,
+                R.color.error,
+                R.string.settings_discord_retry,
+                R.drawable.ic_sync,
+            )
+            DiscordConnection.DISCONNECTED -> Quad(
+                R.string.settings_discord_off,
+                R.color.text_dim,
+                R.string.settings_discord_connect,
+                R.drawable.ic_discord,
+            )
+        }
+        val status = when {
+            state.connection == DiscordConnection.CONNECTED && !state.userName.isNullOrBlank() ->
+                getString(R.string.settings_discord_connected, state.userName)
+            else -> getString(statusRes)
+        }
+        binding.settingsDiscordStatus.text = status
+        binding.settingsDiscordStatus.setTextColor(ContextCompat.getColor(context, colorRes))
+        binding.settingsDiscordAction.setText(buttonRes)
+        binding.settingsDiscordAction.setIconResource(iconRes)
+    }
+
+    private data class Quad(
+        val status: Int,
+        val color: Int,
+        val button: Int,
+        val icon: Int,
+    )
 }

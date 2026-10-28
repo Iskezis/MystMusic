@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.data.account.SessionManager
+import com.iskezis.myst.data.discord.DiscordState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,6 +27,22 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
 
     private val _loggedOut = MutableStateFlow(false)
     val loggedOut: StateFlow<Boolean> = _loggedOut.asStateFlow()
+
+    val discord: StateFlow<DiscordState> = app.discord.state
+
+    fun connectDiscord(token: String) {
+        app.discord.connect(token)
+    }
+
+    fun retryDiscord() {
+        app.discord.retry()
+    }
+
+    fun disconnectDiscord() {
+        app.discord.disconnect()
+    }
+
+    fun hasDiscordToken(): Boolean = !app.session.discordToken.isNullOrBlank()
 
     init {
         viewModelScope.launch {
@@ -46,6 +63,7 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
 
     fun logout() {
         viewModelScope.launch {
+            app.discord.disconnect()
             app.accounts.logout()
             _loggedOut.value = true
         }

@@ -95,6 +95,7 @@ class MainActivity : AppCompatActivity() {
                 (application as MystApp).playerController.state.collect { state ->
                     playerState = state
                     renderMiniPlayer()
+                    (application as MystApp).discord.onPlayerState(state)
                 }
             }
         }

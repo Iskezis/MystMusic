@@ -107,6 +107,12 @@
     <string name="discord_error">Não foi possível conectar ao Discord. Verifique o token e tente novamente.</string>
     <string name="discord_login_title">Login do Discord</string>
     <string name="discord_login_help">Entre na sua conta. O token é lido do próprio WebView e salvo criptografado no aparelho.</string>
+    <string name="discord_login_loading">Não foi possível carregar o login do Discord.</string>
+    <string name="settings_discord_connect">Conectar</string>
+    <string name="settings_discord_connecting">Conectando ao Discord…</string>
+    <string name="settings_discord_connected">Conectado como %1$s</string>
+    <string name="settings_discord_error">Falha na conexão com o Discord</string>
+    <string name="settings_discord_retry">Tentar novamente</string>
 
     <string name="player_unknown_artist">Artista desconhecido</string>
     <string name="player_unknown_title">Faixa desconhecida</string>

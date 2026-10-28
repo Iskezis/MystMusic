@@ -117,7 +117,7 @@ class PlaylistTrackAdapter(
                 onPlay(tracks, if (index >= 0) index else 0)
             }
             binding.trackMore.setOnClickListener {
-                val index = binding.bindingAdapterPosition
+                val index = bindingAdapterPosition
                 if (index != RecyclerView.NO_POSITION) {
                     onRemove(track, index)
                 }
