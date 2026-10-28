@@ -1,5 +1,6 @@
 package com.iskezis.myst
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -9,6 +10,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavOptions
 import androidx.navigation.fragment.NavHostFragment
 import com.iskezis.myst.databinding.ActivityMainBinding
+import com.iskezis.myst.ui.auth.AuthActivity
 
 class MainActivity : AppCompatActivity() {
 
@@ -17,6 +19,16 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val app = application as MystApp
+        if (!app.session.isLoggedIn) {
+            startActivity(
+                Intent(this, AuthActivity::class.java).addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK,
+                ),
+            )
+            finish()
+            return
+        }
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 

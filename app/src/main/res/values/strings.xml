@@ -46,6 +46,8 @@
     <string name="youtube_login_loading">Aguardando o login do Google…</string>
     <string name="youtube_login_success">Login concluído</string>
     <string name="youtube_login_error">Não foi possível ler a sessão do YouTube. Tente novamente.</string>
+    <string name="youtube_account_fallback">Conta YouTube</string>
+    <string name="youtube_login_retry">Recarregar login</string>
 
     <string name="playlists_title">Playlists</string>
     <string name="playlists_empty">Crie sua primeira playlist ou importe uma do Spotify.</string>
@@ -77,6 +79,8 @@
 
     <string name="settings_title">Configurações</string>
     <string name="settings_account">Conta</string>
+    <string name="settings_account_myst">Conta Myst</string>
+    <string name="settings_account_youtube">Conta YouTube</string>
     <string name="settings_logout">Deslogar</string>
     <string name="settings_logout_confirm">Sair da conta %1$s? Suas playlists continuam neste aparelho.</string>
     <string name="settings_discord">Discord</string>
