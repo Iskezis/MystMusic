@@ -9,6 +9,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -42,6 +43,14 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
         val app = application as MystApp
         resolver = StreamResolver(app)
+        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+            .setUserAgent(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            )
+            .setAllowCrossProtocolRedirects(true)
+            .setConnectTimeoutMs(15_000)
+            .setReadTimeoutMs(20_000)
         player = ExoPlayer.Builder(this)
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -54,7 +63,10 @@ class PlaybackService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setMediaSourceFactory(
                 DefaultMediaSourceFactory(
-                    ResolvingDataSource.Factory(DefaultDataSource.Factory(this), resolver),
+                    ResolvingDataSource.Factory(
+                        DefaultDataSource.Factory(this, httpDataSourceFactory),
+                        resolver,
+                    ),
                 ),
             )
             .build()

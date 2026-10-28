@@ -104,7 +104,7 @@ class PlaylistTrackAdapter(
                 R.string.content_cover,
                 track.title,
             )
-            binding.trackCover.load(track.thumbnailUrl) {
+            binding.trackCover.load(track.artworkUrl()) {
                 crossfade(true)
                 placeholder(R.drawable.bg_cover_placeholder)
                 error(R.drawable.bg_cover_placeholder)

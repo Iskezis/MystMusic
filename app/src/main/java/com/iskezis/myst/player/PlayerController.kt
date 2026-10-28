@@ -11,6 +11,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.iskezis.myst.R
 import com.iskezis.myst.data.youtube.Track
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +35,7 @@ data class PlayerState(
     val hasNext: Boolean = false,
     val hasPrevious: Boolean = false,
     val error: Boolean = false,
+    val errorMessage: String? = null,
 )
 
 class PlayerController(context: Context) {
@@ -63,8 +65,13 @@ class PlayerController(context: Context) {
             publish(player)
         }
 
-        override fun onPlayerError(error: PlaybackException) {
-            _state.value = _state.value.copy(error = true)
+        override fun onPlayerErrorChanged(error: PlaybackException?) {
+            _state.value = _state.value.copy(
+                error = error != null,
+                errorMessage = error?.let {
+                    appContext.getString(R.string.player_error_stream_detail, it.errorCodeName)
+                },
+            )
         }
     }
 
@@ -81,6 +88,11 @@ class PlayerController(context: Context) {
                         playInternal(mediaController, pending.tracks, pending.startIndex, pending.shuffle)
                     }
                     startTicker()
+                }.onFailure {
+                    _state.value = _state.value.copy(
+                        error = true,
+                        errorMessage = appContext.getString(R.string.player_connection_error),
+                    )
                 }
             },
             ContextCompat.getMainExecutor(appContext),
@@ -166,7 +178,7 @@ class PlayerController(context: Context) {
 
     fun retry() {
         val current = controller ?: return
-        _state.value = _state.value.copy(error = false)
+        _state.value = _state.value.copy(error = false, errorMessage = null)
         current.prepare()
         current.play()
     }
@@ -184,7 +196,7 @@ class PlayerController(context: Context) {
         startIndex: Int,
         shuffle: Boolean,
     ) {
-        _state.value = _state.value.copy(error = false)
+        _state.value = _state.value.copy(error = false, errorMessage = null)
         val items = tracks.map { it.toMediaItem() }
         mediaController.setMediaItems(items, startIndex, 0L)
         mediaController.shuffleModeEnabled = shuffle
@@ -206,6 +218,7 @@ class PlayerController(context: Context) {
         val item = player.currentMediaItem
         val track = item?.toTrack()
         val duration = player.duration.takeIf { it > 0 && it != Long.MIN_VALUE } ?: track?.durationMs ?: 0L
+        val playbackError = player.playerError
         _state.value = PlayerState(
             connected = true,
             isPlaying = player.isPlaying,
@@ -216,7 +229,8 @@ class PlayerController(context: Context) {
             repeatMode = player.repeatMode,
             hasNext = player.hasNextMediaItem(),
             hasPrevious = player.hasPreviousMediaItem(),
-            error = _state.value.error && track != null,
+            error = playbackError != null && track != null,
+            errorMessage = if (playbackError != null) _state.value.errorMessage else null,
         )
     }
 
@@ -225,7 +239,7 @@ class PlayerController(context: Context) {
         val metadata = MediaMetadata.Builder()
             .setTitle(title.ifBlank { "MystMusic" })
             .setArtist(artist)
-            .setArtworkUri(thumbnailUrl?.takeIf { it.isNotBlank() }?.let(Uri::parse))
+            .setArtworkUri(artworkUrl()?.takeIf { it.isNotBlank() }?.let(Uri::parse))
             .setExtras(extras)
             .build()
         return MediaItem.Builder()

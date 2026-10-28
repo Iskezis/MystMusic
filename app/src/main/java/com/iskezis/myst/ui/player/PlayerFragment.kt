@@ -31,6 +31,7 @@ class PlayerFragment : Fragment() {
     private val controller get() = (requireActivity().application as MystApp).playerController
     private var latest: PlayerState = PlayerState()
     private var seeking = false
+    private var loadedArtworkFor: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -113,16 +114,19 @@ class PlayerFragment : Fragment() {
         )
 
         val context = requireContext()
-        if (track?.thumbnailUrl.isNullOrBlank()) {
+        val artwork = track?.artworkUrl()
+        if (artwork.isNullOrBlank()) {
+            loadedArtworkFor = null
             binding.playerCover.setImageResource(R.drawable.bg_cover_placeholder)
             binding.playerBackdrop.setImageResource(R.drawable.bg_cover_placeholder)
-        } else {
-            binding.playerCover.load(track?.thumbnailUrl) {
+        } else if (loadedArtworkFor != artwork) {
+            loadedArtworkFor = artwork
+            binding.playerCover.load(artwork) {
                 crossfade(true)
                 placeholder(R.drawable.bg_cover_placeholder)
                 error(R.drawable.bg_cover_placeholder)
             }
-            binding.playerBackdrop.load(track?.thumbnailUrl) {
+            binding.playerBackdrop.load(artwork) {
                 crossfade(true)
                 placeholder(R.drawable.bg_cover_placeholder)
                 error(R.drawable.bg_cover_placeholder)
@@ -153,6 +157,7 @@ class PlayerFragment : Fragment() {
         }
 
         binding.playerError.isVisible = state.error
+        binding.playerError.text = state.errorMessage ?: getString(R.string.player_error_stream)
         binding.playerRetry.isVisible = state.error
     }
 

@@ -124,6 +124,8 @@
     <string name="player_repeat">Repetir</string>
     <string name="player_add_playlist">Adicionar à playlist</string>
     <string name="player_error_stream">Não foi possível reproduzir esta faixa. Tente novamente.</string>
+    <string name="player_error_stream_detail">Não foi possível reproduzir esta faixa (%1$s). Tente novamente.</string>
+    <string name="player_connection_error">Não foi possível conectar ao reprodutor. Feche e abra o app novamente.</string>
     <string name="player_queue">Fila</string>
     <string name="player_now_playing">Tocando agora</string>
     <string name="player_repeat_one">Repetir uma</string>

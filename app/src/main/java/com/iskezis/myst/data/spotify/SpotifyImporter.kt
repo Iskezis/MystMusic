@@ -1,6 +1,8 @@
 package com.iskezis.myst.data.spotify
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
 import android.util.Log
@@ -8,6 +10,7 @@ import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.data.db.PlaylistRepository
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.data.youtube.YouTubeRepository
+import com.iskezis.myst.util.normalizeText
 import com.iskezis.myst.util.similarity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +32,7 @@ import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 
@@ -92,25 +96,29 @@ class SpotifyImporter(
         if (playlist.tracks.isEmpty()) throw SpotifyUnavailableException()
 
         val limited = playlist.tracks.take(MAX_TRACKS)
-        val mapped = ArrayList<Track>(limited.size)
+        // Cada faixa tem um índice fixo. A ordem final é sempre a ordem do
+        // Spotify, mesmo com mapeamentos paralelos e faixas não encontradas.
+        val mappedSlots = arrayOfNulls<Track>(limited.size)
         var failures = 0
         var processed = 0
         onProgress(0, limited.size)
 
-        limited.chunked(MAPPING_CONCURRENCY).forEach { chunk ->
+        limited.chunked(MAPPING_CONCURRENCY).forEachIndexed { chunkIndex, chunk ->
             currentCoroutineContext().ensureActive()
             val results = coroutineScope {
                 chunk.map { spotifyTrack ->
                     async(Dispatchers.IO) { mapTrack(spotifyTrack) }
                 }.awaitAll()
             }
-            results.forEach { result ->
+            val base = chunkIndex * MAPPING_CONCURRENCY
+            results.forEachIndexed { index, result ->
                 if (result.failed) failures++
-                if (result.track != null) mapped.add(result.track)
+                mappedSlots[base + index] = result.track
             }
             processed += chunk.size
             onProgress(processed, limited.size)
         }
+        val mapped = mappedSlots.filterNotNull()
 
         if (mapped.isEmpty()) {
             if (failures > 0) throw SpotifyImportException()
@@ -168,9 +176,7 @@ class SpotifyImporter(
             .build()
         val root = executeJson(request) ?: throw SpotifyImportException()
         val name = (root["name"] as? JsonPrimitive)?.contentOrNull.orEmpty()
-        val cover = ((root["images"] as? JsonArray)?.firstOrNull() as? JsonObject)
-            ?.get("url")
-            ?.let { (it as? JsonPrimitive)?.contentOrNull }
+        val cover = largestImage(root["images"] as? JsonArray)
 
         val tracks = mutableListOf<SpotifyTrack>()
         val tracksObject = root["tracks"] as? JsonObject
@@ -187,9 +193,8 @@ class SpotifyImporter(
                 .build()
             val page = executeJson(pageRequest) ?: break
             val items = page["items"] as? JsonArray ?: break
-            val before = tracks.size
+            if (items.isEmpty()) break
             parseApiTracks(page, tracks)
-            if (items.isEmpty() || tracks.size == before) break
             offset += items.size
         }
         return SpotifyPlaylist(name, cover, tracks)
@@ -202,6 +207,8 @@ class SpotifyImporter(
             val track = item["track"] as? JsonObject ?: return@forEach
             val isLocal = (track["is_local"] as? JsonPrimitive)?.contentOrNull == "true"
             if (isLocal) return@forEach
+            val type = (track["type"] as? JsonPrimitive)?.contentOrNull
+            if (type == "episode") return@forEach
             val title = (track["name"] as? JsonPrimitive)?.contentOrNull.orEmpty().trim()
             if (title.isBlank() || title == AD_TITLE) return@forEach
             val artists = (track["artists"] as? JsonArray)?.mapNotNull { artist ->
@@ -241,7 +248,7 @@ class SpotifyImporter(
         } catch (t: Throwable) {
             throw SpotifyImportException(t)
         }
-        val entity = findPlaylistEntity(root) ?: throw SpotifyUnavailableException()
+        val entity = findPlaylistEntity(root, spotifyId) ?: throw SpotifyUnavailableException()
         val name = (entity["name"] as? JsonPrimitive)?.contentOrNull
             ?: (entity["title"] as? JsonPrimitive)?.contentOrNull
             ?: ""
@@ -255,49 +262,97 @@ class SpotifyImporter(
                 ?: return@forEach
             if (title.isBlank() || title == AD_TITLE) return@forEach
             val subtitle = (item["subtitle"] as? JsonPrimitive)?.contentOrNull.orEmpty()
-            var duration = (item["duration"] as? JsonPrimitive)?.contentOrNull?.toLongOrNull() ?: 0L
-            if (duration in 1..9999) duration *= 1000
-            tracks.add(SpotifyTrack(title.trim(), subtitle.trim(), duration))
+            val artist = subtitle
+                .substringBefore("•")
+                .substringBefore(" · ")
+                .trim()
+            val duration = parseSpotifyDuration(item["duration"])
+            tracks.add(SpotifyTrack(title.trim(), artist, duration))
         }
         return SpotifyPlaylist(name.trim(), cover, tracks)
     }
 
-    private fun findPlaylistEntity(element: JsonElement): JsonObject? {
-        when (element) {
-            is JsonObject -> {
-                if (element["trackList"] is JsonArray) return element
-                element.values.forEach { value ->
-                    findPlaylistEntity(value)?.let { return it }
-                }
+    private fun parseSpotifyDuration(element: JsonElement?): Long {
+        val raw = (element as? JsonPrimitive)?.contentOrNull?.trim().orEmpty()
+        if (raw.isBlank()) return 0L
+        if (raw.contains(":")) {
+            val parts = raw.split(":").mapNotNull { it.trim().toLongOrNull() }
+            return when (parts.size) {
+                3 -> (parts[0] * 3600 + parts[1] * 60 + parts[2]) * 1000
+                2 -> (parts[0] * 60 + parts[1]) * 1000
+                else -> 0L
             }
-            is JsonArray -> element.forEach { value ->
-                findPlaylistEntity(value)?.let { return it }
-            }
-            else -> Unit
         }
-        return null
+        val value = raw.toLongOrNull() ?: return 0L
+        return if (value in 1..9_999) value * 1000 else value
+    }
+
+    private fun findPlaylistEntity(element: JsonElement, spotifyId: String): JsonObject? {
+        val candidates = mutableListOf<JsonObject>()
+        fun collect(value: JsonElement) {
+            when (value) {
+                is JsonObject -> {
+                    if (value["trackList"] is JsonArray) candidates.add(value)
+                    value.values.forEach { collect(it) }
+                }
+                is JsonArray -> value.forEach { collect(it) }
+                else -> Unit
+            }
+        }
+        collect(element)
+        // O embed traz entidades de playlists relacionadas. Escolher a primeira
+        // poderia importar a playlist errada; priorizamos a que tem o ID pedido.
+        return candidates.firstOrNull { candidate ->
+            val uri = (candidate["uri"] as? JsonPrimitive)?.contentOrNull.orEmpty()
+            val id = (candidate["id"] as? JsonPrimitive)?.contentOrNull.orEmpty()
+            uri.contains(spotifyId) || id == spotifyId
+        } ?: candidates.firstOrNull()
     }
 
     private fun findCover(entity: JsonObject): String? {
+        val candidates = mutableListOf<Pair<String, Long>>()
+        fun add(url: String?, width: Long?, height: Long?) {
+            if (url.isNullOrBlank()) return
+            candidates.add(url to ((width ?: 0L) * (height ?: 0L)))
+        }
         val coverArt = entity["coverArt"] as? JsonObject
-        val sources = coverArt?.get("sources") as? JsonArray
-        sources?.forEach { source ->
-            val url = ((source as? JsonObject)?.get("url") as? JsonPrimitive)?.contentOrNull
-            if (!url.isNullOrBlank()) return url
+        (coverArt?.get("sources") as? JsonArray)?.forEach { source ->
+            val item = source as? JsonObject ?: return@forEach
+            add(
+                (item["url"] as? JsonPrimitive)?.contentOrNull,
+                (item["width"] as? JsonPrimitive)?.contentOrNull?.toLongOrNull(),
+                (item["height"] as? JsonPrimitive)?.contentOrNull?.toLongOrNull(),
+            )
         }
         (entity["images"] as? JsonArray)?.forEach { image ->
-            val url = ((image as? JsonObject)?.get("url") as? JsonPrimitive)?.contentOrNull
-            if (!url.isNullOrBlank()) return url
+            val item = image as? JsonObject ?: return@forEach
+            add(
+                (item["url"] as? JsonPrimitive)?.contentOrNull,
+                (item["width"] as? JsonPrimitive)?.contentOrNull?.toLongOrNull(),
+                (item["height"] as? JsonPrimitive)?.contentOrNull?.toLongOrNull(),
+            )
         }
-        return null
+        return candidates.maxByOrNull { it.second }?.first ?: candidates.firstOrNull()?.first
+    }
+
+    private fun largestImage(images: JsonArray?): String? {
+        if (images == null) return null
+        val candidates = images.mapNotNull { element ->
+            val item = element as? JsonObject ?: return@mapNotNull null
+            val url = (item["url"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
+            val width = (item["width"] as? JsonPrimitive)?.contentOrNull?.toLongOrNull() ?: 0L
+            val height = (item["height"] as? JsonPrimitive)?.contentOrNull?.toLongOrNull() ?: 0L
+            url to (width * height)
+        }
+        return candidates.maxByOrNull { it.second }?.first ?: candidates.firstOrNull()?.first
     }
 
     private suspend fun mapTrack(spotifyTrack: SpotifyTrack): MappedTrack {
-        val query = listOf(spotifyTrack.title, spotifyTrack.artist)
+        val query = listOf(spotifyTrack.title, spotifyTrack.artist.trim())
             .filter { it.isNotBlank() }
             .joinToString(" ")
         val candidates = try {
-            youtube.search(query, 8)
+            youtube.search(query, 12)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (t: Throwable) {
@@ -305,43 +360,184 @@ class SpotifyImporter(
         }
         if (candidates.isEmpty()) return MappedTrack(null, failed = false)
 
-        val best = candidates.maxByOrNull { candidate ->
-            val titleScore = similarity(spotifyTrack.title, candidate.title)
-            val artistScore = candidate.artist.split(",")
-                .maxOfOrNull { similarity(spotifyTrack.artist, it.trim()) } ?: 0.0
-            val durationScore = if (spotifyTrack.durationMs > 0 && candidate.durationMs > 0) {
-                (1.0 - abs(spotifyTrack.durationMs - candidate.durationMs) / 20_000.0)
-                    .coerceIn(0.0, 1.0)
-            } else {
-                0.5
+        var bestTrack: Track? = null
+        var bestScore = 0.0
+        candidates.forEach { candidate ->
+            val titleScore = titleScore(spotifyTrack.title, candidate.title)
+            if (titleScore < MIN_TITLE_SCORE) return@forEach
+            if (isWrongVariant(candidate.title, spotifyTrack.title)) return@forEach
+            val artistScore = artistScore(
+                spotifyTrack.artist,
+                candidate.artist,
+                candidate.title,
+            )
+            val durationScore = durationScore(
+                spotifyTrack.durationMs,
+                candidate.durationMs,
+            ) ?: return@forEach
+            val artistsKnown = splitArtists(spotifyTrack.artist).isNotEmpty() &&
+                (candidate.artist.isNotBlank() || candidate.title.isNotBlank())
+            if (artistsKnown && artistScore < MIN_ARTIST_SCORE) return@forEach
+
+            val score = 0.60 * titleScore + 0.30 * artistScore + 0.10 * durationScore
+            if (score > bestScore) {
+                bestScore = score
+                bestTrack = candidate
             }
-            0.6 * titleScore + 0.3 * artistScore + 0.1 * durationScore
-        } ?: return MappedTrack(null, failed = false)
-        val score = run {
-            val titleScore = similarity(spotifyTrack.title, best.title)
-            val artistScore = best.artist.split(",")
-                .maxOfOrNull { similarity(spotifyTrack.artist, it.trim()) } ?: 0.0
-            0.6 * titleScore + 0.4 * artistScore
         }
-        return if (score >= MATCH_THRESHOLD) MappedTrack(best, failed = false)
-        else MappedTrack(null, failed = false)
+        return if (bestTrack != null && bestScore >= MATCH_THRESHOLD) {
+            MappedTrack(bestTrack, failed = false)
+        } else {
+            MappedTrack(null, failed = false)
+        }
+    }
+
+    private fun titleScore(spotifyTitle: String, candidateTitle: String): Double {
+        val direct = similarity(spotifyTitle, candidateTitle)
+        val spotifyCore = coreTitle(spotifyTitle)
+        val candidateCore = coreTitle(candidateTitle)
+        val core = similarity(spotifyCore, candidateCore)
+        val shorter = minOf(spotifyCore.length, candidateCore.length)
+        val longer = maxOf(spotifyCore.length, candidateCore.length)
+        val contains = if (
+            shorter >= 4 && longer > 0 &&
+            shorter.toDouble() / longer >= 0.6 &&
+            (spotifyCore.contains(candidateCore) || candidateCore.contains(spotifyCore))
+        ) 0.92 else 0.0
+        return maxOf(direct, core, contains).coerceIn(0.0, 1.0)
+    }
+
+    private fun coreTitle(value: String): String {
+        val withoutBrackets = value.replace(Regex("""\s*[\(\[][^)\]]*[\)\]]"""), " ")
+        return normalizeText(withoutBrackets)
+    }
+
+    private fun artistScore(
+        spotifyArtist: String,
+        candidateArtist: String,
+        candidateTitle: String,
+    ): Double {
+        val wanted = splitArtists(spotifyArtist)
+        if (wanted.isEmpty()) return 0.45
+        val haystacks = buildList {
+            add(normalizeText(candidateArtist))
+            add(normalizeText(candidateTitle))
+            addAll(splitArtists(candidateArtist))
+        }.filter { it.isNotBlank() }
+        if (haystacks.isEmpty()) return 0.0
+        var best = 0.0
+        wanted.forEach { artist ->
+            haystacks.forEach { haystack ->
+                val value = when {
+                    haystack == artist -> 1.0
+                    artist.length >= 4 && haystack.contains(artist) -> 1.0
+                    haystack.length >= 4 && artist.contains(haystack) -> 0.95
+                    else -> similarity(artist, haystack)
+                }
+                if (value > best) best = value
+            }
+        }
+        return best.coerceIn(0.0, 1.0)
+    }
+
+    private fun splitArtists(raw: String): List<String> {
+        return raw.split(",", "&", " feat. ", " featuring ", " with ", " x ")
+            .map { normalizeText(it) }
+            .filter { it.isNotBlank() }
+    }
+
+    private fun isWrongVariant(candidateTitle: String, spotifyTitle: String): Boolean {
+        val candidate = normalizeText(candidateTitle)
+        val spotify = normalizeText(spotifyTitle)
+        val blocked = listOf(
+            "karaoke",
+            "instrumental",
+            "nightcore",
+            "sped up",
+            "slowed",
+            "8d audio",
+            "bass boosted",
+            "reaction",
+            "tutorial",
+            "made famous",
+            "in the style of",
+            "cover",
+            "remix",
+            "acoustic",
+        )
+        if (blocked.any { word -> candidate.contains(word) && !spotify.contains(word) }) {
+            return true
+        }
+        val liveMarkers = listOf(" live at ", " live from ", " live version", " live session")
+        if (liveMarkers.any { marker -> candidate.contains(marker) && !spotify.contains("live") }) {
+            return true
+        }
+        if (Regex("""\((live|ao vivo)\)""", RegexOption.IGNORE_CASE).containsMatchIn(candidateTitle) &&
+            !spotify.contains("live")
+        ) {
+            return true
+        }
+        return false
+    }
+
+    private fun durationScore(spotifyMs: Long, candidateMs: Long): Double? {
+        if (spotifyMs <= 0L || candidateMs <= 0L) return 0.5
+        val diff = abs(spotifyMs - candidateMs)
+        if (diff > MAX_DURATION_DIFF_MS) return null
+        return (1.0 - diff.toDouble() / MAX_DURATION_DIFF_MS).coerceIn(0.0, 1.0)
     }
 
     private suspend fun downloadCover(url: String, playlistId: Long): String? =
         withContext(Dispatchers.IO) {
-            runCatching {
+            try {
                 val request = Request.Builder().url(url).build()
-                http.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return@use null
-                    val bytes = response.body?.bytes() ?: return@use null
-                    if (bytes.size > 6 * 1024 * 1024) return@use null
-                    val dir = File(context.filesDir, "covers").apply { mkdirs() }
-                    val file = File(dir, "$playlistId.jpg")
-                    file.writeBytes(bytes)
-                    Uri.fromFile(file).toString()
+                val bytes = http.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@withContext null
+                    response.body?.bytes() ?: return@withContext null
                 }
-            }.getOrNull()
+                if (bytes.size > 8 * 1024 * 1024) return@withContext null
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+                if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@withContext null
+                val options = BitmapFactory.Options().apply {
+                    inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight)
+                }
+                val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+                    ?: return@withContext null
+                val scaled = scaleDown(decoded, COVER_MAX_SIDE)
+                val dir = File(context.filesDir, "covers").apply { mkdirs() }
+                val file = File(dir, "$playlistId.jpg")
+                FileOutputStream(file).use { output ->
+                    scaled.compress(Bitmap.CompressFormat.JPEG, 92, output)
+                }
+                if (scaled !== decoded) scaled.recycle()
+                decoded.recycle()
+                Uri.fromFile(file).toString()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (t: Throwable) {
+                null
+            }
         }
+
+    private fun sampleSize(width: Int, height: Int): Int {
+        var sample = 1
+        var largest = maxOf(width, height)
+        while (largest / 2 >= COVER_MAX_SIDE) {
+            largest /= 2
+            sample *= 2
+        }
+        return sample
+    }
+
+    private fun scaleDown(bitmap: Bitmap, maxSide: Int): Bitmap {
+        val largest = maxOf(bitmap.width, bitmap.height)
+        if (largest <= maxSide) return bitmap
+        val ratio = maxSide.toFloat() / largest
+        val width = (bitmap.width * ratio).toInt().coerceAtLeast(1)
+        val height = (bitmap.height * ratio).toInt().coerceAtLeast(1)
+        return Bitmap.createScaledBitmap(bitmap, width, height, true)
+    }
 
     private fun executeJson(request: Request): JsonObject? {
         val text = executeText(request) ?: return null
@@ -374,7 +570,11 @@ class SpotifyImporter(
         private const val AD_TITLE = "Advertisement"
         private const val MAX_TRACKS = 500
         private const val MAPPING_CONCURRENCY = 4
-        private const val MATCH_THRESHOLD = 0.42
+        private const val MATCH_THRESHOLD = 0.68
+        private const val MIN_TITLE_SCORE = 0.62
+        private const val MIN_ARTIST_SCORE = 0.45
+        private const val MAX_DURATION_DIFF_MS = 20_000L
+        private const val COVER_MAX_SIDE = 1024
         private const val BROWSER_UA =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
                 "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"

@@ -156,7 +156,7 @@ class MainActivity : AppCompatActivity() {
             R.string.content_cover,
             track.title,
         )
-        binding.miniPlayer.miniCover.load(track.thumbnailUrl) {
+        binding.miniPlayer.miniCover.load(track.artworkUrl()) {
             crossfade(true)
             placeholder(R.drawable.bg_cover_placeholder)
             error(R.drawable.bg_cover_placeholder)
@@ -213,17 +213,18 @@ class MainActivity : AppCompatActivity() {
     private fun animateNavBar(visible: Boolean) {
         if (visible == !navBarHidden) return
         navBarHidden = !visible
-        binding.navBar.animate().cancel()
+        val bar = binding.navBar.root
+        bar.animate().cancel()
         if (visible) {
-            binding.navBar.animate()
+            bar.animate()
                 .translationY(0f)
                 .alpha(1f)
                 .setDuration(250)
                 .start()
         } else {
-            val height = binding.navBar.height.takeIf { it > 0 } ?: dp(80f).toInt()
+            val height = bar.height.takeIf { it > 0 } ?: dp(80f).toInt()
             val offset = height + resources.getDimension(R.dimen.nav_margin_bottom)
-            binding.navBar.animate()
+            bar.animate()
                 .translationY(offset)
                 .alpha(0f)
                 .setDuration(250)

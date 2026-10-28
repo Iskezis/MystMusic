@@ -1,7 +1,9 @@
 package com.iskezis.myst.data.youtube
 
 import android.content.Context
+import android.net.Uri
 import com.iskezis.myst.data.account.SessionManager
+import com.iskezis.myst.util.Thumbnails
 import com.iskezis.myst.util.sha1Hex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -92,6 +94,10 @@ class InnerTubeClient(
 
     override fun streamUrlBlocking(videoId: String): String = resolveStream(videoId)
 
+    override fun invalidateStream(videoId: String) {
+        urlCache.remove(videoId)
+    }
+
     override suspend fun accountName(): String? = withContext(Dispatchers.IO) {
         runCatching {
             val body = buildJsonObject { put("context", clientContext(WEB_REMIX)) }
@@ -123,7 +129,12 @@ class InnerTubeClient(
                         })
                     })
                 }
-                val response = post("player", body, headers(clientName))
+                val response = post(
+                    endpoint = "player",
+                    body = body,
+                    requestHeaders = headers(clientName),
+                    baseUrl = if (clientName == WEB_REMIX) BASE_URL else YOUTUBE_BASE_URL,
+                )
                 val status = response["playabilityStatus"]?.let { element ->
                     (element as? JsonObject)?.get("status")?.let { (it as? JsonPrimitive)?.contentOrNull }
                 }
@@ -155,17 +166,63 @@ class InnerTubeClient(
         }
         val audio = formats.filter { format ->
             val mime = (format["mimeType"] as? JsonPrimitive)?.contentOrNull.orEmpty()
-            mime.contains("audio", ignoreCase = true)
+            mime.contains("audio", ignoreCase = true) &&
+                format["drmAdditionalHeader"] == null &&
+                format["drmFamilies"] == null
         }
-        val preferred = audio.filter { format ->
-            val itag = (format["itag"] as? JsonPrimitive)?.contentOrNull?.toIntOrNull()
-            itag == 251 || itag == 140 || itag == 250 || itag == 141 || itag == 139
-        }.ifEmpty { audio }
-        preferred.forEach { format ->
-            val direct = (format["url"] as? JsonPrimitive)?.contentOrNull
-            if (!direct.isNullOrBlank()) return direct
+        // AAC (itag 140/141) toca em praticamente qualquer aparelho e TV. Opus
+        // (251) fica como reserva: alguns decodificadores antigos não o suportam.
+        val sorted = audio.sortedWith(
+            compareBy<JsonObject> { audioRank(it) }
+                .thenByDescending { number(it["bitrate"]) },
+        )
+        sorted.forEach { format ->
+            formatUrl(format)?.takeIf { it.startsWith("http") }?.let { return it }
         }
         return null
+    }
+
+    private fun audioRank(format: JsonObject): Int {
+        val itag = number(format["itag"])?.toInt()
+        val mime = (format["mimeType"] as? JsonPrimitive)?.contentOrNull.orEmpty()
+        return when {
+            itag == 140 -> 0
+            itag == 141 -> 1
+            itag == 139 -> 2
+            mime.contains("mp4", ignoreCase = true) -> 3
+            itag == 251 -> 4
+            itag == 250 -> 5
+            itag == 249 -> 6
+            mime.contains("webm", ignoreCase = true) -> 7
+            else -> 8
+        }
+    }
+
+    private fun number(element: JsonElement?): Long? =
+        (element as? JsonPrimitive)?.contentOrNull?.toLongOrNull()
+
+    /**
+     * Muitos formatos vêm em signatureCipher. Quando a assinatura já vem pronta
+     * (sig) ela pode ser anexada; quando vem cifrada (s) não há como decifrar sem
+     * baixar o JS do player, então o formato é ignorado e outro cliente é tentado.
+     */
+    private fun formatUrl(format: JsonObject): String? {
+        (format["url"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
+            ?.let { return it }
+        val cipher = ((format["signatureCipher"] ?: format["cipher"]) as? JsonPrimitive)
+            ?.contentOrNull?.takeIf { it.isNotBlank() } ?: return null
+        val params = try {
+            Uri.parse("https://local.invalid/?$cipher")
+        } catch (t: Throwable) {
+            return null
+        }
+        val url = params.getQueryParameter("url")?.takeIf { it.isNotBlank() } ?: return null
+        val signature = params.getQueryParameter("sig")
+            ?: params.getQueryParameter("signature")
+            ?: return null
+        val param = params.getQueryParameter("sp")?.takeIf { it.isNotBlank() } ?: "signature"
+        val separator = if (url.contains("?")) "&" else "?"
+        return "$url$separator$param=$signature"
     }
 
     private fun parseTracks(root: JsonObject): List<Track> {
@@ -251,14 +308,30 @@ class InnerTubeClient(
     }
 
     private fun extractThumbnail(item: JsonObject): String? {
-        val direct = ((((item["thumbnail"] as? JsonObject)
-            ?.get("musicThumbnailRenderer") as? JsonObject)
-            ?.get("thumbnail") as? JsonObject)
-            ?.get("thumbnails") as? JsonArray)
-        val list = direct ?: (findFirstValue(item, "thumbnails") as? JsonArray)
-        list ?: return null
-        val last = list.lastOrNull() as? JsonObject ?: return null
-        return (last["url"] as? JsonPrimitive)?.contentOrNull
+        val candidates = mutableListOf<JsonObject>()
+        fun collect(element: JsonElement) {
+            when (element) {
+                is JsonObject -> {
+                    val thumbnails = element["thumbnails"] as? JsonArray
+                    thumbnails?.forEach { thumb ->
+                        (thumb as? JsonObject)?.let { candidates.add(it) }
+                    }
+                    element.forEach { (key, value) ->
+                        if (key != "thumbnails") collect(value)
+                    }
+                }
+                is JsonArray -> element.forEach { collect(it) }
+                else -> Unit
+            }
+        }
+        collect(item)
+        val best = candidates.maxByOrNull { thumb ->
+            val width = number(thumb["width"]) ?: 0L
+            val height = number(thumb["height"]) ?: 0L
+            width * height
+        } ?: return null
+        val url = (best["url"] as? JsonPrimitive)?.contentOrNull
+        return Thumbnails.best(url, findVideoId(item))
     }
 
     private fun runsText(text: JsonObject): String {
@@ -313,10 +386,15 @@ class InnerTubeClient(
         }
     }
 
-    private fun post(endpoint: String, body: JsonObject, requestHeaders: Headers): JsonObject {
+    private fun post(
+        endpoint: String,
+        body: JsonObject,
+        requestHeaders: Headers,
+        baseUrl: String = BASE_URL,
+    ): JsonObject {
         val mediaType = "application/json; charset=utf-8".toMediaType()
         val request = Request.Builder()
-            .url("$BASE_URL/$endpoint?prettyPrint=false")
+            .url("$baseUrl/$endpoint?prettyPrint=false")
             .post(body.toString().toRequestBody(mediaType))
             .headers(requestHeaders)
             .build()
@@ -360,8 +438,14 @@ class InnerTubeClient(
         val builder = Headers.Builder()
             .add("Content-Type", "application/json")
             .add("Accept", "application/json")
-            .add("Origin", "https://music.youtube.com")
-            .add("Referer", "https://music.youtube.com/")
+            .add(
+                "Origin",
+                if (clientName == WEB_REMIX) "https://music.youtube.com" else "https://www.youtube.com",
+            )
+            .add(
+                "Referer",
+                if (clientName == WEB_REMIX) "https://music.youtube.com/" else "https://www.youtube.com/",
+            )
             .add("X-Goog-Api-Format-Version", "2")
             .add("X-YouTube-Client-Name", clientId(clientName))
             .add("X-YouTube-Client-Version", clientVersion(clientName))
@@ -384,12 +468,24 @@ class InnerTubeClient(
             put("clientVersion", clientVersion(clientName))
             put("hl", "pt")
             put("gl", "BR")
-            if (clientName == WEB_REMIX) {
-                put("originalUrl", "https://music.youtube.com/")
-            } else {
-                put("androidSdkVersion", 30)
-                put("osName", "Android")
-                put("osVersion", "11")
+            when (clientName) {
+                WEB_REMIX -> put("originalUrl", "https://music.youtube.com/")
+                IOS -> {
+                    put("deviceMake", "Apple")
+                    put("deviceModel", "iPhone16,2")
+                    put("osName", "iPhone")
+                    put("osVersion", "18.1.0.22B83")
+                }
+                ANDROID_VR -> {
+                    put("androidSdkVersion", 32)
+                    put("osName", "Android")
+                    put("osVersion", "12")
+                }
+                else -> {
+                    put("androidSdkVersion", 30)
+                    put("osName", "Android")
+                    put("osVersion", "11")
+                }
             }
             session.youtubeVisitorData?.takeIf { it.isNotBlank() }?.let { put("visitorData", it) }
         })
@@ -401,6 +497,7 @@ class InnerTubeClient(
         ANDROID_MUSIC -> "21"
         IOS -> "5"
         ANDROID_VR -> "28"
+        ANDROID -> "3"
         else -> "67"
     }
 
@@ -409,6 +506,7 @@ class InnerTubeClient(
         ANDROID_MUSIC -> "6.42.52"
         IOS -> "19.45.4"
         ANDROID_VR -> "1.62.27"
+        ANDROID -> "19.44.38"
         else -> "1.20241001.01.00"
     }
 
@@ -416,6 +514,7 @@ class InnerTubeClient(
         ANDROID_MUSIC -> "com.google.android.apps.youtube.music/6.42.52 (Linux; U; Android 11) gzip"
         IOS -> "com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X;)"
         ANDROID_VR -> "com.google.android.apps.youtube.vr.oculus/1.62.27 (Linux; U; Android 12; en_US; Quest 3 Build/SQ3A.220605.009.A1) gzip"
+        ANDROID -> "com.google.android.youtube/19.44.38 (Linux; U; Android 11) gzip"
         else -> "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     }
 
@@ -423,12 +522,15 @@ class InnerTubeClient(
 
     companion object {
         private const val BASE_URL = "https://music.youtube.com/youtubei/v1"
+        private const val YOUTUBE_BASE_URL = "https://www.youtube.com/youtubei/v1"
         private const val WEB_REMIX = "WEB_REMIX"
         private const val ANDROID_MUSIC = "ANDROID_MUSIC"
         private const val IOS = "IOS"
         private const val ANDROID_VR = "ANDROID_VR"
+        private const val ANDROID = "ANDROID"
         private const val SONGS_FILTER = "EgWKAQIIAWoKEAkQBRAKEAMQBA=="
         private const val URL_TTL_MS = 30 * 60 * 1000L
-        private val CLIENTS = listOf(WEB_REMIX, ANDROID_MUSIC, IOS, ANDROID_VR)
+        // Clientes "de app" costumam devolver URL direta; o web é o último recurso.
+        private val CLIENTS = listOf(ANDROID_VR, IOS, ANDROID_MUSIC, ANDROID, WEB_REMIX)
     }
 }

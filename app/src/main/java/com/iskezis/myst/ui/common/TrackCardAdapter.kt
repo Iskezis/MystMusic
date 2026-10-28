@@ -46,7 +46,7 @@ class TrackCardAdapter(
                 R.string.content_cover,
                 track.title,
             )
-            binding.cardCover.load(track.thumbnailUrl) {
+            binding.cardCover.load(track.artworkUrl()) {
                 crossfade(true)
                 placeholder(R.drawable.bg_cover_placeholder)
                 error(R.drawable.bg_cover_placeholder)

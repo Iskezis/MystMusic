@@ -44,7 +44,7 @@ class TrackRowAdapter(
                 context.getString(R.string.player_unknown_artist)
             }
             binding.rowCover.contentDescription = context.getString(R.string.content_cover, track.title)
-            binding.rowCover.load(track.thumbnailUrl) {
+            binding.rowCover.load(track.artworkUrl()) {
                 crossfade(true)
                 placeholder(R.drawable.bg_cover_placeholder)
                 error(R.drawable.bg_cover_placeholder)

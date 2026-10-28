@@ -25,6 +25,10 @@ class YouTubeRepository(private val source: MusicSource) {
 
     fun streamUrlBlocking(videoId: String): String = source.streamUrlBlocking(videoId)
 
+    fun invalidateStream(videoId: String) {
+        source.invalidateStream(videoId)
+    }
+
     fun invalidate() {
         synchronized(lock) { cache.clear() }
     }

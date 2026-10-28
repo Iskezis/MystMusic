@@ -41,7 +41,7 @@ class TrackMenuSheet : BottomSheetDialogFragment() {
 
         binding.menuTitle.text = track.title.ifBlank { getString(R.string.player_unknown_title) }
         binding.menuArtist.text = track.artist.ifBlank { getString(R.string.player_unknown_artist) }
-        binding.menuCover.load(track.thumbnailUrl) {
+        binding.menuCover.load(track.artworkUrl()) {
             crossfade(true)
             placeholder(R.drawable.bg_cover_placeholder)
             error(R.drawable.bg_cover_placeholder)

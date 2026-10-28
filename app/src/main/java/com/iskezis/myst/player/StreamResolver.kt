@@ -26,7 +26,21 @@ class StreamResolver(private val app: MystApp) : ResolvingDataSource.Resolver {
             throw IOException("Faixa sem identificador")
         }
         val url = resolve(videoId)
-        return dataSpec.buildUpon().setUri(Uri.parse(url)).build()
+        val cookies = app.session.youtubeCookies
+        val headers = buildMap {
+            put(
+                "User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            )
+            put("Referer", "https://music.youtube.com/")
+            put("Origin", "https://music.youtube.com")
+            if (!cookies.isNullOrBlank()) put("Cookie", cookies)
+        }
+        return dataSpec.buildUpon()
+            .setUri(Uri.parse(url))
+            .setHttpRequestHeaders(headers)
+            .build()
     }
 
     fun resolve(videoId: String): String {
@@ -43,6 +57,7 @@ class StreamResolver(private val app: MystApp) : ResolvingDataSource.Resolver {
 
     fun invalidate(videoId: String) {
         cache.remove(videoId)
+        app.youtube.invalidateStream(videoId)
     }
 
     companion object {

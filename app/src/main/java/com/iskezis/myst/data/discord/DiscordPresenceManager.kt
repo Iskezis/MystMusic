@@ -370,12 +370,12 @@ class DiscordPresenceManager(
                 put("start", startMs)
             },
         )
-        val thumb = track.thumbnailUrl
+        val thumb = track.artworkUrl()
         if (!thumb.isNullOrBlank()) {
             put(
                 "assets",
                 buildJsonObject {
-                    put("large_image", thumb.take(300))
+                    put("large_image", thumb)
                     put("large_text", "MystMusic")
                 },
             )

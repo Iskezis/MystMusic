@@ -36,7 +36,7 @@ object CoverStore {
                 val dir = File(context.filesDir, "covers").apply { mkdirs() }
                 val file = File(dir, "$playlistId.jpg")
                 FileOutputStream(file).use { output ->
-                    scaled.compress(Bitmap.CompressFormat.JPEG, 88, output)
+                    scaled.compress(Bitmap.CompressFormat.JPEG, 92, output)
                 }
                 if (scaled !== decoded) scaled.recycle()
                 decoded.recycle()
@@ -67,5 +67,5 @@ object CoverStore {
         return Bitmap.createScaledBitmap(bitmap, width, height, true)
     }
 
-    private const val MAX_SIDE = 512
+    private const val MAX_SIDE = 1024
 }
