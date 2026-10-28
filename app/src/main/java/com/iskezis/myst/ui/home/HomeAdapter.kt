@@ -110,7 +110,7 @@ class HomeAdapter(
                 LinearLayoutManager(binding.root.context, LinearLayoutManager.HORIZONTAL, false)
             binding.carouselList.setHasFixedSize(true)
             binding.carouselList.adapter = cards
-            binding.carouselList.recycledViewPool = pool
+            binding.carouselList.setRecycledViewPool(pool)
         }
 
         fun bind(item: HomeItem.Carousel) {

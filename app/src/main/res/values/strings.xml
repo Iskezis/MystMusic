@@ -71,6 +71,8 @@
     <string name="playlist_empty">Playlist vazia. Adicione músicas pelo menu de qualquer faixa.</string>
     <string name="playlist_track_count">%1$d músicas</string>
     <string name="playlist_track_removed">Música removida</string>
+    <string name="playlist_remove_track_confirm">Remover esta música da playlist?</string>
+    <string name="playlist_reorder">Reordenar música</string>
     <string name="playlist_undo">Desfazer</string>
     <string name="common_cancel">Cancelar</string>
     <string name="common_delete">Excluir</string>

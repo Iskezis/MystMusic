@@ -6,6 +6,7 @@ import com.iskezis.myst.data.account.SessionManager
 import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.PlaylistRepository
 import com.iskezis.myst.data.recommendations.RecommendationRepository
+import com.iskezis.myst.data.spotify.SpotifyImporter
 import com.iskezis.myst.data.youtube.InnerTubeClient
 import com.iskezis.myst.data.youtube.YouTubeRepository
 import com.iskezis.myst.player.PlayerController
@@ -19,5 +20,6 @@ class MystApp : Application() {
     val accounts: AccountRepository by lazy { AccountRepository(this, database, session, innerTube) }
     val playlists: PlaylistRepository by lazy { PlaylistRepository(database) }
     val recommendations: RecommendationRepository by lazy { RecommendationRepository(database, youtube) }
+    val spotify: SpotifyImporter by lazy { SpotifyImporter(this, youtube, playlists) }
     val playerController: PlayerController by lazy { PlayerController(this) }
 }

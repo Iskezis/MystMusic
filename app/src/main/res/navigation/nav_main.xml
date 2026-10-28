@@ -28,4 +28,13 @@
         android:id="@+id/playerFragment"
         android:name="com.iskezis.myst.ui.player.PlayerFragment"
         android:label="@string/player_now_playing" />
+
+    <fragment
+        android:id="@+id/playlistDetailFragment"
+        android:name="com.iskezis.myst.ui.playlists.PlaylistDetailFragment"
+        android:label="@string/playlists_title">
+        <argument
+            android:name="playlistId"
+            app:argType="long" />
+    </fragment>
 </navigation>
