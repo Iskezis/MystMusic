@@ -5,8 +5,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import com.iskezis.myst.R
 import com.iskezis.myst.databinding.ActivityPlayerBinding
-import com.iskezis.myst.ui.player.PlayerFragment
 import com.iskezis.myst.util.AppLog
 
 /**

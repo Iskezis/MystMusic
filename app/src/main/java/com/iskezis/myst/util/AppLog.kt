@@ -48,7 +48,7 @@ object AppLog {
 
     /** Log de erro com mensagem curta e stack trace completa. */
     fun failure(tag: String, message: String, error: Throwable) {
-        Log.e(tag, build(message) + ": " + error.describe(), error)
+        Log.e(tag, build(message) + ": " + describe(error), error)
     }
 
     /** Identifica a thread atual nos logs assíncronos. */
