@@ -95,6 +95,31 @@ class AccountRepository(
         session.session?.userId ?: 0L
     }
 
+    /**
+     * Conecta os cookies do YouTube à sessão atual sem trocar a conta Myst.
+     * Assim uma conta local continua com suas playlists/histórico e ganha
+     * acesso ao catálogo autenticado para reproduzir as músicas.
+     */
+    suspend fun linkYouTube(cookies: String, fallbackName: String): String = withContext(Dispatchers.IO) {
+        val sapisid = extractSapisid(cookies)
+        session.youtubeCookies = cookies
+        session.youtubeSapisid = sapisid
+        session.youtubeVisitorData = null
+        session.youtubeDataSyncId = null
+        AppLog.i(
+            AppLog.TAG_AUTH,
+            "YouTube vinculado à sessão atual: cookies=${cookies.length} bytes, sapisid=${!sapisid.isNullOrBlank()}",
+        )
+        val name = runCatching { youTube.accountName() }.getOrNull()
+        if (!name.isNullOrBlank()) {
+            AppLog.i(AppLog.TAG_AUTH, "YouTube vinculado: $name")
+            name
+        } else {
+            AppLog.w(AppLog.TAG_AUTH, "YouTube vinculado, mas o nome da conta não foi confirmado")
+            fallbackName
+        }
+    }
+
     suspend fun currentUser(): UserEntity? = withContext(Dispatchers.IO) {
         val id = session.session?.userId ?: return@withContext null
         database.userDao().findById(id)

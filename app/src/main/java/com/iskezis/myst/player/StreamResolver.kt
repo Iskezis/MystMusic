@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.ResolvingDataSource
 import com.iskezis.myst.MystApp
+import com.iskezis.myst.StreamFailure
+import com.iskezis.myst.data.youtube.LoginRequiredException
 import com.iskezis.myst.data.youtube.StreamInfo
 import com.iskezis.myst.util.AppLog
 import java.io.IOException
@@ -54,9 +56,14 @@ class StreamResolver(private val app: MystApp) : ResolvingDataSource.Resolver {
         val info = try {
             app.youtube.streamInfoBlocking(videoId)
         } catch (t: Throwable) {
+            app.lastStreamFailure = StreamFailure(
+                videoId = videoId,
+                loginRequired = t is LoginRequiredException,
+            )
             AppLog.failure(AppLog.TAG_STREAM, "Falha ao resolver stream $videoId", t)
             throw IOException("Não foi possível resolver o áudio", t)
         }
+        app.lastStreamFailure = null
         cache[videoId] = Cached(info, System.currentTimeMillis() + TTL_MS)
         AppLog.i(AppLog.TAG_STREAM, "Resolver cache store: $videoId")
         return info

@@ -23,7 +23,14 @@ data class StreamInfo(
     val headers: Map<String, String> = emptyMap(),
 )
 
-class MusicException(message: String, cause: Throwable? = null) : Exception(message, cause)
+open class MusicException(message: String, cause: Throwable? = null) : Exception(message, cause)
+
+/**
+ * O YouTube recusou o player pedindo login/verificação. Acontece com sessões
+ * anônimas em redes marcadas como bot ou quando os cookies expiraram. O player
+ * usa isso para oferecer o login do YouTube em vez de um erro genérico.
+ */
+class LoginRequiredException(message: String, cause: Throwable? = null) : MusicException(message, cause)
 
 interface MusicSource {
     suspend fun search(query: String, limit: Int = 30): List<Track>

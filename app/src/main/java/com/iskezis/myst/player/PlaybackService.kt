@@ -9,10 +9,10 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.iskezis.myst.MainActivity
@@ -26,6 +26,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 
 class PlaybackService : MediaSessionService() {
 
@@ -45,15 +47,22 @@ class PlaybackService : MediaSessionService() {
         AppLog.i(AppLog.TAG_PLAYER, "PlaybackService.onCreate")
         val app = application as MystApp
         resolver = StreamResolver(app)
-        // Não fixar User-Agent aqui: o DefaultHttpDataSource sobrescreveria o
-        // header enviado pelo StreamResolver. A URL do googlevideo é emitida
-        // para um cliente InnerTube específico e alguns servidores recusam o
-        // download quando o agente muda (o teste com curl pode passar e o
-        // ExoPlayer falhar). O UA correto chega no DataSpec.
-        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-            .setAllowCrossProtocolRedirects(true)
-            .setConnectTimeoutMs(15_000)
-            .setReadTimeoutMs(20_000)
+        // O mesmo stack HTTP (OkHttp) usado para validar a URL no InnerTube também
+        // baixa o áudio. Isso evita diferenças de TLS/proxy/IPv6 do
+        // HttpURLConnection e garante que os headers por cliente cheguem ao
+        // googlevideo exatamente como na validação. Não fixar User-Agent: ele
+        // vem no DataSpec de cada faixa.
+        val playbackHttpClient = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .followRedirects(true)
+            .followSslRedirects(true)
+            .build()
+        val httpDataSourceFactory = OkHttpDataSource.Factory(playbackHttpClient)
+            .setContentTypePredicate { contentType ->
+                contentType == null || !contentType.startsWith("text/", ignoreCase = true)
+            }
         player = ExoPlayer.Builder(this)
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -65,7 +74,7 @@ class PlaybackService : MediaSessionService() {
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setMediaSourceFactory(
-                DefaultMediaSourceFactory(
+                ProgressiveMediaSource.Factory(
                     ResolvingDataSource.Factory(
                         DefaultDataSource.Factory(this, httpDataSourceFactory),
                         resolver,

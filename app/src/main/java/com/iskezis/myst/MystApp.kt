@@ -13,7 +13,17 @@ import com.iskezis.myst.data.youtube.YouTubeRepository
 import com.iskezis.myst.player.PlayerController
 import com.iskezis.myst.util.AppLog
 
+data class StreamFailure(
+    val videoId: String,
+    val loginRequired: Boolean,
+    val at: Long = System.currentTimeMillis(),
+)
+
 class MystApp : Application() {
+
+    /** Última falha de resolução de stream, usada pela UI para oferecer login. */
+    @Volatile
+    var lastStreamFailure: StreamFailure? = null
 
     val database: AppDatabase by lazy { AppDatabase.get(this) }
     val session: SessionManager by lazy { SessionManager(this) }

@@ -212,6 +212,16 @@
                 android:layout_marginTop="@dimen/space_s"
                 android:text="@string/state_retry"
                 android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/playerYouTubeLogin"
+                style="@style/Widget.MystMusic.Button.Primary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="@dimen/space_s"
+                android:text="@string/player_login_youtube"
+                android:visibility="gone" />
         </LinearLayout>
     </ScrollView>
 </FrameLayout>

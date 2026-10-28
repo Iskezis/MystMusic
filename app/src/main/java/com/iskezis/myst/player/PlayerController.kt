@@ -12,6 +12,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
+import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.util.AppLog
@@ -38,6 +39,7 @@ data class PlayerState(
     val hasPrevious: Boolean = false,
     val error: Boolean = false,
     val errorMessage: String? = null,
+    val loginRequired: Boolean = false,
 )
 
 class PlayerController(context: Context) {
@@ -52,6 +54,8 @@ class PlayerController(context: Context) {
     private var pendingPlay: PendingPlay? = null
     private var ticker: Job? = null
     private var lastLoggedVideoId: String? = null
+    private var lastError: PlaybackException? = null
+    private var loginRequired = false
 
     private data class PendingPlay(
         val tracks: List<Track>,
@@ -64,7 +68,13 @@ class PlayerController(context: Context) {
             publish(player)
         }
 
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            lastError = null
+            loginRequired = false
+        }
+
         override fun onPlayerErrorChanged(error: PlaybackException?) {
+            lastError = error
             if (error != null) {
                 AppLog.failure(
                     AppLog.TAG_PLAYER,
@@ -72,11 +82,15 @@ class PlayerController(context: Context) {
                     error,
                 )
             }
+            loginRequired = error != null && detectsLoginRequired()
             _state.value = _state.value.copy(
-                error = error != null,
-                errorMessage = error?.let {
-                    appContext.getString(R.string.player_error_stream_detail, it.errorCodeName)
+                error = error != null || loginRequired,
+                errorMessage = when {
+                    loginRequired -> appContext.getString(R.string.player_error_login_required)
+                    error != null -> messageFor(error)
+                    else -> null
                 },
+                loginRequired = loginRequired,
             )
         }
     }
@@ -255,14 +269,17 @@ class PlayerController(context: Context) {
 
     fun retry() {
         val current = controller
+        lastError = null
+        loginRequired = false
+        (appContext as? MystApp)?.lastStreamFailure = null
         if (current == null) {
             AppLog.w(AppLog.TAG_PLAYER, "retry() sem controller; tentando reconectar")
-            _state.value = _state.value.copy(error = false, errorMessage = null)
+            _state.value = _state.value.copy(error = false, errorMessage = null, loginRequired = false)
             connect()
             return
         }
         AppLog.i(AppLog.TAG_PLAYER, "retry(): prepare + play")
-        _state.value = _state.value.copy(error = false, errorMessage = null)
+        _state.value = _state.value.copy(error = false, errorMessage = null, loginRequired = false)
         current.prepare()
         current.play()
     }
@@ -282,7 +299,10 @@ class PlayerController(context: Context) {
         shuffle: Boolean,
     ) {
         try {
-            _state.value = _state.value.copy(error = false, errorMessage = null)
+            lastError = null
+            loginRequired = false
+            (appContext as? MystApp)?.lastStreamFailure = null
+            _state.value = _state.value.copy(error = false, errorMessage = null, loginRequired = false)
             val items = tracks.map { it.toMediaItem() }
             AppLog.i(
                 AppLog.TAG_PLAYER,
@@ -319,7 +339,7 @@ class PlayerController(context: Context) {
             val item = player.currentMediaItem
             val track = item?.toTrack()
             val duration = player.duration.takeIf { it > 0 && it != Long.MIN_VALUE } ?: track?.durationMs ?: 0L
-            val playbackError = player.playerError
+            val playbackError = player.playerError ?: lastError
             _state.value = PlayerState(
                 connected = true,
                 isPlaying = player.isPlaying,
@@ -330,8 +350,13 @@ class PlayerController(context: Context) {
                 repeatMode = player.repeatMode,
                 hasNext = player.hasNextMediaItem(),
                 hasPrevious = player.hasPreviousMediaItem(),
-                error = playbackError != null && track != null,
-                errorMessage = if (playbackError != null) _state.value.errorMessage else null,
+                error = (playbackError != null || loginRequired) && track != null,
+                errorMessage = when {
+                    loginRequired -> appContext.getString(R.string.player_error_login_required)
+                    playbackError != null -> messageFor(playbackError)
+                    else -> null
+                },
+                loginRequired = loginRequired,
             )
             if (track?.videoId != lastLoggedVideoId) {
                 lastLoggedVideoId = track?.videoId
@@ -347,6 +372,42 @@ class PlayerController(context: Context) {
             _state.value = _state.value.copy(connected = false)
         }
     }
+
+    private fun detectsLoginRequired(): Boolean {
+        val failure = (appContext as? MystApp)?.lastStreamFailure ?: return false
+        val videoId = controller?.currentMediaItem?.mediaId ?: return false
+        val recent = System.currentTimeMillis() - failure.at < 30_000L
+        return recent && failure.videoId == videoId && failure.loginRequired
+    }
+
+    private fun messageFor(error: PlaybackException): String = appContext.getString(
+        when (error.errorCode) {
+            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
+            PlaybackException.ERROR_CODE_IO_UNSPECIFIED -> R.string.player_error_network
+
+            PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> R.string.player_error_http
+
+            PlaybackException.ERROR_CODE_IO_INVALID_HTTP_CONTENT_TYPE,
+            PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+            PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
+            PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED,
+            PlaybackException.ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED -> R.string.player_error_invalid_audio
+
+            PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
+            PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED,
+            PlaybackException.ERROR_CODE_DECODING_FAILED,
+            PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES,
+            PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
+            PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED,
+            PlaybackException.ERROR_CODE_AUDIO_TRACK_WRITE_FAILED,
+            PlaybackException.ERROR_CODE_AUDIO_TRACK_OFFLOAD_INIT_FAILED,
+            PlaybackException.ERROR_CODE_AUDIO_TRACK_OFFLOAD_WRITE_FAILED -> R.string.player_error_decode
+
+            PlaybackException.ERROR_CODE_TIMEOUT -> R.string.player_error_timeout
+            else -> R.string.player_error_stream
+        },
+    )
 
     private fun Track.toMediaItem(): MediaItem {
         val extras = Bundle().apply { putLong(PlaybackService.EXTRA_DURATION, durationMs) }

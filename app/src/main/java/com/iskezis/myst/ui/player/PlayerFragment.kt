@@ -1,11 +1,14 @@
 package com.iskezis.myst.ui.player
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -19,6 +22,7 @@ import com.iskezis.myst.R
 import com.iskezis.myst.databinding.FragmentPlayerBinding
 import com.iskezis.myst.player.PlayerController
 import com.iskezis.myst.player.PlayerState
+import com.iskezis.myst.ui.auth.YouTubeLoginActivity
 import com.iskezis.myst.ui.playlists.AddToPlaylistSheet
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.animatePlayIcon
@@ -38,6 +42,48 @@ class PlayerFragment : Fragment() {
     private var loadedArtworkFor: String? = null
     private var lastLoggedTrack: String? = null
     private var lastLoggedPlaying: Boolean? = null
+
+    private val youtubeLogin = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) {
+            AppLog.i(AppLog.TAG_AUTH, "Login YouTube cancelado no player")
+            return@registerForActivityResult
+        }
+        val cookies = result.data?.getStringExtra(YouTubeLoginActivity.EXTRA_COOKIES).orEmpty()
+        val host = activity ?: return@registerForActivityResult
+        val app = host.application as? MystApp
+        if (cookies.isBlank() || app == null) {
+            AppLog.w(AppLog.TAG_AUTH, "Login YouTube no player sem cookies válidos")
+            Toast.makeText(host, R.string.player_login_failed, Toast.LENGTH_LONG).show()
+            return@registerForActivityResult
+        }
+        AppLog.i(AppLog.TAG_AUTH, "Cookies do YouTube recebidos no player: ${cookies.length} bytes")
+        host.lifecycleScope.launch {
+            try {
+                val name = app.accounts.linkYouTube(
+                    cookies,
+                    host.getString(R.string.youtube_account_fallback),
+                )
+                AppLog.i(AppLog.TAG_AUTH, "YouTube vinculado no player: $name")
+                Toast.makeText(
+                    host,
+                    R.string.player_login_success,
+                    Toast.LENGTH_SHORT,
+                ).show()
+                app.playerController.retry()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_AUTH, "Falha vinculando YouTube no player", t)
+                Toast.makeText(
+                    host,
+                    R.string.player_login_failed,
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -59,6 +105,7 @@ class PlayerFragment : Fragment() {
         binding.playerShuffle.setOnClickListener { controller?.toggleShuffle() }
         binding.playerRepeat.setOnClickListener { controller?.cycleRepeat() }
         binding.playerRetry.setOnClickListener { retry() }
+        binding.playerYouTubeLogin.setOnClickListener { openYouTubeLogin() }
         binding.playerMore.setOnClickListener {
             latest.track?.let { track ->
                 AddToPlaylistSheet.newInstance(track)
@@ -73,6 +120,7 @@ class PlayerFragment : Fragment() {
             binding.playerPrevious,
             binding.playerShuffle,
             binding.playerRepeat,
+            binding.playerYouTubeLogin,
         ).forEach { it.pressScale() }
         animateCoverEntrance()
         binding.playerSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -184,7 +232,8 @@ class PlayerFragment : Fragment() {
 
         binding.playerError.isVisible = state.error
         binding.playerError.text = state.errorMessage ?: getString(R.string.player_error_stream)
-        binding.playerRetry.isVisible = state.error
+        binding.playerRetry.isVisible = state.error && !state.loginRequired
+        binding.playerYouTubeLogin.isVisible = state.loginRequired
 
         if (state.track?.videoId != lastLoggedTrack) {
             lastLoggedTrack = state.track?.videoId
@@ -205,6 +254,7 @@ class PlayerFragment : Fragment() {
         binding.playerError.isVisible = true
         binding.playerError.text = getString(R.string.player_connection_error)
         binding.playerRetry.isVisible = true
+        binding.playerYouTubeLogin.isVisible = false
     }
 
     private fun retry() {
@@ -217,6 +267,16 @@ class PlayerFragment : Fragment() {
         }
         AppLog.i(AppLog.TAG_PLAYER, "Tentar novamente solicitado pelo player")
         playerController.retry()
+    }
+
+    private fun openYouTubeLogin() {
+        AppLog.i(AppLog.TAG_AUTH, "Abrindo login do YouTube a partir do player")
+        try {
+            youtubeLogin.launch(Intent(requireContext(), YouTubeLoginActivity::class.java))
+        } catch (t: Throwable) {
+            AppLog.failure(AppLog.TAG_AUTH, "Falha abrindo login do YouTube no player", t)
+            Toast.makeText(requireContext(), R.string.player_login_failed, Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun closePlayer() {
