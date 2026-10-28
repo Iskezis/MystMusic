@@ -161,10 +161,11 @@ class PlaylistDetailFragment : Fragment() {
                 setPlayButtons(tracks.value.isNotEmpty())
                 if (!animatedOnce && tracks.value.isNotEmpty()) {
                     animatedOnce = true
-                    binding.detailTracks.postDelayed(
-                        { binding.detailTracks.staggerVisibleChildren() },
-                        120,
-                    )
+                    val list = binding.detailTracks
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        kotlinx.coroutines.delay(120)
+                        if (list.isAttachedToWindow) list.staggerVisibleChildren()
+                    }
                 }
             }
             is LoadState.Empty -> {

@@ -157,10 +157,11 @@ class PlaylistsFragment : Fragment() {
                 )
                 if (!animatedOnce) {
                     animatedOnce = true
-                    binding.playlistsList.postDelayed(
-                        { binding.playlistsList.staggerVisibleChildren() },
-                        120,
-                    )
+                    val list = binding.playlistsList
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        kotlinx.coroutines.delay(120)
+                        if (list.isAttachedToWindow) list.staggerVisibleChildren()
+                    }
                 }
             }
         }

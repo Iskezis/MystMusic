@@ -118,10 +118,14 @@ class SearchFragment : Fragment() {
                 adapter.submitList(state.tracks)
                 if (!animatedOnce) {
                     animatedOnce = true
-                    binding.searchList.postDelayed(
-                        { binding.searchList.staggerVisibleChildren() },
-                        120,
-                    )
+                    val list = binding.searchList
+                    // Uma lambda postada pode rodar depois do onDestroyView
+                    // (ex.: voltar da busca logo após os resultados). O
+                    // lifecycleScope cancela a animação junto com a tela.
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        kotlinx.coroutines.delay(120)
+                        if (list.isAttachedToWindow) list.staggerVisibleChildren()
+                    }
                 }
             }
             is SearchState.Empty -> {

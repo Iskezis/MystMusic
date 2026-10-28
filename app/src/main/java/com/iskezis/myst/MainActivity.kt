@@ -153,7 +153,15 @@ class MainActivity : AppCompatActivity() {
                         lastLoggedError = null
                     }
                     renderMiniPlayer()
-                    (application as MystApp).discord.onPlayerState(state)
+                    runCatching {
+                        (application as MystApp).discord.onPlayerState(state)
+                    }.onFailure {
+                        AppLog.failure(
+                            AppLog.TAG_UI,
+                            "Falha atualizando Discord; player continua",
+                            it,
+                        )
+                    }
                 }
             }
         }
@@ -241,7 +249,14 @@ class MainActivity : AppCompatActivity() {
             .setRestoreState(true)
             .setPopUpTo(navController.graph.startDestinationId, false)
             .build()
-        navController.navigate(destinationId, null, options)
+        runCatching { navController.navigate(destinationId, null, options) }
+            .onFailure {
+                AppLog.failure(
+                    AppLog.TAG_UI,
+                    "Falha navegando para o destino $destinationId",
+                    it,
+                )
+            }
         if (destinationId == R.id.playlistsFragment) {
             binding.navBar.navCenterCard.animate()
                 .scaleX(1.12f).scaleY(1.12f).setDuration(120)

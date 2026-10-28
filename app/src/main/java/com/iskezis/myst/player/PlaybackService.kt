@@ -11,6 +11,7 @@ import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.session.MediaSession
@@ -63,6 +64,18 @@ class PlaybackService : MediaSessionService() {
             .setContentTypePredicate { contentType ->
                 contentType == null || !contentType.startsWith("text/", ignoreCase = true)
             }
+        // O padrão do Media3 exige 2,5 s de áudio em buffer antes de começar a
+        // tocar. Com uma URL já validada e uma faixa progressiva, 500 ms bastam
+        // para evitar underrun e o som começa muito mais rápido.
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                15_000,
+                60_000,
+                500,
+                1_000,
+            )
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .build()
         player = ExoPlayer.Builder(this)
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -71,6 +84,7 @@ class PlaybackService : MediaSessionService() {
                     .build(),
                 true,
             )
+            .setLoadControl(loadControl)
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setMediaSourceFactory(

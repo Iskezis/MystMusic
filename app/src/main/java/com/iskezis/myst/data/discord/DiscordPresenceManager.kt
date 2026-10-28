@@ -1,6 +1,7 @@
 package com.iskezis.myst.data.discord
 
 import android.content.Context
+import android.os.Build
 import android.os.SystemClock
 import com.iskezis.myst.data.account.SessionManager
 import com.iskezis.myst.data.youtube.Track
@@ -16,10 +17,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.put
@@ -28,6 +33,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 import kotlin.math.min
@@ -40,12 +46,16 @@ data class DiscordState(
 )
 
 /**
- * Rich Presence via Gateway do Discord. Usa token de usuário capturado pelo
- * login WebView: é uma integração não oficial e opt-in, com aviso explícito.
- * Qualquer falha aqui é isolada e nunca interfere no player.
+ * Rich Presence via gateway do Discord, usando o token de usuário capturado
+ * pelo login WebView. É uma integração não oficial e opt-in.
+ *
+ * A implementação segue o mesmo fluxo do KizzyRPC usado pelo BitChord:
+ * valida o token na REST, identifica com o fingerprint do cliente Android,
+ * mantém heartbeat com ACK, reconecta com backoff e reenvia a última presença
+ * quando a sessão do gateway volta. Nenhum token é gravado no Logcat.
  */
 class DiscordPresenceManager(
-    context: Context,
+    @Suppress("UNUSED_PARAMETER") context: Context,
     private val session: SessionManager,
 ) {
 
@@ -57,6 +67,8 @@ class DiscordPresenceManager(
     private val client = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.MILLISECONDS)
+        .pingInterval(20, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
         .build()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -68,37 +80,48 @@ class DiscordPresenceManager(
     )
     val state: StateFlow<DiscordState> = _state.asStateFlow()
 
+    @Volatile
     private var token: String? = session.discordToken?.takeIf { it.isNotBlank() }
+    @Volatile
     private var socket: WebSocket? = null
+    @Volatile
+    private var manualStop = token == null
+
+    private var connectJob: Job? = null
     private var heartbeatJob: Job? = null
     private var reconnectJob: Job? = null
     private var pauseClearJob: Job? = null
-    private var manualStop = token == null
+    private var helloTimeoutJob: Job? = null
+
+    @Volatile
     private var ready = false
     private var sequence: Int? = null
+    private var sessionId: String? = null
+    private var resumeUrl: String? = null
+    private var heartbeatInterval = 0L
+    private var awaitingAck = false
+    private var lastAckAt = 0L
     private var reconnectAttempt = 0
 
     private var latestPlayerState: PlayerState? = null
+    private var lastPresence: JsonObject? = null
     private var presenceActive = false
     private var presenceTrackId: String? = null
     private var presenceStart = 0L
     private var lastPlaying = false
-    private var lastTrackId: String? = null
 
     init {
-        if (token != null) {
-            openSocket()
-        }
+        if (token != null) startConnection(validateToken = true)
     }
 
     fun connect(newToken: String) {
         val clean = newToken.trim()
         AppLog.i(
-            AppLog.TAG_UI,
+            AppLog.TAG_DISCORD,
             "Discord connect solicitado (token=${clean.length} caracteres)",
         )
         if (clean.isBlank()) {
-            AppLog.w(AppLog.TAG_UI, "Discord connect com token vazio")
+            AppLog.w(AppLog.TAG_DISCORD, "Discord connect com token vazio")
             _state.value = DiscordState(DiscordConnection.ERROR, session.discordName)
             return
         }
@@ -106,24 +129,31 @@ class DiscordPresenceManager(
         manualStop = false
         reconnectAttempt = 0
         session.discordToken = clean
-        openSocket()
+        startConnection(validateToken = true)
     }
 
     fun disconnect() {
-        AppLog.i(AppLog.TAG_UI, "Discord disconnect")
+        AppLog.i(AppLog.TAG_DISCORD, "Discord disconnect")
         manualStop = true
         token = null
+        connectJob?.cancel()
+        connectJob = null
         reconnectJob?.cancel()
         reconnectJob = null
         heartbeatJob?.cancel()
         heartbeatJob = null
+        helloTimeoutJob?.cancel()
+        helloTimeoutJob = null
         pauseClearJob?.cancel()
         pauseClearJob = null
         ready = false
         sequence = null
+        sessionId = null
+        resumeUrl = null
+        awaitingAck = false
         presenceActive = false
         presenceTrackId = null
-        lastTrackId = null
+        lastPresence = null
         lastPlaying = false
         session.clearDiscord()
         runCatching {
@@ -136,31 +166,40 @@ class DiscordPresenceManager(
 
     fun retry() {
         if (token == null) return
-        AppLog.i(AppLog.TAG_UI, "Discord retry")
+        AppLog.i(AppLog.TAG_DISCORD, "Discord retry")
         manualStop = false
         reconnectAttempt = 0
-        openSocket()
+        startConnection(validateToken = true)
     }
 
+    /**
+     * Chamado pela MainActivity a cada atualização do player. Qualquer falha
+     * aqui fica isolada: o Discord nunca pode derrubar a reprodução nem a
+     * navegação do app.
+     */
     fun onPlayerState(state: PlayerState) {
+        try {
+            handlePlayerState(state)
+        } catch (t: Throwable) {
+            AppLog.failure(AppLog.TAG_DISCORD, "Falha atualizando presença do Discord", t)
+        }
+    }
+
+    private fun handlePlayerState(state: PlayerState) {
         latestPlayerState = state
         val track = state.track
         if (track == null) {
             pauseClearJob?.cancel()
             pauseClearJob = null
-            lastTrackId = null
             lastPlaying = false
-            if (presenceActive) {
-                presenceActive = false
-                presenceTrackId = null
-                sendPresence(null)
-            }
+            presenceActive = false
+            presenceTrackId = null
+            clearPresence()
             return
         }
 
         if (!state.isPlaying) {
             lastPlaying = false
-            lastTrackId = track.videoId
             if (pauseClearJob == null) {
                 pauseClearJob = scope.launch {
                     delay(PAUSE_CLEAR_MS)
@@ -168,7 +207,7 @@ class DiscordPresenceManager(
                     if (latestPlayerState?.isPlaying == false && presenceActive) {
                         presenceActive = false
                         presenceTrackId = null
-                        sendPresence(null)
+                        clearPresence()
                     }
                 }
             }
@@ -183,38 +222,143 @@ class DiscordPresenceManager(
         val expectedStart = System.currentTimeMillis() - state.positionMs
         val trackChanged = presenceTrackId != track.videoId
         val wasInactive = !presenceActive
-        val jumped = !trackChanged && !wasInactive && abs(expectedStart - presenceStart) > 3_000L
-        if (!trackChanged && !wasInactive && !jumped && !resumed) {
-            return
-        }
+        val jumped = !trackChanged && !wasInactive &&
+            abs(expectedStart - presenceStart) > 3_000L
+        if (!trackChanged && !wasInactive && !resumed && !jumped) return
 
-        lastTrackId = track.videoId
         presenceTrackId = track.videoId
         presenceStart = expectedStart
         presenceActive = true
-        if (ready) {
-            sendPresence(buildActivity(track, expectedStart))
-        }
+        val presence = presencePayload(
+            buildActivity(track, expectedStart, state.durationMs),
+        )
+        lastPresence = presence
+        if (ready) sendPresence(presence)
     }
 
-    private fun openSocket() {
+    private fun startConnection(validateToken: Boolean) {
         val currentToken = token ?: return
+        manualStop = false
         reconnectJob?.cancel()
         reconnectJob = null
         heartbeatJob?.cancel()
         heartbeatJob = null
+        helloTimeoutJob?.cancel()
+        helloTimeoutJob = null
         ready = false
         sequence = null
+        sessionId = null
+        resumeUrl = null
+        awaitingAck = false
+        connectJob?.cancel()
+        socket?.cancel()
+        socket = null
         _state.value = DiscordState(DiscordConnection.CONNECTING, session.discordName)
+        AppLog.i(
+            AppLog.TAG_DISCORD,
+            "Validando/iniciando Discord (token=${currentToken.length} caracteres, valida=$validateToken)",
+        )
+        connectJob = scope.launch {
+            try {
+                if (validateToken) {
+                    val name = withContext(Dispatchers.IO) { fetchUserName(currentToken) }
+                    if (currentToken != token || manualStop) return@launch
+                    if (!name.isNullOrBlank()) {
+                        session.discordName = name
+                        _state.value = DiscordState(DiscordConnection.CONNECTING, name)
+                    }
+                }
+                if (currentToken != token || manualStop) return@launch
+                openSocket(currentToken)
+            } catch (t: InvalidTokenException) {
+                if (currentToken != token) return@launch
+                failAuthentication()
+            } catch (t: Throwable) {
+                if (currentToken != token || manualStop) return@launch
+                AppLog.failure(AppLog.TAG_DISCORD, "Falha validando token do Discord", t)
+                _state.value = DiscordState(DiscordConnection.ERROR, session.discordName)
+                scheduleReconnect()
+            }
+        }
+    }
+
+    private fun fetchUserName(currentToken: String): String? {
+        val request = Request.Builder()
+            .url("https://discord.com/api/v9/users/@me")
+            .header("Authorization", currentToken)
+            .header("User-Agent", DiscordSuperProperties.userAgent)
+            .header("X-Super-Properties", DiscordSuperProperties.base64)
+            .header("Accept", "application/json")
+            .build()
+        client.newCall(request).execute().use { response ->
+            val text = response.body?.string().orEmpty()
+            if (response.code == 401 || response.code == 403) {
+                AppLog.w(AppLog.TAG_DISCORD, "Discord recusou o token: HTTP ${response.code}")
+                throw InvalidTokenException()
+            }
+            if (!response.isSuccessful) {
+                throw IOException("Discord HTTP ${response.code}")
+            }
+            val root = json.parseToJsonElement(text) as? JsonObject ?: return null
+            val globalName = (root["global_name"] as? JsonPrimitive)?.contentOrNull
+                ?.takeIf { it.isNotBlank() }
+            val username = (root["username"] as? JsonPrimitive)?.contentOrNull
+                ?.takeIf { it.isNotBlank() }
+            return globalName ?: username
+        }
+    }
+
+    private fun failAuthentication() {
+        AppLog.w(AppLog.TAG_DISCORD, "Token do Discord inválido ou expirado; limpando sessão")
+        manualStop = true
+        token = null
+        connectJob?.cancel()
+        connectJob = null
+        reconnectJob?.cancel()
+        reconnectJob = null
+        heartbeatJob?.cancel()
+        heartbeatJob = null
+        helloTimeoutJob?.cancel()
+        helloTimeoutJob = null
+        ready = false
+        session.clearDiscord()
+        runCatching { socket?.cancel() }
+        socket = null
+        _state.value = DiscordState(DiscordConnection.ERROR, null)
+    }
+
+    private fun openSocket(currentToken: String) {
+        if (manualStop || currentToken != token) return
+        reconnectJob?.cancel()
+        reconnectJob = null
+        helloTimeoutJob?.cancel()
+        val url = resumeUrl ?: GATEWAY_URL
+        AppLog.i(AppLog.TAG_DISCORD, "Abrindo WebSocket do Discord em $url")
         try {
             val previous = socket
             socket = null
             previous?.cancel()
-            val request = Request.Builder().url(GATEWAY_URL).build()
-            val newSocket = client.newWebSocket(request, Listener(currentToken))
-            socket = newSocket
+            val request = Request.Builder()
+                .url(url)
+                .header("User-Agent", DiscordSuperProperties.userAgent)
+                .build()
+            socket = client.newWebSocket(request, Listener(currentToken))
+            _state.value = DiscordState(DiscordConnection.CONNECTING, session.discordName)
+            // Um socket que abre mas nunca manda HELLO deixaria a tela
+            // "Conectando..." para sempre. Depois de 15 s viramos erro e
+            // tentamos de novo em segundo plano.
+            helloTimeoutJob = scope.launch {
+                delay(HELLO_TIMEOUT_MS)
+                if (!ready && socket != null) {
+                    AppLog.w(AppLog.TAG_DISCORD, "Discord não enviou HELLO em 15s; reabrindo")
+                    _state.value = DiscordState(DiscordConnection.ERROR, session.discordName)
+                    socket?.cancel()
+                    socket = null
+                    scheduleReconnect()
+                }
+            }
         } catch (t: Throwable) {
-            AppLog.failure(AppLog.TAG_UI, "Falha abrindo WebSocket do Discord", t)
+            AppLog.failure(AppLog.TAG_DISCORD, "Falha abrindo WebSocket do Discord", t)
             _state.value = DiscordState(DiscordConnection.ERROR, session.discordName)
             scheduleReconnect()
         }
@@ -222,214 +366,372 @@ class DiscordPresenceManager(
 
     private inner class Listener(private val currentToken: String) : WebSocketListener() {
 
-        override fun onMessage(webSocket: WebSocket, text: String) {
+        override fun onOpen(webSocket: WebSocket, response: Response) {
             if (webSocket !== socket) return
-            handleMessage(text)
+            AppLog.i(AppLog.TAG_DISCORD, "WebSocket do Discord conectado")
+        }
+
+        override fun onMessage(webSocket: WebSocket, text: String) {
+            // Todos os eventos do socket são serializados na main para que
+            // ready/sessionId/sequence nunca sejam lidos de outra thread.
+            scope.launch {
+                if (webSocket !== socket) return@launch
+                runCatching { handleMessage(text, currentToken) }
+                    .onFailure {
+                        AppLog.failure(AppLog.TAG_DISCORD, "Payload inválido do Discord", it)
+                    }
+            }
+        }
+
+        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            if (webSocket !== socket) return
+            AppLog.i(AppLog.TAG_DISCORD, "Discord fechando: $code ${reason.take(160)}")
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-            if (webSocket !== socket) return
-            socket = null
-            ready = false
-            heartbeatJob?.cancel()
-            heartbeatJob = null
-            if (manualStop) {
-                _state.value = DiscordState(DiscordConnection.DISCONNECTED, session.discordName)
-                return
+            scope.launch {
+                if (webSocket !== socket) return@launch
+                socket = null
+                onSocketDown(currentToken, code, reason, null)
             }
-            if (code == 4004 || code == 4003 || code == 4010 || code == 4011) {
-                token = null
-                manualStop = true
-                session.clearDiscord()
-                _state.value = DiscordState(DiscordConnection.ERROR, null)
-                return
-            }
-            _state.value = DiscordState(DiscordConnection.CONNECTING, session.discordName)
-            scheduleReconnect()
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            if (webSocket !== socket) return
-            socket = null
-            ready = false
-            heartbeatJob?.cancel()
-            heartbeatJob = null
-            if (manualStop || currentToken != token) return
-            _state.value = DiscordState(DiscordConnection.CONNECTING, session.discordName)
-            scheduleReconnect()
-        }
-
-        private fun handleMessage(text: String) {
-            val root = runCatching {
-                json.parseToJsonElement(text) as? JsonObject
-            }.getOrNull() ?: return
-            (root["s"] as? JsonPrimitive)?.contentOrNull?.toIntOrNull()?.let { sequence = it }
-            val op = (root["op"] as? JsonPrimitive)?.contentOrNull?.toIntOrNull()
-            when (op) {
-                10 -> {
-                    val interval = ((root["d"] as? JsonObject)
-                        ?.get("heartbeat_interval") as? JsonPrimitive)
-                        ?.contentOrNull?.toLongOrNull() ?: 41_250L
-                    startHeartbeat(interval)
-                    identify(currentToken)
-                }
-                0 -> {
-                    val type = (root["t"] as? JsonPrimitive)?.contentOrNull
-                    if (type == "READY") onReady(root)
-                }
-                7 -> {
-                    _state.value = DiscordState(DiscordConnection.CONNECTING, session.discordName)
-                    socket?.cancel()
-                    scheduleReconnect()
-                }
-                9 -> {
-                    token = null
-                    manualStop = true
-                    heartbeatJob?.cancel()
-                    heartbeatJob = null
-                    socket?.cancel()
-                    socket = null
-                    session.clearDiscord()
-                    _state.value = DiscordState(DiscordConnection.ERROR, null)
-                }
+            val code = response?.code ?: 0
+            scope.launch {
+                if (webSocket !== socket) return@launch
+                socket = null
+                onSocketDown(currentToken, code, t.message.orEmpty(), t)
             }
         }
     }
 
-    private fun identify(currentToken: String) {
-        val payload = buildJsonObject {
-            put("op", 2)
-            put(
-                "d",
-                buildJsonObject {
-                    put("token", currentToken)
-                    put("capabilities", 0)
-                    put("compress", false)
-                    put(
-                        "properties",
-                        buildJsonObject {
-                            put("\$os", "Android")
-                            put("\$browser", "MystMusic")
-                            put("\$device", "MystMusic")
-                        },
-                    )
-                    put(
-                        "presence",
-                        buildJsonObject {
-                            put("status", "online")
-                            put("since", 0)
-                            put("afk", false)
-                            put("activities", JsonArray(emptyList()))
-                        },
-                    )
-                },
+    private fun onSocketDown(
+        currentToken: String,
+        code: Int,
+        reason: String,
+        failure: Throwable?,
+    ) {
+        ready = false
+        heartbeatJob?.cancel()
+        heartbeatJob = null
+        helloTimeoutJob?.cancel()
+        helloTimeoutJob = null
+        awaitingAck = false
+        if (failure != null) {
+            // Se o resume URL falhou, o próximo HELLO usa o gateway base e
+            // faz um identify novo em vez de insistir numa sessão morta.
+            resumeUrl = null
+            sessionId = null
+            sequence = null
+            AppLog.w(
+                AppLog.TAG_DISCORD,
+                "Conexão Discord caiu HTTP=$code: ${AppLog.describe(failure)}",
             )
+        } else {
+            AppLog.w(AppLog.TAG_DISCORD, "Conexão Discord fechada: $code ${reason.take(160)}")
         }
-        send(payload)
+        if (manualStop || currentToken != token) {
+            _state.value = DiscordState(DiscordConnection.DISCONNECTED, session.discordName)
+            return
+        }
+        if (code in AUTH_CLOSE_CODES) {
+            failAuthentication()
+            return
+        }
+        _state.value = DiscordState(DiscordConnection.CONNECTING, session.discordName)
+        scheduleReconnect()
+    }
+
+    private fun handleMessage(text: String, currentToken: String) {
+        val root = json.parseToJsonElement(text) as? JsonObject ?: return
+        (root["s"] as? JsonPrimitive)?.contentOrNull?.toIntOrNull()?.let { sequence = it }
+        when ((root["op"] as? JsonPrimitive)?.contentOrNull?.toIntOrNull()) {
+            OP_HELLO -> {
+                helloTimeoutJob?.cancel()
+                helloTimeoutJob = null
+                val interval = ((root["d"] as? JsonObject)
+                    ?.get("heartbeat_interval") as? JsonPrimitive)
+                    ?.contentOrNull?.toLongOrNull() ?: 41_250L
+                heartbeatInterval = interval
+                if (sessionId != null && sequence != null && resumeUrl != null) {
+                    sendResume(currentToken)
+                } else {
+                    sendIdentify(currentToken)
+                }
+                startHeartbeat(interval)
+            }
+            OP_HEARTBEAT_ACK -> {
+                awaitingAck = false
+                lastAckAt = SystemClock.elapsedRealtime()
+            }
+            OP_HEARTBEAT -> sendHeartbeat()
+            OP_RECONNECT -> {
+                AppLog.i(AppLog.TAG_DISCORD, "Discord pediu reconexão")
+                dropSocket("reconnect solicitado")
+            }
+            OP_INVALID_SESSION -> {
+                AppLog.w(AppLog.TAG_DISCORD, "Sessão do Discord inválida; identificando de novo")
+                ready = false
+                sequence = null
+                sessionId = null
+                resumeUrl = null
+                scope.launch {
+                    delay(150)
+                    if (!manualStop && currentToken == token) sendIdentify(currentToken)
+                }
+            }
+            OP_DISPATCH -> when ((root["t"] as? JsonPrimitive)?.contentOrNull) {
+                "READY" -> handleReady(root, currentToken)
+                "RESUMED" -> handleResumed()
+            }
+        }
+    }
+
+    private fun handleReady(root: JsonObject, currentToken: String) {
+        if (currentToken != token) return
+        val data = root["d"] as? JsonObject ?: return
+        sessionId = (data["session_id"] as? JsonPrimitive)?.contentOrNull
+        resumeUrl = (data["resume_gateway_url"] as? JsonPrimitive)?.contentOrNull
+            ?.takeIf { it.isNotBlank() }
+            ?.let { raw ->
+                if (raw.contains("?")) raw else raw.trimEnd('/') + "/?v=9&encoding=json"
+            }
+        val user = data["user"] as? JsonObject
+        val name = (user?.get("global_name") as? JsonPrimitive)?.contentOrNull
+            ?.takeIf { it.isNotBlank() }
+            ?: (user?.get("username") as? JsonPrimitive)?.contentOrNull
+                ?.takeIf { it.isNotBlank() }
+        if (!name.isNullOrBlank()) session.discordName = name
+        ready = true
+        helloTimeoutJob?.cancel()
+        helloTimeoutJob = null
+        reconnectAttempt = 0
+        awaitAckReset()
+        _state.value = DiscordState(DiscordConnection.CONNECTED, name ?: session.discordName)
+        AppLog.i(
+            AppLog.TAG_DISCORD,
+            "Discord pronto como ${name ?: session.discordName ?: "usuário"}",
+        )
+        val pending = lastPresence
+        if (pending != null) {
+            sendPresence(pending)
+        } else {
+            replayLatest()
+        }
+    }
+
+    private fun handleResumed() {
+        ready = true
+        helloTimeoutJob?.cancel()
+        helloTimeoutJob = null
+        reconnectAttempt = 0
+        awaitAckReset()
+        _state.value = DiscordState(DiscordConnection.CONNECTED, session.discordName)
+        AppLog.i(AppLog.TAG_DISCORD, "Sessão do Discord retomada")
+        replayLatest()
+    }
+
+    private fun replayLatest() {
+        val current = latestPlayerState
+        val track = current?.track
+        if (current?.isPlaying == true && track != null) {
+            val start = System.currentTimeMillis() - current.positionMs
+            presenceActive = true
+            presenceTrackId = track.videoId
+            presenceStart = start
+            lastPlaying = true
+            val presence = presencePayload(buildActivity(track, start, current.durationMs))
+            lastPresence = presence
+            sendPresence(presence)
+        } else if (lastPresence != null) {
+            lastPresence?.let { sendPresence(it) }
+        }
     }
 
     private fun startHeartbeat(intervalMs: Long) {
         heartbeatJob?.cancel()
+        heartbeatInterval = intervalMs.coerceAtLeast(1_000L)
+        awaitAckReset()
         heartbeatJob = scope.launch {
-            delay(intervalMs.coerceAtLeast(1_000L))
+            delay(heartbeatInterval)
             while (isActive) {
-                val payload = buildJsonObject {
-                    put("op", 1)
-                    put("d", sequence)
+                if (awaitingAck &&
+                    SystemClock.elapsedRealtime() - lastAckAt >
+                    heartbeatInterval + HEARTBEAT_GRACE_MS
+                ) {
+                    AppLog.w(AppLog.TAG_DISCORD, "Heartbeat do Discord sem ACK; reconectando")
+                    dropSocket("heartbeat sem ACK")
+                    return@launch
                 }
-                send(payload)
-                delay(intervalMs.coerceAtLeast(1_000L))
+                sendHeartbeat()
+                awaitingAck = true
+                delay(heartbeatInterval)
             }
         }
     }
 
-    private fun onReady(root: JsonObject) {
-        ready = true
-        reconnectAttempt = 0
-        val user = (root["d"] as? JsonObject)?.get("user") as? JsonObject
-        val name = (user?.get("global_name") as? JsonPrimitive)?.contentOrNull
-            ?.takeIf { it.isNotBlank() }
-            ?: (user?.get("username") as? JsonPrimitive)?.contentOrNull
-        if (!name.isNullOrBlank()) {
-            session.discordName = name
-        }
-        _state.value = DiscordState(DiscordConnection.CONNECTED, name ?: session.discordName)
-        val latest = latestPlayerState
-        if (latest?.isPlaying == true) {
-            val track = latest.track
-            if (track != null) {
-                presenceActive = true
-                presenceTrackId = track.videoId
-                presenceStart = System.currentTimeMillis() - latest.positionMs
-                lastTrackId = track.videoId
-                lastPlaying = true
-                sendPresence(buildActivity(track, presenceStart))
-            }
-        }
+    private fun awaitAckReset() {
+        awaitingAck = false
+        lastAckAt = SystemClock.elapsedRealtime()
     }
 
-    private fun buildActivity(track: Track, startMs: Long): JsonObject = buildJsonObject {
-        put("type", 2)
-        put("name", "MystMusic")
-        put("details", track.title.ifBlank { "MystMusic" }.take(128))
-        put("state", track.artist.ifBlank { "MystMusic" }.take(128))
-        put(
-            "timestamps",
-            buildJsonObject {
-                put("start", startMs)
-            },
-        )
-        val thumb = track.artworkUrl()
-        if (!thumb.isNullOrBlank()) {
-            put(
-                "assets",
-                buildJsonObject {
-                    put("large_image", thumb)
-                    put("large_text", "MystMusic")
-                },
-            )
-        }
-    }
-
-    private fun sendPresence(activity: JsonObject?) {
-        if (!ready) return
+    private fun sendHeartbeat() {
         val payload = buildJsonObject {
-            put("op", 3)
+            put("op", OP_HEARTBEAT)
+            put("d", sequence ?: JsonNull)
+        }
+        send(payload)
+    }
+
+    private fun sendIdentify(currentToken: String) {
+        if (manualStop || currentToken != token) return
+        val payload = buildJsonObject {
+            put("op", OP_IDENTIFY)
             put(
                 "d",
                 buildJsonObject {
-                    put("since", 0)
-                    put("status", "online")
-                    put("afk", false)
+                    put("token", currentToken)
+                    put("capabilities", 16381)
+                    put("compress", false)
+                    put("largeThreshold", 100)
                     put(
-                        "activities",
-                        if (activity == null) JsonArray(emptyList()) else JsonArray(listOf(activity)),
+                        "properties",
+                        buildJsonObject {
+                            put("os", "Android")
+                            put("browser", "Discord Android")
+                            put("device", Build.DEVICE.ifBlank { "Android" })
+                        },
                     )
+                    put(
+                        "client_state",
+                        buildJsonObject {
+                            put("guild_versions", buildJsonObject { })
+                            put("highest_last_message_id", "0")
+                            put("read_state_version", 0)
+                            put("user_guild_settings_version", -1)
+                            put("user_settings_version", -1)
+                            put("private_channels_version", "0")
+                            put("api_code_version", 0)
+                        },
+                    )
+                    put("shard", buildJsonArray { add(0); add(1) })
+                    put("presence", presencePayload(null))
                 },
             )
         }
         send(payload)
     }
 
-    private fun send(payload: JsonObject): Boolean {
-        return runCatching { socket?.send(payload.toString()) == true }.getOrDefault(false)
+    private fun sendResume(currentToken: String) {
+        if (manualStop || currentToken != token) return
+        val payload = buildJsonObject {
+            put("op", OP_RESUME)
+            put(
+                "d",
+                buildJsonObject {
+                    put("token", currentToken)
+                    put("session_id", sessionId)
+                    put("seq", sequence ?: 0)
+                },
+            )
+        }
+        send(payload)
+    }
+
+    private fun dropSocket(reason: String) {
+        AppLog.w(AppLog.TAG_DISCORD, "Descartando socket do Discord: $reason")
+        ready = false
+        heartbeatJob?.cancel()
+        heartbeatJob = null
+        socket?.cancel()
+        socket = null
+        scheduleReconnect()
     }
 
     private fun scheduleReconnect() {
         if (manualStop || token == null) return
         if (reconnectJob?.isActive == true) return
-        val wait = min(60_000L, 5_000L * (1L shl reconnectAttempt.coerceAtMost(4)))
+        val wait = min(60_000L, 1_000L * (1L shl reconnectAttempt.coerceAtMost(5)))
         reconnectAttempt++
+        AppLog.i(AppLog.TAG_DISCORD, "Reconectando Discord em ${wait}ms")
         reconnectJob = scope.launch {
             delay(wait)
             reconnectJob = null
-            if (!manualStop && token != null) openSocket()
+            val current = token ?: return@launch
+            if (!manualStop) openSocket(current)
         }
     }
 
+    private fun buildActivity(
+        track: Track,
+        startMs: Long,
+        durationMs: Long,
+    ): JsonObject = buildJsonObject {
+        put("name", "MystMusic")
+        put("type", 2)
+        put("details", track.title.ifBlank { "MystMusic" }.take(128))
+        put("state", track.artist.ifBlank { "MystMusic" }.take(128))
+        put("status_display_type", 1)
+        put(
+            "timestamps",
+            buildJsonObject {
+                put("start", startMs)
+                if (durationMs > 0) put("end", startMs + durationMs)
+            },
+        )
+    }
+
+    private fun presencePayload(activity: JsonObject?): JsonObject = buildJsonObject {
+        put("since", 0)
+        put("status", "online")
+        put("afk", false)
+        put(
+            "activities",
+            if (activity == null) JsonArray(emptyList()) else JsonArray(listOf(activity)),
+        )
+    }
+
+    private fun sendPresence(presence: JsonObject) {
+        lastPresence = presence
+        if (!ready) return
+        send(
+            buildJsonObject {
+                put("op", OP_PRESENCE_UPDATE)
+                put("d", presence)
+            },
+        )
+    }
+
+    private fun clearPresence() {
+        val presence = presencePayload(null)
+        lastPresence = presence
+        if (ready) sendPresence(presence)
+    }
+
+    private fun send(payload: JsonObject): Boolean {
+        val current = socket ?: return false
+        return runCatching { current.send(payload.toString()) }
+            .onFailure { AppLog.failure(AppLog.TAG_DISCORD, "Falha enviando ao Discord", it) }
+            .getOrDefault(false)
+    }
+
+    private class InvalidTokenException : Exception()
+
     companion object {
-        private const val GATEWAY_URL =
-            "wss://gateway.discord.gg/?v=10&encoding=json"
+        private const val GATEWAY_URL = "wss://gateway.discord.gg/?v=9&encoding=json"
+        private const val OP_DISPATCH = 0
+        private const val OP_HEARTBEAT = 1
+        private const val OP_IDENTIFY = 2
+        private const val OP_PRESENCE_UPDATE = 3
+        private const val OP_RESUME = 6
+        private const val OP_RECONNECT = 7
+        private const val OP_INVALID_SESSION = 9
+        private const val OP_HELLO = 10
+        private const val OP_HEARTBEAT_ACK = 11
+        private const val HEARTBEAT_GRACE_MS = 15_000L
+        private const val HELLO_TIMEOUT_MS = 15_000L
         private const val PAUSE_CLEAR_MS = 2 * 60 * 1000L
+        private val AUTH_CLOSE_CODES = setOf(4003, 4004, 4010, 4011, 4012, 4013, 4014, 401, 403)
     }
 }

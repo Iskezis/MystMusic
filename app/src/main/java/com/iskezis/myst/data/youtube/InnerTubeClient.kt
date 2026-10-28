@@ -111,6 +111,16 @@ class InnerTubeClient(
         AppLog.d(AppLog.TAG_STREAM, "Cache de stream invalidado: $videoId")
     }
 
+    /**
+     * Aquece o visitante anônimo e a conexão TLS em segundo plano, para o
+     * primeiro play não pagar a home do YouTube Music antes de resolver a
+     * faixa. Nunca lança: se a rede falhar, o primeiro play tenta de novo.
+     */
+    fun warmUp() {
+        runCatching { ensureVisitorData() }
+            .onFailure { AppLog.failure(AppLog.TAG_STREAM, "Falha aquecendo o InnerTube", it) }
+    }
+
     override suspend fun accountName(): String? = withContext(Dispatchers.IO) {
         runCatching {
             val body = buildJsonObject { put("context", clientContext(WEB_REMIX)) }

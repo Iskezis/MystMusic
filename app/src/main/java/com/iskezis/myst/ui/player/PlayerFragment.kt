@@ -307,13 +307,24 @@ class PlayerFragment : Fragment() {
 
     private fun closePlayer() {
         AppLog.d(AppLog.TAG_UI, "PlayerFragment: fechar")
-        val nav = runCatching { findNavController() }.getOrNull()
-        if (nav != null && nav.currentDestination?.id == R.id.playerFragment) {
-            val result = runCatching { nav.navigateUp() }
-            if (result.isSuccess) return
-            AppLog.failure(AppLog.TAG_UI, "navigateUp falhou no player", result.exceptionOrNull()!!)
+        val host = activity ?: return
+        if (host is PlayerActivity) {
+            host.finish()
+            return
         }
-        activity?.finish()
+        val nav = runCatching { findNavController() }.getOrNull()
+        if (nav == null) {
+            AppLog.w(AppLog.TAG_UI, "Player sem NavController e sem PlayerActivity; não fecha a tela principal")
+            return
+        }
+        val moved = runCatching { nav.navigateUp() }
+            .onFailure {
+                AppLog.failure(AppLog.TAG_UI, "navigateUp falhou no player", it)
+            }
+            .getOrDefault(false)
+        if (!moved) {
+            AppLog.w(AppLog.TAG_UI, "navigateUp não moveu a navegação do player")
+        }
     }
 
     override fun onDestroyView() {
