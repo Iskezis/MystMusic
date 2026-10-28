@@ -22,7 +22,8 @@ Atualize após cada etapa. Marque [x] só quando o build do GitHub estiver verde
 | 40757711581 | c4141a5 | verde | Reprodução, capas em alta resolução e importação fiel do Spotify | — |
 | 40758692289 | 9c0c395 | verde | Ajustes finais de resolução de stream e correspondência do Spotify | `apks/app.apk`, `apks/app-tv.apk` (antigos) |
 | 40767006166 | 3c00bf9 | verde | PlayerActivity isolado, proteção do MediaController, User-Agent do InnerTube e logs | — |
-| 40772322300 | 164db22 | verde | OkHttp no ExoPlayer, TVHTML5 autenticado, login YouTube no player e erros amigáveis | `apks/app.apk`, `apks/app-tv.apk` |
+| 40772322300 | 164db22 | verde | OkHttp no ExoPlayer, TVHTML5 autenticado, login YouTube no player e erros amigáveis | — |
+| 40776217605 | 39fde6d | verde | Cliente VISIONOS 0.1 do InnerTube, visitorData novo, URL direta validada e diagnóstico copiável | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
 - Player: `ResolvingDataSource` resolve `myst://track/<id>` na hora de abrir. A extração foi refeita seguindo o caminho que o BitChord usa via InnerTube (`InnerTubeXResolver`/`PlaybackClientCatalog`): o primeiro cliente é o **VISIONOS 0.1** no endpoint `music.youtube.com/youtubei/v1/player`, com `visitorData` novo, `clientId` 101, `X-Goog-Api-Format-Version: 1`, sem cookies e sem `playbackContext`. Ele devolve URL direta, que é validada com Range de 2 bytes antes de chegar ao ExoPlayer.
@@ -41,6 +42,6 @@ Atualize após cada etapa. Marque [x] só quando o build do GitHub estiver verde
 - A capa importada do Spotify usa a maior imagem disponível e é gravada em até 1024 px.
 
 ## Problemas em aberto
-- Reprodução: o APK do run 40772322300 precisa ser testado no aparelho. Se a conta Myst não tiver YouTube vinculado, o player oferece o botão **Entrar com YouTube**; sem login, o YouTube bloqueia o áudio de músicas com `LOGIN_REQUIRED` nesta rede. Se o login for feito e ainda falhar, os logs `MystStream`/`MystPlayer` mostram qual cliente recusou e se a URL veio cifrada (`signatureCipher`), o que indica a necessidade de implementar o decifrador de assinatura do player JS.
+- Reprodução: o APK do run 40776217605 (`39fde6d`) precisa ser testado no aparelho. A resolução com VISIONOS foi validada fora do app nesta mesma rede (`OK`, URL direta e `206 audio/mp4`), então o player deve iniciar sem login. Se ainda falhar, o botão **Copiar diagnóstico** na tela do player traz as linhas `MystStream`/`MystPlayer` com o cliente e o HTTP exatos, sem cookies nem URLs assinadas. Se aparecer `LOGIN_REQUIRED`, o botão **Entrar com YouTube** vincula a conta sem perder a conta Myst.
 - Fase 9: protocolo de pareamento criado em `data/pairing/PairingProtocol.kt`, mas servidor HTTP/NSD, tela de pareamento e adaptação completa do flavor TV ainda precisam ser integrados.
 - Fase 10: revisão final da checklist e teste em aparelho físico.
