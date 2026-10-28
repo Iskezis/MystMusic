@@ -25,6 +25,7 @@ import com.iskezis.myst.R
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.databinding.FragmentPlaylistDetailBinding
 import com.iskezis.myst.ui.common.LoadState
+import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.applyFadeThrough
 import com.iskezis.myst.util.UiAnimations.pressScale
 import com.iskezis.myst.util.UiAnimations.staggerVisibleChildren
@@ -70,8 +71,13 @@ class PlaylistDetailFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        AppLog.d(AppLog.TAG_UI, "PlaylistDetailFragment.onViewCreated id=$playlistId")
         adapter = PlaylistTrackAdapter(
             onPlay = { tracks, index ->
+                AppLog.i(
+                    AppLog.TAG_UI,
+                    "Playlist $playlistId: tocar ${tracks.size} faixas no índice $index",
+                )
                 (requireActivity().application as MystApp).playerController.play(tracks, index)
             },
             onRemove = { track, _ -> confirmRemove(track) },
@@ -232,6 +238,10 @@ class PlaylistDetailFragment : Fragment() {
     private fun playAll(shuffle: Boolean) {
         val tracks = (currentState.tracks as? LoadState.Data)?.value ?: return
         if (tracks.isEmpty()) return
+        AppLog.i(
+            AppLog.TAG_UI,
+            "Playlist $playlistId: tocar tudo (${tracks.size} faixas, shuffle=$shuffle)",
+        )
         (requireActivity().application as MystApp).playerController.play(
             tracks,
             0,
@@ -246,9 +256,11 @@ class PlaylistDetailFragment : Fragment() {
     }
 
     private fun saveCover(uri: android.net.Uri) {
+        AppLog.d(AppLog.TAG_UI, "Salvando capa da playlist $playlistId")
         viewLifecycleOwner.lifecycleScope.launch {
             val stored = CoverStore.save(requireContext(), playlistId, uri)
             if (stored == null) {
+                AppLog.w(AppLog.TAG_UI, "CoverStore falhou para playlist $playlistId")
                 Snackbar.make(binding.root, R.string.error_generic, Snackbar.LENGTH_LONG).show()
             } else {
                 viewModel.setCover(stored)
@@ -377,6 +389,7 @@ class PlaylistDetailFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        AppLog.d(AppLog.TAG_UI, "PlaylistDetailFragment.onDestroyView id=$playlistId")
         adapter.onDragStart = null
         binding.detailTracks.adapter = null
         super.onDestroyView()

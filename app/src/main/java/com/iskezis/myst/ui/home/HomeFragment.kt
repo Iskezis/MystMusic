@@ -15,6 +15,7 @@ import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.databinding.FragmentHomeBinding
 import com.iskezis.myst.ui.player.TrackMenuSheet
+import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.applyFadeThrough
 import kotlinx.coroutines.launch
 
@@ -43,10 +44,16 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        AppLog.d(AppLog.TAG_UI, "HomeFragment.onViewCreated")
         adapter = HomeAdapter(
             onSearch = { findNavController().navigate(R.id.searchFragment) },
             onAvatar = { findNavController().navigate(R.id.settingsFragment) },
             onPlay = { tracks, index ->
+                AppLog.i(
+                    AppLog.TAG_UI,
+                    "Home: tocar ${tracks.size} faixas no índice $index " +
+                        "(videoId=${tracks.getOrNull(index)?.videoId})",
+                )
                 (requireActivity().application as MystApp).playerController.play(tracks, index)
             },
             onMore = { track ->
@@ -72,6 +79,12 @@ class HomeFragment : Fragment() {
     }
 
     private fun render(state: HomeUiState) {
+        AppLog.d(
+            AppLog.TAG_UI,
+            "Home render: recentes=${state.recent.javaClass.simpleName} " +
+                "emAlta=${state.trending.javaClass.simpleName} " +
+                "recomendados=${state.recommended.javaClass.simpleName}",
+        )
         binding.homeRefresh.isRefreshing = state.refreshing
         val initial = state.accountName.trim().take(1).uppercase()
         adapter.submitList(
@@ -88,6 +101,7 @@ class HomeFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        AppLog.d(AppLog.TAG_UI, "HomeFragment.onDestroyView")
         binding.homeList.adapter = null
         super.onDestroyView()
         _binding = null

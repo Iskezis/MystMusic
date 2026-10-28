@@ -14,6 +14,7 @@ import com.iskezis.myst.databinding.SheetTrackMenuBinding
 import com.iskezis.myst.ui.common.toBundle
 import com.iskezis.myst.ui.common.toTrack
 import com.iskezis.myst.ui.playlists.AddToPlaylistSheet
+import com.iskezis.myst.util.AppLog
 
 class TrackMenuSheet : BottomSheetDialogFragment() {
 
@@ -34,9 +35,11 @@ class TrackMenuSheet : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
         val track = track
         if (track == null) {
+            AppLog.w(AppLog.TAG_UI, "TrackMenuSheet sem faixa nos argumentos")
             dismissAllowingStateLoss()
             return
         }
+        AppLog.d(AppLog.TAG_UI, "TrackMenuSheet: ${track.videoId}")
         val app = requireActivity().application as MystApp
 
         binding.menuTitle.text = track.title.ifBlank { getString(R.string.player_unknown_title) }
@@ -48,10 +51,12 @@ class TrackMenuSheet : BottomSheetDialogFragment() {
         }
 
         binding.menuPlayNow.setOnClickListener {
+            AppLog.i(AppLog.TAG_UI, "Menu: tocar agora ${track.videoId}")
             app.playerController.play(listOf(track))
             dismiss()
         }
         binding.menuPlayNext.setOnClickListener {
+            AppLog.i(AppLog.TAG_UI, "Menu: tocar em seguida ${track.videoId}")
             app.playerController.playNext(track)
             Toast.makeText(requireContext(), R.string.track_queued, Toast.LENGTH_SHORT).show()
             dismiss()

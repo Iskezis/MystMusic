@@ -11,8 +11,10 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.google.common.util.concurrent.ListenableFuture
 import com.iskezis.myst.R
 import com.iskezis.myst.data.youtube.Track
+import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -46,13 +48,10 @@ class PlayerController(context: Context) {
     val state: StateFlow<PlayerState> = _state.asStateFlow()
 
     private var controller: MediaController? = null
-    private val future = MediaController.Builder(
-        appContext,
-        SessionToken(appContext, ComponentName(appContext, PlaybackService::class.java)),
-    ).buildAsync()
-
+    private var controllerFuture: ListenableFuture<MediaController>? = null
     private var pendingPlay: PendingPlay? = null
     private var ticker: Job? = null
+    private var lastLoggedVideoId: String? = null
 
     private data class PendingPlay(
         val tracks: List<Track>,
@@ -66,6 +65,13 @@ class PlayerController(context: Context) {
         }
 
         override fun onPlayerErrorChanged(error: PlaybackException?) {
+            if (error != null) {
+                AppLog.failure(
+                    AppLog.TAG_PLAYER,
+                    "Erro do ExoPlayer (${error.errorCodeName})",
+                    error,
+                )
+            }
             _state.value = _state.value.copy(
                 error = error != null,
                 errorMessage = error?.let {
@@ -76,19 +82,63 @@ class PlayerController(context: Context) {
     }
 
     init {
+        AppLog.i(AppLog.TAG_PLAYER, "PlayerController criado; conectando ao PlaybackService")
+        connect()
+    }
+
+    /**
+     * Conecta (ou tenta reconectar) ao [PlaybackService]. O MediaController
+     * precisa ser recriado quando a primeira conexão falha, caso contrário o
+     * botão "Tentar novamente" nunca voltaria a funcionar.
+     */
+    @Synchronized
+    private fun connect() {
+        if (controller != null) return
+        if (controllerFuture != null) {
+            AppLog.d(AppLog.TAG_PLAYER, "Conexão com o serviço já está em andamento")
+            return
+        }
+        AppLog.i(AppLog.TAG_PLAYER, "Conectando MediaController ao PlaybackService")
+        val future = MediaController.Builder(
+            appContext,
+            SessionToken(appContext, ComponentName(appContext, PlaybackService::class.java)),
+        ).setListener(object : MediaController.Listener {
+            override fun onDisconnected(controller: MediaController) {
+                AppLog.w(AppLog.TAG_PLAYER, "MediaController desconectado do serviço")
+                if (this@PlayerController.controller === controller) {
+                    this@PlayerController.controller = null
+                }
+                _state.value = _state.value.copy(connected = false)
+            }
+        }).buildAsync()
+        controllerFuture = future
         future.addListener(
             {
+                controllerFuture = null
                 runCatching {
                     val mediaController = future.get()
+                    AppLog.i(AppLog.TAG_PLAYER, "MediaController conectado")
                     controller = mediaController
                     mediaController.addListener(listener)
                     publish(mediaController)
                     pendingPlay?.let { pending ->
                         pendingPlay = null
-                        playInternal(mediaController, pending.tracks, pending.startIndex, pending.shuffle)
+                        AppLog.i(
+                            AppLog.TAG_PLAYER,
+                            "Executando reprodução pendente: ${pending.tracks.size} faixas, " +
+                                "índice ${pending.startIndex}",
+                        )
+                        playInternal(
+                            mediaController,
+                            pending.tracks,
+                            pending.startIndex,
+                            pending.shuffle,
+                        )
                     }
                     startTicker()
-                }.onFailure {
+                }.onFailure { t ->
+                    AppLog.failure(AppLog.TAG_PLAYER, "Falha ao conectar MediaController", t)
+                    controller = null
                     _state.value = _state.value.copy(
                         error = true,
                         errorMessage = appContext.getString(R.string.player_connection_error),
@@ -100,41 +150,65 @@ class PlayerController(context: Context) {
     }
 
     fun play(tracks: List<Track>, startIndex: Int = 0, shuffle: Boolean = false) {
-        if (tracks.isEmpty()) return
+        if (tracks.isEmpty()) {
+            AppLog.w(AppLog.TAG_PLAYER, "play() chamado com lista vazia")
+            return
+        }
         val safeIndex = startIndex.coerceIn(0, tracks.lastIndex)
+        AppLog.i(
+            AppLog.TAG_PLAYER,
+            "play(): ${tracks.size} faixas, índice=$safeIndex, shuffle=$shuffle, " +
+                "primeira=${tracks.getOrNull(safeIndex)?.title}",
+        )
         val current = controller
         if (current == null) {
             pendingPlay = PendingPlay(tracks, safeIndex, shuffle)
+            AppLog.w(
+                AppLog.TAG_PLAYER,
+                "Controller ainda não conectado; reprodução ficará pendente",
+            )
+            connect()
         } else {
             playInternal(current, tracks, safeIndex, shuffle)
         }
     }
 
     fun toggle() {
-        val current = controller ?: return
-        if (current.isPlaying) current.pause() else current.play()
+        val current = controller ?: run {
+            AppLog.w(AppLog.TAG_PLAYER, "toggle() sem controller")
+            connect()
+            return
+        }
+        val playing = current.isPlaying
+        AppLog.d(AppLog.TAG_PLAYER, "toggle(): ${if (playing) "pausar" else "tocar"}")
+        if (playing) current.pause() else current.play()
     }
 
     fun next() {
+        AppLog.d(AppLog.TAG_PLAYER, "next()")
         controller?.seekToNextMediaItem()
     }
 
     fun previous() {
         val current = controller ?: return
         if (current.currentPosition > 4_000L) {
+            AppLog.d(AppLog.TAG_PLAYER, "previous(): reiniciando faixa")
             current.seekTo(0)
         } else {
+            AppLog.d(AppLog.TAG_PLAYER, "previous(): faixa anterior")
             current.seekToPreviousMediaItem()
         }
     }
 
     fun seekTo(positionMs: Long) {
+        AppLog.d(AppLog.TAG_PLAYER, "seekTo(${AppLog.durationForLog(positionMs)})")
         controller?.seekTo(positionMs.coerceAtLeast(0))
     }
 
     fun seekToIndex(index: Int) {
         val current = controller ?: return
         if (index in 0 until current.mediaItemCount) {
+            AppLog.d(AppLog.TAG_PLAYER, "seekToIndex($index)")
             current.seekTo(index, 0L)
             current.play()
         }
@@ -143,6 +217,7 @@ class PlayerController(context: Context) {
     fun toggleShuffle() {
         val current = controller ?: return
         current.shuffleModeEnabled = !current.shuffleModeEnabled
+        AppLog.d(AppLog.TAG_PLAYER, "shuffle=${current.shuffleModeEnabled}")
     }
 
     fun cycleRepeat() {
@@ -152,6 +227,7 @@ class PlayerController(context: Context) {
             Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
             else -> Player.REPEAT_MODE_OFF
         }
+        AppLog.d(AppLog.TAG_PLAYER, "repeatMode=${current.repeatMode}")
     }
 
     fun playNext(track: Track) {
@@ -167,6 +243,7 @@ class PlayerController(context: Context) {
         }
         val index = (current.currentMediaItemIndex + 1).coerceIn(0, current.mediaItemCount)
         current.addMediaItem(index, track.toMediaItem())
+        AppLog.d(AppLog.TAG_PLAYER, "Tocar em seguida: ${track.title} na posição $index")
     }
 
     fun queue(): List<Track> {
@@ -177,7 +254,14 @@ class PlayerController(context: Context) {
     }
 
     fun retry() {
-        val current = controller ?: return
+        val current = controller
+        if (current == null) {
+            AppLog.w(AppLog.TAG_PLAYER, "retry() sem controller; tentando reconectar")
+            _state.value = _state.value.copy(error = false, errorMessage = null)
+            connect()
+            return
+        }
+        AppLog.i(AppLog.TAG_PLAYER, "retry(): prepare + play")
         _state.value = _state.value.copy(error = false, errorMessage = null)
         current.prepare()
         current.play()
@@ -185,6 +269,7 @@ class PlayerController(context: Context) {
 
     fun stop() {
         val current = controller ?: return
+        AppLog.i(AppLog.TAG_PLAYER, "stop()")
         current.stop()
         current.clearMediaItems()
         _state.value = PlayerState(connected = true)
@@ -196,18 +281,33 @@ class PlayerController(context: Context) {
         startIndex: Int,
         shuffle: Boolean,
     ) {
-        _state.value = _state.value.copy(error = false, errorMessage = null)
-        val items = tracks.map { it.toMediaItem() }
-        mediaController.setMediaItems(items, startIndex, 0L)
-        mediaController.shuffleModeEnabled = shuffle
-        mediaController.prepare()
-        mediaController.play()
+        try {
+            _state.value = _state.value.copy(error = false, errorMessage = null)
+            val items = tracks.map { it.toMediaItem() }
+            AppLog.i(
+                AppLog.TAG_PLAYER,
+                "Enviando ${items.size} itens ao MediaController; prepare + play",
+            )
+            mediaController.setMediaItems(items, startIndex, 0L)
+            mediaController.shuffleModeEnabled = shuffle
+            mediaController.prepare()
+            mediaController.play()
+        } catch (t: Throwable) {
+            AppLog.failure(AppLog.TAG_PLAYER, "Falha enviando mídia ao MediaController", t)
+            if (controller === mediaController) controller = null
+            pendingPlay = PendingPlay(tracks, startIndex, shuffle)
+            _state.value = _state.value.copy(
+                error = true,
+                errorMessage = appContext.getString(R.string.player_connection_error),
+            )
+            connect()
+        }
     }
 
     private fun startTicker() {
         if (ticker != null) return
         ticker = scope.launch {
-            while (scope.isActive) {
+            while (isActive) {
                 controller?.let { publish(it) }
                 delay(500)
             }
@@ -215,23 +315,37 @@ class PlayerController(context: Context) {
     }
 
     private fun publish(player: Player) {
-        val item = player.currentMediaItem
-        val track = item?.toTrack()
-        val duration = player.duration.takeIf { it > 0 && it != Long.MIN_VALUE } ?: track?.durationMs ?: 0L
-        val playbackError = player.playerError
-        _state.value = PlayerState(
-            connected = true,
-            isPlaying = player.isPlaying,
-            track = track,
-            positionMs = if (track == null) 0L else player.currentPosition.coerceAtLeast(0),
-            durationMs = duration,
-            shuffle = player.shuffleModeEnabled,
-            repeatMode = player.repeatMode,
-            hasNext = player.hasNextMediaItem(),
-            hasPrevious = player.hasPreviousMediaItem(),
-            error = playbackError != null && track != null,
-            errorMessage = if (playbackError != null) _state.value.errorMessage else null,
-        )
+        try {
+            val item = player.currentMediaItem
+            val track = item?.toTrack()
+            val duration = player.duration.takeIf { it > 0 && it != Long.MIN_VALUE } ?: track?.durationMs ?: 0L
+            val playbackError = player.playerError
+            _state.value = PlayerState(
+                connected = true,
+                isPlaying = player.isPlaying,
+                track = track,
+                positionMs = if (track == null) 0L else player.currentPosition.coerceAtLeast(0),
+                durationMs = duration,
+                shuffle = player.shuffleModeEnabled,
+                repeatMode = player.repeatMode,
+                hasNext = player.hasNextMediaItem(),
+                hasPrevious = player.hasPreviousMediaItem(),
+                error = playbackError != null && track != null,
+                errorMessage = if (playbackError != null) _state.value.errorMessage else null,
+            )
+            if (track?.videoId != lastLoggedVideoId) {
+                lastLoggedVideoId = track?.videoId
+                AppLog.i(
+                    AppLog.TAG_PLAYER,
+                    "Publicando faixa: ${track?.title ?: "<nenhuma>"} " +
+                        "| estado=${player.playbackState} | erro=${playbackError?.errorCodeName ?: "nenhum"}",
+                )
+            }
+        } catch (t: Throwable) {
+            AppLog.failure(AppLog.TAG_PLAYER, "Falha lendo estado do MediaController", t)
+            if (controller === player) controller = null
+            _state.value = _state.value.copy(connected = false)
+        }
     }
 
     private fun Track.toMediaItem(): MediaItem {

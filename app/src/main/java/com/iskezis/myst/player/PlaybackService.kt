@@ -18,6 +18,7 @@ import androidx.media3.session.MediaSessionService
 import com.iskezis.myst.MainActivity
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.data.youtube.Track
+import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -41,13 +42,15 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
+        AppLog.i(AppLog.TAG_PLAYER, "PlaybackService.onCreate")
         val app = application as MystApp
         resolver = StreamResolver(app)
+        // Não fixar User-Agent aqui: o DefaultHttpDataSource sobrescreveria o
+        // header enviado pelo StreamResolver. A URL do googlevideo é emitida
+        // para um cliente InnerTube específico e alguns servidores recusam o
+        // download quando o agente muda (o teste com curl pode passar e o
+        // ExoPlayer falhar). O UA correto chega no DataSpec.
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            )
             .setAllowCrossProtocolRedirects(true)
             .setConnectTimeoutMs(15_000)
             .setReadTimeoutMs(20_000)
@@ -73,27 +76,52 @@ class PlaybackService : MediaSessionService() {
 
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                AppLog.i(
+                    AppLog.TAG_PLAYER,
+                    "Transição de mídia: ${mediaItem?.mediaId ?: "<fim>"} reason=$reason",
+                )
                 handleTransition(mediaItem)
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
+                AppLog.d(
+                    AppLog.TAG_PLAYER,
+                    "Estado de reprodução: ${stateName(playbackState)} " +
+                        "posição=${AppLog.durationForLog(player.currentPosition)}",
+                )
                 if (playbackState == Player.STATE_ENDED) {
                     finishCurrent()
                 }
             }
 
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                AppLog.i(AppLog.TAG_PLAYER, "isPlaying=$isPlaying")
+            }
+
             override fun onPlayerError(error: PlaybackException) {
                 val videoId = currentTrack?.videoId
+                AppLog.failure(
+                    AppLog.TAG_PLAYER,
+                    "Erro do player em ${videoId ?: "<sem faixa>"} " +
+                        "(${error.errorCodeName}); tentativa automática=${!retriedCurrent}",
+                    error,
+                )
                 if (!retriedCurrent && videoId != null && isRetryable(error)) {
                     retriedCurrent = true
                     resolver.invalidate(videoId)
                     val position = player.currentPosition
+                    AppLog.w(
+                        AppLog.TAG_PLAYER,
+                        "Tentando novamente $videoId a partir de " +
+                            AppLog.durationForLog(position),
+                    )
                     player.prepare()
                     player.seekTo(position)
                     player.play()
                 }
             }
         })
+
 
         val sessionIntent = Intent(this, MainActivity::class.java)
         var flags = PendingIntent.FLAG_UPDATE_CURRENT
@@ -112,12 +140,17 @@ class PlaybackService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
 
     override fun onTaskRemoved(rootIntent: Intent?) {
+        AppLog.d(
+            AppLog.TAG_PLAYER,
+            "onTaskRemoved playWhenReady=${player.playWhenReady} itens=${player.mediaItemCount}",
+        )
         if (!player.playWhenReady || player.mediaItemCount == 0) {
             stopSelf()
         }
     }
 
     override fun onDestroy() {
+        AppLog.i(AppLog.TAG_PLAYER, "PlaybackService.onDestroy")
         historyJob?.cancel()
         scope.coroutineContext[Job]?.cancel()
         mediaSession?.release()
@@ -181,9 +214,16 @@ class PlaybackService : MediaSessionService() {
     private fun record(app: MystApp, track: Track, position: Long, completed: Boolean) {
         recordedCurrent = true
         val userId = app.session.session?.userId ?: return
+        AppLog.d(
+            AppLog.TAG_PLAYER,
+            "Registrando histórico: ${track.videoId} posição=${AppLog.durationForLog(position)} " +
+                "completa=$completed",
+        )
         scope.launch(Dispatchers.IO) {
             runCatching {
                 app.recommendations.recordPlay(userId, track, position, completed)
+            }.onFailure {
+                AppLog.failure(AppLog.TAG_DB, "Falha ao registrar histórico", it)
             }
         }
     }
@@ -197,6 +237,14 @@ class PlaybackService : MediaSessionService() {
             -> true
             else -> false
         }
+    }
+
+    private fun stateName(state: Int): String = when (state) {
+        Player.STATE_IDLE -> "IDLE"
+        Player.STATE_BUFFERING -> "BUFFERING"
+        Player.STATE_READY -> "READY"
+        Player.STATE_ENDED -> "ENDED"
+        else -> "DESCONHECIDO($state)"
     }
 
     companion object {

@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.data.account.SessionManager
 import com.iskezis.myst.data.discord.DiscordState
+import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -53,6 +54,7 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
                 SessionManager.TYPE_YOUTUBE -> SessionManager.TYPE_YOUTUBE
                 else -> SessionManager.TYPE_MYST
             }
+            AppLog.d(AppLog.TAG_UI, "Settings: conta=$type nome=$name")
             _state.value = SettingsState(
                 name = name,
                 accountType = type,
@@ -63,7 +65,9 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
 
     fun logout() {
         viewModelScope.launch {
-            app.discord.disconnect()
+            AppLog.i(AppLog.TAG_AUTH, "Logout pelo usuário")
+            runCatching { app.discord.disconnect() }
+                .onFailure { AppLog.failure(AppLog.TAG_UI, "Falha desconectando Discord no logout", it) }
             app.accounts.logout()
             _loggedOut.value = true
         }

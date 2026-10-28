@@ -11,6 +11,7 @@ import com.iskezis.myst.data.spotify.SpotifyImporter
 import com.iskezis.myst.data.youtube.InnerTubeClient
 import com.iskezis.myst.data.youtube.YouTubeRepository
 import com.iskezis.myst.player.PlayerController
+import com.iskezis.myst.util.AppLog
 
 class MystApp : Application() {
 
@@ -24,4 +25,37 @@ class MystApp : Application() {
     val spotify: SpotifyImporter by lazy { SpotifyImporter(this, youtube, playlists) }
     val playerController: PlayerController by lazy { PlayerController(this) }
     val discord: DiscordPresenceManager by lazy { DiscordPresenceManager(this, session) }
+
+    override fun onCreate() {
+        super.onCreate()
+        installCrashLogger()
+        AppLog.i(AppLog.TAG, "MystMusic iniciado (${BuildConfig.VERSION_NAME})")
+        AppLog.i(
+            AppLog.TAG,
+            "Sessão: ${session.session?.type ?: "nenhuma"} | YouTube cookies: " +
+                if (session.youtubeCookies.isNullOrBlank()) "não" else "sim",
+        )
+    }
+
+    private fun installCrashLogger() {
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            runCatching {
+                AppLog.e(
+                    AppLog.TAG_CRASH,
+                    "Crash não tratado na thread ${thread.name}",
+                    throwable,
+                )
+                AppLog.e(
+                    AppLog.TAG_CRASH,
+                    "Causa: ${throwable.stackTraceToString().take(4000)}",
+                )
+            }
+            if (previous != null) {
+                previous.uncaughtException(thread, throwable)
+            } else {
+                android.os.Process.killProcess(android.os.Process.myPid())
+            }
+        }
+    }
 }

@@ -11,6 +11,7 @@ import com.iskezis.myst.R
 import com.iskezis.myst.data.db.PlaylistEntity
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.ui.common.LoadState
+import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,11 +45,13 @@ class PlaylistDetailViewModel(
     private var tracksJob: Job? = null
 
     init {
+        AppLog.d(AppLog.TAG_DB, "PlaylistDetailViewModel init id=$playlistId")
         observePlaylist()
         observeTracks()
     }
 
     fun retry() {
+        AppLog.d(AppLog.TAG_DB, "PlaylistDetail retry id=$playlistId")
         observePlaylist()
         observeTracks()
     }
@@ -56,8 +59,10 @@ class PlaylistDetailViewModel(
     fun rename(name: String) {
         viewModelScope.launch {
             try {
+                AppLog.i(AppLog.TAG_DB, "Renomeando playlist $playlistId para ${name.trim()}")
                 app.playlists.rename(playlistId, name)
             } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_DB, "Falha renomeando playlist $playlistId", t)
                 _message.value = R.string.error_generic
             }
         }
@@ -66,8 +71,10 @@ class PlaylistDetailViewModel(
     fun setCover(uri: String?) {
         viewModelScope.launch {
             try {
+                AppLog.i(AppLog.TAG_DB, "Alterando capa da playlist $playlistId: ${uri != null}")
                 app.playlists.setCover(playlistId, uri)
             } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_DB, "Falha alterando capa da playlist $playlistId", t)
                 _message.value = R.string.error_generic
             }
         }
@@ -76,9 +83,11 @@ class PlaylistDetailViewModel(
     fun delete() {
         viewModelScope.launch {
             try {
+                AppLog.i(AppLog.TAG_DB, "Removendo playlist $playlistId")
                 app.playlists.delete(playlistId)
                 _deleted.value = true
             } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_DB, "Falha removendo playlist $playlistId", t)
                 _message.value = R.string.error_generic
             }
         }
@@ -87,8 +96,10 @@ class PlaylistDetailViewModel(
     fun removeTrack(track: Track) {
         viewModelScope.launch {
             try {
+                AppLog.i(AppLog.TAG_DB, "Removendo ${track.videoId} da playlist $playlistId")
                 app.playlists.removeTrack(playlistId, track.videoId)
             } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_DB, "Falha removendo faixa da playlist", t)
                 _message.value = R.string.error_generic
                 observeTracks()
             }
@@ -98,8 +109,10 @@ class PlaylistDetailViewModel(
     fun restoreTrack(track: Track, position: Int) {
         viewModelScope.launch {
             try {
+                AppLog.i(AppLog.TAG_DB, "Restaurando ${track.videoId} na posição $position")
                 app.playlists.restoreTrack(playlistId, track, position)
             } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_DB, "Falha restaurando faixa da playlist", t)
                 _message.value = R.string.error_generic
                 observeTracks()
             }
@@ -109,8 +122,10 @@ class PlaylistDetailViewModel(
     fun reorder(tracks: List<Track>) {
         viewModelScope.launch {
             try {
+                AppLog.i(AppLog.TAG_DB, "Reordenando ${tracks.size} faixas da playlist $playlistId")
                 app.playlists.reorder(playlistId, tracks)
             } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_DB, "Falha reordenando playlist $playlistId", t)
                 _message.value = R.string.error_generic
                 observeTracks()
             }
@@ -129,12 +144,17 @@ class PlaylistDetailViewModel(
         playlistJob?.cancel()
         playlistJob = viewModelScope.launch {
             app.playlists.observePlaylist(playlistId)
-                .catch {
+                .catch { t ->
+                    AppLog.failure(AppLog.TAG_DB, "Falha observando playlist $playlistId", t)
                     _state.update {
                         it.copy(loading = false, errorRes = R.string.error_generic)
                     }
                 }
                 .collect { playlist ->
+                    AppLog.d(
+                        AppLog.TAG_DB,
+                        "Playlist $playlistId observada: ${playlist?.name ?: "<removida>"}",
+                    )
                     _state.update {
                         it.copy(loading = false, playlist = playlist)
                     }
@@ -147,10 +167,15 @@ class PlaylistDetailViewModel(
         _state.update { it.copy(tracks = LoadState.Loading) }
         tracksJob = viewModelScope.launch {
             app.playlists.observeTracks(playlistId)
-                .catch {
+                .catch { t ->
+                    AppLog.failure(AppLog.TAG_DB, "Falha observando faixas da playlist $playlistId", t)
                     _state.update { it.copy(tracks = LoadState.Error(R.string.error_generic)) }
                 }
                 .collect { tracks ->
+                    AppLog.d(
+                        AppLog.TAG_DB,
+                        "Faixas da playlist $playlistId: ${tracks.size}",
+                    )
                     _state.update {
                         it.copy(tracks = if (tracks.isEmpty()) LoadState.Empty else LoadState.Data(tracks))
                     }

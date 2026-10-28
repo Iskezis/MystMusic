@@ -11,6 +11,7 @@ import com.iskezis.myst.R
 import com.iskezis.myst.data.account.AccountRepository
 import com.iskezis.myst.data.account.InvalidCredentialsException
 import com.iskezis.myst.data.account.UsernameTakenException
+import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,11 +31,14 @@ class AuthViewModel(private val accounts: AccountRepository) : ViewModel() {
     fun login(username: String, password: String) {
         if (_state.value.loading) return
         viewModelScope.launch {
+            AppLog.i(AppLog.TAG_AUTH, "Login Myst solicitado para usuário $username")
             _state.value = AuthState(loading = true)
             _state.value = try {
                 accounts.login(username, password)
+                AppLog.i(AppLog.TAG_AUTH, "Login Myst concluído")
                 AuthState(success = true)
             } catch (t: Throwable) {
+                AppLog.w(AppLog.TAG_AUTH, "Login Myst falhou: ${AppLog.describe(t)}")
                 AuthState(errorRes = mapError(t))
             }
         }
@@ -43,11 +47,14 @@ class AuthViewModel(private val accounts: AccountRepository) : ViewModel() {
     fun register(username: String, password: String) {
         if (_state.value.loading) return
         viewModelScope.launch {
+            AppLog.i(AppLog.TAG_AUTH, "Cadastro Myst solicitado para usuário $username")
             _state.value = AuthState(loading = true)
             _state.value = try {
                 accounts.register(username, password)
+                AppLog.i(AppLog.TAG_AUTH, "Cadastro Myst concluído")
                 AuthState(success = true)
             } catch (t: Throwable) {
+                AppLog.w(AppLog.TAG_AUTH, "Cadastro Myst falhou: ${AppLog.describe(t)}")
                 AuthState(errorRes = mapError(t))
             }
         }
@@ -56,11 +63,14 @@ class AuthViewModel(private val accounts: AccountRepository) : ViewModel() {
     fun loginYouTube(cookies: String, fallbackName: String) {
         if (_state.value.loading) return
         viewModelScope.launch {
+            AppLog.i(AppLog.TAG_AUTH, "Login YouTube solicitado (cookies=${cookies.length} bytes)")
             _state.value = AuthState(loading = true)
             _state.value = try {
                 accounts.loginYouTube(cookies, fallbackName)
+                AppLog.i(AppLog.TAG_AUTH, "Login YouTube concluído")
                 AuthState(success = true)
             } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_AUTH, "Login YouTube falhou", t)
                 AuthState(errorRes = mapError(t))
             }
         }

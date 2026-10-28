@@ -5,6 +5,7 @@ import com.iskezis.myst.data.db.ArtistAffinityEntity
 import com.iskezis.myst.data.db.HistoryEntity
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.data.youtube.YouTubeRepository
+import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.normalizeText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -25,6 +26,7 @@ class RecommendationRepository(
         }
 
     suspend fun trendingForUser(userId: Long): List<Track> = withContext(Dispatchers.IO) {
+        AppLog.d(AppLog.TAG_DB, "Calculando Em Alta para usuário $userId")
         val trending = youtube.trending(40)
         val affinities = database.affinityDao().top(userId, 100)
         if (affinities.isEmpty()) return@withContext trending.take(30)
@@ -41,8 +43,10 @@ class RecommendationRepository(
     }
 
     suspend fun recommendedForUser(userId: Long): List<Track> = withContext(Dispatchers.IO) {
+        AppLog.d(AppLog.TAG_DB, "Calculando Recomendados para usuário $userId")
         val recent = database.historyDao().recent(userId, 50)
         if (recent.isEmpty()) {
+            AppLog.d(AppLog.TAG_DB, "Sem histórico; usando Em Alta como recomendação")
             return@withContext youtube.trending(30)
         }
 
@@ -52,14 +56,26 @@ class RecommendationRepository(
         seeds.forEach { videoId ->
             runCatching { youtube.related(videoId, 20) }
                 .onSuccess { related.addAll(it) }
-                .onFailure { if (firstError == null) firstError = it }
+                .onFailure {
+                    AppLog.w(
+                        AppLog.TAG_TUBE,
+                        "Relacionados falharam para $videoId: ${AppLog.describe(it)}",
+                    )
+                    if (firstError == null) firstError = it
+                }
         }
         val artists = database.affinityDao().top(userId, 3)
         val fromArtists = mutableListOf<Track>()
         artists.forEach { affinity ->
             runCatching { youtube.search(affinity.artist, 10) }
                 .onSuccess { fromArtists.addAll(it) }
-                .onFailure { if (firstError == null) firstError = it }
+                .onFailure {
+                    AppLog.w(
+                        AppLog.TAG_TUBE,
+                        "Busca por artista ${affinity.artist} falhou: ${AppLog.describe(it)}",
+                    )
+                    if (firstError == null) firstError = it
+                }
         }
 
         val merged = (related + fromArtists).distinctBy { it.videoId }
@@ -76,6 +92,11 @@ class RecommendationRepository(
 
         val daySeed = System.currentTimeMillis() / TimeUnit.DAYS.toMillis(1)
         val shuffled = filtered.shuffled(Random(daySeed))
+        AppLog.i(
+            AppLog.TAG_DB,
+            "Recomendados: ${shuffled.size} candidatos (sementes=${seeds.size}, " +
+                "artistas=${artists.size})",
+        )
         shuffled.take(30)
     }
 

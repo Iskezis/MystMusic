@@ -5,6 +5,7 @@ import android.webkit.CookieManager
 import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.UserEntity
 import com.iskezis.myst.data.youtube.InnerTubeClient
+import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.sha256Hex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -36,6 +37,7 @@ class AccountRepository(
             ),
         )
         session.saveMyst(id, normalized)
+        AppLog.i(AppLog.TAG_AUTH, "Conta Myst criada: id=$id")
         id
     }
 
@@ -45,16 +47,20 @@ class AccountRepository(
         val salt = user?.salt
         val hash = user?.passwordHash
         if (user == null || salt == null || hash == null) {
+            AppLog.w(AppLog.TAG_AUTH, "Login Myst: usuário inexistente $normalized")
             throw InvalidCredentialsException()
         }
         if (!PasswordHasher.verify(password, salt, hash)) {
+            AppLog.w(AppLog.TAG_AUTH, "Login Myst: senha inválida para $normalized")
             throw InvalidCredentialsException()
         }
         session.saveMyst(user.id, user.displayName.ifBlank { user.username })
+        AppLog.i(AppLog.TAG_AUTH, "Login Myst: sessão salva para id=${user.id}")
         user.id
     }
 
     suspend fun loginYouTube(cookies: String, fallbackName: String): Long = withContext(Dispatchers.IO) {
+        AppLog.d(AppLog.TAG_AUTH, "Login YouTube: cookies=${cookies.length} bytes")
         val sapisid = extractSapisid(cookies)
         val accountKey = sha256Hex(sapisid ?: cookies.take(512)).take(20)
         val username = "yt_$accountKey"
@@ -68,10 +74,12 @@ class AccountRepository(
                 ),
             )
             user = database.userDao().findById(id)
+            AppLog.i(AppLog.TAG_AUTH, "Conta local do YouTube criada: id=$id")
         }
         val savedUser = user ?: throw IllegalStateException("Não foi possível criar a conta do YouTube")
         session.saveYouTube(savedUser.id, fallbackName, cookies, sapisid)
 
+        AppLog.d(AppLog.TAG_AUTH, "Consultando nome da conta YouTube")
         val name = runCatching { youTube.accountName() }.getOrNull()
         if (!name.isNullOrBlank()) {
             database.userDao().updateDisplayName(savedUser.id, name)
@@ -80,6 +88,9 @@ class AccountRepository(
                 savedUser.id,
                 name,
             )
+            AppLog.i(AppLog.TAG_AUTH, "Conta YouTube identificada: $name")
+        } else {
+            AppLog.w(AppLog.TAG_AUTH, "Nome da conta YouTube indisponível; usando fallback")
         }
         session.session?.userId ?: 0L
     }
@@ -90,11 +101,15 @@ class AccountRepository(
     }
 
     suspend fun logout() = withContext(Dispatchers.IO) {
+        AppLog.i(AppLog.TAG_AUTH, "Logout solicitado")
         session.clearSession()
         runCatching {
             CookieManager.getInstance().removeAllCookies(null)
             CookieManager.getInstance().flush()
+        }.onFailure {
+            AppLog.failure(AppLog.TAG_AUTH, "Falha limpando cookies do WebView", it)
         }
+        AppLog.i(AppLog.TAG_AUTH, "Logout concluído")
     }
 
     companion object {

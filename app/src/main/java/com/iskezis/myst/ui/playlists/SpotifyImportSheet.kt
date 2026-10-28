@@ -18,6 +18,7 @@ import com.iskezis.myst.data.spotify.SpotifyImporter
 import com.iskezis.myst.data.spotify.SpotifyLinkException
 import com.iskezis.myst.data.spotify.SpotifyUnavailableException
 import com.iskezis.myst.databinding.SheetSpotifyImportBinding
+import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.pressScale
 import com.iskezis.myst.util.UiAnimations.shake
 import kotlinx.coroutines.CancellationException
@@ -41,6 +42,7 @@ class SpotifyImportSheet : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        AppLog.d(AppLog.TAG_SPOTIFY, "SpotifyImportSheet.onViewCreated")
         binding.spotifyCancel.setOnClickListener {
             if (job?.isActive == true) {
                 job?.cancel()
@@ -72,10 +74,12 @@ class SpotifyImportSheet : BottomSheetDialogFragment() {
         }
         val link = binding.spotifyInput.text?.toString().orEmpty()
         if (SpotifyImporter.parsePlaylistId(link) == null) {
+            AppLog.w(AppLog.TAG_SPOTIFY, "Link do Spotify inválido: ${AppLog.urlForLog(link)}")
             binding.spotifyLayout.error = getString(R.string.spotify_invalid)
             binding.spotifyInput.shake()
             return
         }
+        AppLog.i(AppLog.TAG_SPOTIFY, "Importação solicitada: ${AppLog.urlForLog(link)}")
         binding.spotifyLayout.error = null
         binding.spotifyError.isVisible = false
         setImporting(true)
@@ -97,6 +101,11 @@ class SpotifyImportSheet : BottomSheetDialogFragment() {
                 } else {
                     null
                 }
+                AppLog.i(
+                    AppLog.TAG_SPOTIFY,
+                    "Importação OK: playlist=${summary.playlistId} " +
+                        "encontradas=${summary.found}/${summary.total}",
+                )
                 Toast.makeText(
                     requireContext(),
                     getString(R.string.spotify_success, summary.found),
@@ -113,16 +122,20 @@ class SpotifyImportSheet : BottomSheetDialogFragment() {
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (linkError: SpotifyLinkException) {
+                AppLog.w(AppLog.TAG_SPOTIFY, "Link inválido no meio da importação")
                 binding.spotifyLayout.error = getString(R.string.spotify_invalid)
                 binding.spotifyInput.shake()
                 setImporting(false)
             } catch (privateError: SpotifyUnavailableException) {
+                AppLog.w(AppLog.TAG_SPOTIFY, "Playlist privada/indisponível")
                 showError(getString(R.string.spotify_private))
                 setImporting(false)
             } catch (importError: SpotifyImportException) {
+                AppLog.failure(AppLog.TAG_SPOTIFY, "Falha importando playlist", importError)
                 showError(getString(R.string.spotify_error))
                 setImporting(false)
             } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_SPOTIFY, "Erro inesperado na importação", t)
                 showError(getString(R.string.spotify_error))
                 setImporting(false)
             }
@@ -156,6 +169,7 @@ class SpotifyImportSheet : BottomSheetDialogFragment() {
     }
 
     override fun onDestroyView() {
+        AppLog.d(AppLog.TAG_SPOTIFY, "SpotifyImportSheet.onDestroyView")
         job?.cancel()
         super.onDestroyView()
         _binding = null

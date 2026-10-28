@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
+import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -16,46 +17,48 @@ import coil.load
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.databinding.FragmentPlayerBinding
+import com.iskezis.myst.player.PlayerController
 import com.iskezis.myst.player.PlayerState
 import com.iskezis.myst.ui.playlists.AddToPlaylistSheet
+import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.animatePlayIcon
-import com.iskezis.myst.util.UiAnimations.applySlideUp
 import com.iskezis.myst.util.UiAnimations.pressScale
 import com.iskezis.myst.util.formatDuration
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 class PlayerFragment : Fragment() {
 
     private var _binding: FragmentPlayerBinding? = null
     private val binding get() = checkNotNull(_binding)
-    private val controller get() = (requireActivity().application as MystApp).playerController
+    private val controller: PlayerController?
+        get() = (activity?.application as? MystApp)?.playerController
     private var latest: PlayerState = PlayerState()
     private var seeking = false
     private var loadedArtworkFor: String? = null
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        applySlideUp()
-    }
+    private var lastLoggedTrack: String? = null
+    private var lastLoggedPlaying: Boolean? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?,
     ): View {
+        AppLog.d(AppLog.TAG_UI, "PlayerFragment.onCreateView")
         _binding = FragmentPlayerBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding.playerBack.setOnClickListener { findNavController().navigateUp() }
-        binding.playerPlay.setOnClickListener { controller.toggle() }
-        binding.playerNext.setOnClickListener { controller.next() }
-        binding.playerPrevious.setOnClickListener { controller.previous() }
-        binding.playerShuffle.setOnClickListener { controller.toggleShuffle() }
-        binding.playerRepeat.setOnClickListener { controller.cycleRepeat() }
-        binding.playerRetry.setOnClickListener { controller.retry() }
+        AppLog.i(AppLog.TAG_UI, "PlayerFragment.onViewCreated")
+        binding.playerBack.setOnClickListener { closePlayer() }
+        binding.playerPlay.setOnClickListener { controller?.toggle() }
+        binding.playerNext.setOnClickListener { controller?.next() }
+        binding.playerPrevious.setOnClickListener { controller?.previous() }
+        binding.playerShuffle.setOnClickListener { controller?.toggleShuffle() }
+        binding.playerRepeat.setOnClickListener { controller?.cycleRepeat() }
+        binding.playerRetry.setOnClickListener { retry() }
         binding.playerMore.setOnClickListener {
             latest.track?.let { track ->
                 AddToPlaylistSheet.newInstance(track)
@@ -86,23 +89,39 @@ class PlayerFragment : Fragment() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
                 val progress = seekBar?.progress ?: 0
                 if (latest.durationMs > 0) {
-                    controller.seekTo(latest.durationMs * progress / 1000)
+                    controller?.seekTo(latest.durationMs * progress / 1000)
                 }
                 seeking = false
             }
         })
 
+        val playerController = controller
+        if (playerController == null) {
+            AppLog.e(AppLog.TAG_UI, "PlayerFragment sem PlayerController")
+            showConnectionError()
+            return
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                controller.state.collect { state ->
-                    latest = state
-                    render(state)
+                try {
+                    playerController.state.collect { state ->
+                        latest = state
+                        render(state)
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (t: Throwable) {
+                    AppLog.failure(AppLog.TAG_UI, "Falha ao observar o player", t)
+                    showConnectionError()
                 }
             }
         }
     }
 
     private fun render(state: PlayerState) {
+        val binding = _binding ?: return
+        if (!isAdded) return
         val track = state.track
         val title = track?.title?.ifBlank { getString(R.string.player_unknown_title) }
         val artist = track?.artist?.ifBlank { getString(R.string.player_unknown_artist) }
@@ -113,7 +132,6 @@ class PlayerFragment : Fragment() {
             title ?: getString(R.string.player_unknown_title),
         )
 
-        val context = requireContext()
         val artwork = track?.artworkUrl()
         if (artwork.isNullOrBlank()) {
             loadedArtworkFor = null
@@ -125,6 +143,14 @@ class PlayerFragment : Fragment() {
                 crossfade(true)
                 placeholder(R.drawable.bg_cover_placeholder)
                 error(R.drawable.bg_cover_placeholder)
+                listener(
+                    onError = { _, result ->
+                        AppLog.w(
+                            AppLog.TAG_UI,
+                            "Falha ao carregar capa do player: ${AppLog.describe(result.throwable)}",
+                        )
+                    },
+                )
             }
             binding.playerBackdrop.load(artwork) {
                 crossfade(true)
@@ -135,7 +161,7 @@ class PlayerFragment : Fragment() {
 
         binding.playerPlay.isEnabled = track != null
         animatePlayIcon(binding.playerPlay, state.isPlaying, R.drawable.ic_play, R.drawable.ic_pause)
-        binding.playerPlay.contentDescription = context.getString(
+        binding.playerPlay.contentDescription = getString(
             if (state.isPlaying) R.string.player_pause else R.string.player_play,
         )
         binding.playerNext.isEnabled = state.hasNext || track != null
@@ -159,9 +185,53 @@ class PlayerFragment : Fragment() {
         binding.playerError.isVisible = state.error
         binding.playerError.text = state.errorMessage ?: getString(R.string.player_error_stream)
         binding.playerRetry.isVisible = state.error
+
+        if (state.track?.videoId != lastLoggedTrack) {
+            lastLoggedTrack = state.track?.videoId
+            AppLog.i(
+                AppLog.TAG_PLAYER,
+                "Player exibindo: ${state.track?.title ?: "<nenhuma>"} " +
+                    "(${state.track?.videoId ?: "-"})",
+            )
+        }
+        if (state.isPlaying != lastLoggedPlaying) {
+            lastLoggedPlaying = state.isPlaying
+            AppLog.i(AppLog.TAG_PLAYER, "Player isPlaying=${state.isPlaying}")
+        }
+    }
+
+    private fun showConnectionError() {
+        val binding = _binding ?: return
+        binding.playerError.isVisible = true
+        binding.playerError.text = getString(R.string.player_connection_error)
+        binding.playerRetry.isVisible = true
+    }
+
+    private fun retry() {
+        val playerController = controller
+        if (playerController == null) {
+            AppLog.e(AppLog.TAG_PLAYER, "Tentar novamente sem PlayerController")
+            Toast.makeText(requireContext(), R.string.player_connection_error, Toast.LENGTH_LONG)
+                .show()
+            return
+        }
+        AppLog.i(AppLog.TAG_PLAYER, "Tentar novamente solicitado pelo player")
+        playerController.retry()
+    }
+
+    private fun closePlayer() {
+        AppLog.d(AppLog.TAG_UI, "PlayerFragment: fechar")
+        val nav = runCatching { findNavController() }.getOrNull()
+        if (nav != null && nav.currentDestination?.id == R.id.playerFragment) {
+            val result = runCatching { nav.navigateUp() }
+            if (result.isSuccess) return
+            AppLog.failure(AppLog.TAG_UI, "navigateUp falhou no player", result.exceptionOrNull()!!)
+        }
+        activity?.finish()
     }
 
     override fun onDestroyView() {
+        AppLog.d(AppLog.TAG_UI, "PlayerFragment.onDestroyView")
         super.onDestroyView()
         _binding = null
     }

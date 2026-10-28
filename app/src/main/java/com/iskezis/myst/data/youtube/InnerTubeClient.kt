@@ -3,6 +3,7 @@ package com.iskezis.myst.data.youtube
 import android.content.Context
 import android.net.Uri
 import com.iskezis.myst.data.account.SessionManager
+import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.Thumbnails
 import com.iskezis.myst.util.sha1Hex
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +50,10 @@ class InnerTubeClient(
         .retryOnConnectionFailure(true)
         .build()
 
+    private val probeHttp = http.newBuilder()
+        .callTimeout(10, TimeUnit.SECONDS)
+        .build()
+
     private val urlCache = ConcurrentHashMap<String, CachedUrl>()
 
     override suspend fun search(query: String, limit: Int): List<Track> = withContext(Dispatchers.IO) {
@@ -90,13 +95,20 @@ class InnerTubeClient(
     }
 
     override suspend fun streamUrl(videoId: String): String = withContext(Dispatchers.IO) {
-        resolveStream(videoId)
+        resolveStreamInfo(videoId).url
     }
 
-    override fun streamUrlBlocking(videoId: String): String = resolveStream(videoId)
+    override suspend fun streamInfo(videoId: String): StreamInfo = withContext(Dispatchers.IO) {
+        resolveStreamInfo(videoId)
+    }
+
+    override fun streamUrlBlocking(videoId: String): String = resolveStreamInfo(videoId).url
+
+    override fun streamInfoBlocking(videoId: String): StreamInfo = resolveStreamInfo(videoId)
 
     override fun invalidateStream(videoId: String) {
         urlCache.remove(videoId)
+        AppLog.d(AppLog.TAG_STREAM, "Cache de stream invalidado: $videoId")
     }
 
     override suspend fun accountName(): String? = withContext(Dispatchers.IO) {
@@ -111,14 +123,23 @@ class InnerTubeClient(
     /**
      * Chamado pela thread de carregamento do ExoPlayer. Tenta clientes diferentes,
      * porque a disponibilidade de URL direta (sem cifra) varia por cliente.
+     *
+     * A URL escolhida é validada com uma requisição Range de 2 bytes usando o
+     * mesmo User-Agent antes de ser devolvida. Assim uma URL expirada/bloqueada
+     * não chega ao ExoPlayer e o próximo cliente pode ser tentado.
      */
-    fun resolveStream(videoId: String): String {
+    fun resolveStreamInfo(videoId: String): StreamInfo {
         val cached = urlCache[videoId]
-        if (cached != null && cached.expiresAt > System.currentTimeMillis()) return cached.url
+        if (cached != null && cached.expiresAt > System.currentTimeMillis()) {
+            AppLog.d(AppLog.TAG_STREAM, "Stream em cache: $videoId (${AppLog.urlForLog(cached.info.url)})")
+            return cached.info
+        }
 
+        val startedAt = System.currentTimeMillis()
         var lastError: Throwable? = null
         for (clientName in CLIENTS) {
             try {
+                AppLog.d(AppLog.TAG_STREAM, "Resolvendo $videoId com cliente $clientName")
                 val body = buildJsonObject {
                     put("context", clientContext(clientName))
                     put("videoId", videoId)
@@ -139,26 +160,123 @@ class InnerTubeClient(
                 val status = response["playabilityStatus"]?.let { element ->
                     (element as? JsonObject)?.get("status")?.let { (it as? JsonPrimitive)?.contentOrNull }
                 }
-                if (status != null && status != "OK") {
+                if (status != null && status != "OK" && status != "LIVE_STREAM_OFFLINE") {
                     lastError = MusicException("Faixa indisponível ($status)")
+                    AppLog.w(AppLog.TAG_STREAM, "$clientName recusou $videoId: $status")
                     continue
                 }
-                val url = extractAudioUrl(response)
-                if (!url.isNullOrBlank()) {
-                    urlCache[videoId] = CachedUrl(url, System.currentTimeMillis() + URL_TTL_MS)
-                    return url
+                val formats = selectAudioFormats(response)
+                if (formats.isEmpty()) {
+                    lastError = MusicException("Sem formatos de áudio")
+                    AppLog.w(AppLog.TAG_STREAM, "$clientName não retornou formatos de áudio para $videoId")
+                    continue
                 }
-                lastError = MusicException("Sem URL de áudio")
+                var accepted: StreamInfo? = null
+                for (format in formats) {
+                    val url = formatUrl(format) ?: continue
+                    val itag = number(format["itag"])?.toInt() ?: -1
+                    val mime = (format["mimeType"] as? JsonPrimitive)?.contentOrNull.orEmpty()
+                    val bitrate = number(format["bitrate"]) ?: 0L
+                    AppLog.d(
+                        AppLog.TAG_STREAM,
+                        "Candidato $clientName/$videoId: itag=$itag mime=$mime bitrate=$bitrate",
+                    )
+                    val candidate = StreamInfo(url, streamHeaders(clientName))
+                    if (validateAudioUrl(videoId, clientName, candidate)) {
+                        accepted = candidate
+                        break
+                    }
+                }
+                if (accepted == null) {
+                    lastError = MusicException("Nenhuma URL de áudio passou na validação")
+                    continue
+                }
+                urlCache[videoId] = CachedUrl(
+                    accepted,
+                    System.currentTimeMillis() + URL_TTL_MS,
+                )
+                AppLog.i(
+                    AppLog.TAG_STREAM,
+                    "Stream pronto: $videoId via $clientName em " +
+                        "${System.currentTimeMillis() - startedAt}ms | " +
+                        AppLog.urlForLog(accepted.url),
+                )
+                return accepted
             } catch (t: Throwable) {
                 lastError = t
-                if (t is IOException || t.cause is IOException) break
+                AppLog.failure(AppLog.TAG_STREAM, "Falha resolvendo $videoId com $clientName", t)
+                if (t is IOException || t.cause is IOException) {
+                    AppLog.w(AppLog.TAG_STREAM, "Erro de rede; interrompendo tentativas de cliente")
+                    break
+                }
             }
         }
+        val elapsed = System.currentTimeMillis() - startedAt
+        AppLog.e(
+            AppLog.TAG_STREAM,
+            "Não foi possível obter áudio de $videoId após ${elapsed}ms: " +
+                AppLog.describe(lastError),
+            lastError,
+        )
         throw MusicException("Não foi possível obter o áudio desta faixa.", lastError)
     }
 
-    private fun extractAudioUrl(root: JsonObject): String? {
-        val streaming = root["streamingData"] as? JsonObject ?: return null
+    /**
+     * Requisição mínima para confirmar que o googlevideo aceita a URL e o UA.
+     * 200/206 são sucesso; 3xx são seguidos pelo OkHttp. Qualquer outro código
+     * faz o cliente ser descartado.
+     */
+    private fun validateAudioUrl(
+        videoId: String,
+        clientName: String,
+        info: StreamInfo,
+    ): Boolean {
+        return try {
+            val requestHeaders = Headers.Builder().apply {
+                add("Range", "bytes=0-1")
+                info.headers.forEach { (name, value) -> add(name, value) }
+            }.build()
+            val request = Request.Builder()
+                .url(info.url)
+                .headers(requestHeaders)
+                .build()
+            probeHttp.newCall(request).execute().use { response ->
+                val contentType = response.header("Content-Type").orEmpty()
+                val ok = (response.code == 206 || response.code == 200) &&
+                    !contentType.startsWith("text/", ignoreCase = true)
+                AppLog.d(
+                    AppLog.TAG_STREAM,
+                    "Validação $clientName/$videoId: HTTP ${response.code} " +
+                        "| tipo=${contentType.ifBlank { "?" }}",
+                )
+                if (!ok) {
+                    AppLog.w(
+                        AppLog.TAG_STREAM,
+                        "URL rejeitada ($clientName/$videoId): HTTP ${response.code} " +
+                            "tipo=$contentType",
+                    )
+                }
+                ok
+            }
+        } catch (t: Throwable) {
+            AppLog.failure(
+                AppLog.TAG_STREAM,
+                "Falha validando URL ($clientName/$videoId)",
+                t,
+            )
+            false
+        }
+    }
+
+    private fun streamHeaders(clientName: String): Map<String, String> = mapOf(
+        "User-Agent" to userAgent(clientName),
+        "Origin" to if (clientName == WEB_REMIX) "https://music.youtube.com" else "https://www.youtube.com",
+        "Referer" to if (clientName == WEB_REMIX) "https://music.youtube.com/" else "https://www.youtube.com/",
+        "Accept-Encoding" to "identity",
+    )
+
+    private fun selectAudioFormats(root: JsonObject): List<JsonObject> {
+        val streaming = root["streamingData"] as? JsonObject ?: return emptyList()
         val formats = mutableListOf<JsonObject>()
         (streaming["adaptiveFormats"] as? JsonArray)?.forEach { element ->
             (element as? JsonObject)?.let { formats.add(it) }
@@ -174,14 +292,10 @@ class InnerTubeClient(
         }
         // AAC (itag 140/141) toca em praticamente qualquer aparelho e TV. Opus
         // (251) fica como reserva: alguns decodificadores antigos não o suportam.
-        val sorted = audio.sortedWith(
+        return audio.sortedWith(
             compareBy<JsonObject> { audioRank(it) }
                 .thenByDescending { number(it["bitrate"]) },
-        )
-        sorted.forEach { format ->
-            formatUrl(format)?.takeIf { it.startsWith("http") }?.let { return it }
-        }
-        return null
+        ).filter { format -> formatUrl(format)?.startsWith("http") == true }
     }
 
     private fun audioRank(format: JsonObject): Int {
@@ -403,12 +517,31 @@ class InnerTubeClient(
 
         var lastError: Throwable? = null
         for (attempt in 0 until 2) {
+            val startedAt = System.currentTimeMillis()
             try {
+                AppLog.d(
+                    AppLog.TAG_TUBE,
+                    "POST $baseUrl/$endpoint tentativa=${attempt + 1} " +
+                        "cliente=${request.header("X-YouTube-Client-Name")} " +
+                        "thread=${Thread.currentThread().name}",
+                )
                 http.newCall(request).execute().use { response ->
+                    val elapsed = System.currentTimeMillis() - startedAt
                     val text = response.body?.string().orEmpty()
+                    AppLog.d(
+                        AppLog.TAG_TUBE,
+                        "Resposta $endpoint: HTTP ${response.code} em ${elapsed}ms " +
+                            "(${AppLog.bytesForLog(text.length)})",
+                    )
                     if (!response.isSuccessful) {
                         val error = MusicException("HTTP ${response.code}")
-                        if (response.code in 400..499) throw error
+                        if (response.code in 400..499) {
+                            AppLog.w(
+                                AppLog.TAG_TUBE,
+                                "Erro HTTP do cliente (não repete): ${response.code}",
+                            )
+                            throw error
+                        }
                         lastError = error
                     } else {
                         val parsed = json.parseToJsonElement(text) as? JsonObject
@@ -422,6 +555,10 @@ class InnerTubeClient(
                 }
             } catch (t: Throwable) {
                 lastError = t
+                AppLog.w(
+                    AppLog.TAG_TUBE,
+                    "Falha em $endpoint tentativa=${attempt + 1}: ${AppLog.describe(t)}",
+                )
                 if (t is MusicException && t.message?.startsWith("HTTP 4") == true) break
             }
             if (attempt < 1) {
@@ -522,7 +659,7 @@ class InnerTubeClient(
         else -> "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     }
 
-    private data class CachedUrl(val url: String, val expiresAt: Long)
+    private data class CachedUrl(val info: StreamInfo, val expiresAt: Long)
 
     companion object {
         private const val BASE_URL = "https://music.youtube.com/youtubei/v1"

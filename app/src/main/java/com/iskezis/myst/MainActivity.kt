@@ -23,6 +23,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.iskezis.myst.databinding.ActivityMainBinding
 import com.iskezis.myst.player.PlayerState
 import com.iskezis.myst.ui.auth.AuthActivity
+import com.iskezis.myst.ui.player.PlayerActivity
+import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.animatePlayIcon
 import com.iskezis.myst.util.UiAnimations.pressScale
 import com.iskezis.myst.util.formatDuration
@@ -35,6 +37,9 @@ class MainActivity : AppCompatActivity() {
     private var playerState = PlayerState()
     private var miniVisible = false
     private var navBarHidden = false
+    private var lastLoggedVideoId: String? = null
+    private var lastLoggedPlaying: Boolean? = null
+    private var lastLoggedError: String? = null
 
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -42,8 +47,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppLog.i(AppLog.TAG_UI, "MainActivity.onCreate savedInstanceState=${savedInstanceState != null}")
         val app = application as MystApp
         if (!app.session.isLoggedIn) {
+            AppLog.i(AppLog.TAG_UI, "Sem sessão; abrindo AuthActivity")
             startActivity(
                 Intent(this, AuthActivity::class.java).addFlags(
                     Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK,
@@ -80,15 +87,30 @@ class MainActivity : AppCompatActivity() {
 
         binding.miniPlayer.root.setOnClickListener {
             if (navController.currentDestination?.id != R.id.playerFragment) {
-                val options = NavOptions.Builder().setLaunchSingleTop(true).build()
-                navController.navigate(R.id.playerFragment, null, options)
+                AppLog.d(AppLog.TAG_UI, "Mini player tocado; abrindo PlayerActivity")
+                try {
+                    startActivity(Intent(this, PlayerActivity::class.java))
+                    overridePendingTransition(R.anim.screen_fade_in, R.anim.screen_fade_out)
+                } catch (t: Throwable) {
+                    AppLog.failure(AppLog.TAG_UI, "Falha ao abrir PlayerActivity", t)
+                    android.widget.Toast.makeText(
+                        this,
+                        R.string.player_open_error,
+                        android.widget.Toast.LENGTH_LONG,
+                    ).show()
+                }
             }
         }
         binding.miniPlayer.miniPlay.setOnClickListener {
+            AppLog.d(AppLog.TAG_UI, "Botão play/pause do mini player")
             (application as MystApp).playerController.toggle()
         }
 
         navController.addOnDestinationChangedListener { _, destination, _ ->
+            AppLog.d(
+                AppLog.TAG_UI,
+                "Destino: ${destination.label ?: destination.id} (${destination.id})",
+            )
             updateSelection(destination.id)
             renderMiniPlayer()
         }
@@ -103,6 +125,33 @@ class MainActivity : AppCompatActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 (application as MystApp).playerController.state.collect { state ->
                     playerState = state
+                    if (state.track?.videoId != lastLoggedVideoId) {
+                        lastLoggedVideoId = state.track?.videoId
+                        AppLog.i(
+                            AppLog.TAG_PLAYER,
+                            "Faixa atual: ${state.track?.title ?: "<nenhuma>"} " +
+                                "(${state.track?.videoId ?: "-"})",
+                        )
+                    }
+                    if (state.isPlaying != lastLoggedPlaying) {
+                        lastLoggedPlaying = state.isPlaying
+                        AppLog.i(
+                            AppLog.TAG_PLAYER,
+                            "isPlaying=${
+                                state.isPlaying
+                            } posição=${AppLog.durationForLog(state.positionMs)} " +
+                                "duração=${AppLog.durationForLog(state.durationMs)}",
+                        )
+                    }
+                    if (state.error && state.errorMessage != lastLoggedError) {
+                        lastLoggedError = state.errorMessage
+                        AppLog.e(
+                            AppLog.TAG_PLAYER,
+                            "Erro visível no mini player: ${state.errorMessage}",
+                        )
+                    } else if (!state.error) {
+                        lastLoggedError = null
+                    }
                     renderMiniPlayer()
                     (application as MystApp).discord.onPlayerState(state)
                 }
@@ -186,6 +235,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun navigateTo(destinationId: Int) {
         if (navController.currentDestination?.id == destinationId) return
+        AppLog.d(AppLog.TAG_UI, "Navegando para destino $destinationId")
         val options = NavOptions.Builder()
             .setLaunchSingleTop(true)
             .setRestoreState(true)

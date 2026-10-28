@@ -21,6 +21,7 @@ import androidx.core.view.isVisible
 import com.iskezis.myst.R
 import com.iskezis.myst.data.account.AccountRepository
 import com.iskezis.myst.databinding.ActivityYoutubeLoginBinding
+import com.iskezis.myst.util.AppLog
 
 class YouTubeLoginActivity : AppCompatActivity() {
 
@@ -38,6 +39,7 @@ class YouTubeLoginActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppLog.i(AppLog.TAG_AUTH, "YouTubeLoginActivity.onCreate")
         binding = ActivityYoutubeLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -87,11 +89,13 @@ class YouTubeLoginActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
+                AppLog.d(AppLog.TAG_AUTH, "YouTube login página: ${AppLog.urlForLog(url)}")
                 binding.loginProgress.isVisible = true
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                AppLog.d(AppLog.TAG_AUTH, "YouTube login página concluída: ${AppLog.urlForLog(url)}")
                 binding.loginProgress.isVisible = false
                 checkCookies()
             }
@@ -103,6 +107,10 @@ class YouTubeLoginActivity : AppCompatActivity() {
             ) {
                 super.onReceivedError(view, request, error)
                 if (request?.isForMainFrame == true) {
+                    AppLog.w(
+                        AppLog.TAG_AUTH,
+                        "Erro de página no login YouTube: ${error?.description ?: "desconhecido"}",
+                    )
                     showError()
                 }
             }
@@ -129,6 +137,7 @@ class YouTubeLoginActivity : AppCompatActivity() {
         if (cookies.isNullOrBlank()) return
         if (AccountRepository.extractSapisid(cookies) == null) return
         finished = true
+        AppLog.i(AppLog.TAG_AUTH, "Cookies do YouTube capturados (${cookies.length} bytes)")
         handler.removeCallbacks(cookiePoll)
         CookieManager.getInstance().flush()
         setResult(

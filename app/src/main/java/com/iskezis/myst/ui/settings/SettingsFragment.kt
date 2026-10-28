@@ -22,6 +22,7 @@ import com.iskezis.myst.data.discord.DiscordState
 import com.iskezis.myst.databinding.FragmentSettingsBinding
 import com.iskezis.myst.ui.auth.AuthActivity
 import com.iskezis.myst.ui.auth.DiscordLoginActivity
+import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.applyFadeThrough
 import com.iskezis.myst.util.UiAnimations.pressScale
 import kotlinx.coroutines.launch
@@ -61,6 +62,7 @@ class SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        AppLog.d(AppLog.TAG_UI, "SettingsFragment.onViewCreated")
         binding.settingsVersion.text = getString(R.string.settings_version, BuildConfig.VERSION_NAME)
 
         binding.settingsLogout.setOnClickListener {
@@ -82,10 +84,14 @@ class SettingsFragment : Fragment() {
         binding.settingsLogout.pressScale()
         binding.settingsDiscordAction.pressScale()
 
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.state.collect { state ->
+                        AppLog.d(
+                            AppLog.TAG_UI,
+                            "Settings render: conta=${state.accountType}",
+                        )
                         binding.settingsAccountName.text = state.name
                         binding.settingsAccountType.setText(
                             if (state.accountType == SessionManager.TYPE_YOUTUBE) {
@@ -116,12 +122,14 @@ class SettingsFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        AppLog.d(AppLog.TAG_UI, "SettingsFragment.onDestroyView")
         super.onDestroyView()
         _binding = null
     }
 
     private fun onDiscordAction() {
         val state = viewModel.discord.value
+        AppLog.d(AppLog.TAG_UI, "Ação Discord: ${state.connection}")
         when {
             state.connection == DiscordConnection.CONNECTED ||
                 state.connection == DiscordConnection.CONNECTING -> viewModel.disconnectDiscord()
@@ -144,6 +152,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun renderDiscord(state: DiscordState) {
+        AppLog.d(AppLog.TAG_UI, "Discord: ${state.connection} usuário=${state.userName ?: "-"}")
         val context = requireContext()
         val (statusRes, colorRes, buttonRes, iconRes) = when (state.connection) {
             DiscordConnection.CONNECTED -> Quad(

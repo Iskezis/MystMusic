@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.snackbar.Snackbar
 import com.iskezis.myst.R
 import com.iskezis.myst.databinding.FragmentPlaylistsBinding
+import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.applyFadeThrough
 import com.iskezis.myst.util.UiAnimations.pressScale
 import com.iskezis.myst.util.UiAnimations.staggerVisibleChildren
@@ -48,6 +49,7 @@ class PlaylistsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        AppLog.d(AppLog.TAG_UI, "PlaylistsFragment.onViewCreated")
         adapter = PlaylistGridAdapter(
             onNew = { showCreateDialog() },
             onOpen = { playlist -> openPlaylist(playlist.id) },
@@ -55,6 +57,7 @@ class PlaylistsFragment : Fragment() {
         binding.playlistsList.layoutManager = GridLayoutManager(requireContext(), 2)
         binding.playlistsList.adapter = adapter
         binding.spotifyButton.setOnClickListener {
+            AppLog.i(AppLog.TAG_SPOTIFY, "Abrindo pop-up Integrar do Spotify")
             SpotifyImportSheet.newInstance()
                 .show(childFragmentManager, SpotifyImportSheet.TAG)
         }
@@ -69,6 +72,10 @@ class PlaylistsFragment : Fragment() {
         ) { _, bundle ->
             val playlistId = bundle.getLong(SpotifyImportSheet.EXTRA_PLAYLIST_ID, -1L)
             val message = bundle.getString(SpotifyImportSheet.EXTRA_MESSAGE)
+            AppLog.d(
+                AppLog.TAG_SPOTIFY,
+                "Resultado da importação: playlist=$playlistId mensagem=${message ?: "-"}",
+            )
             if (!message.isNullOrBlank()) {
                 Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
             }
@@ -100,6 +107,11 @@ class PlaylistsFragment : Fragment() {
     }
 
     private fun render(state: PlaylistsUiState) {
+        AppLog.d(
+            AppLog.TAG_UI,
+            "Playlists render: loading=${state.loading} erro=${state.errorRes} " +
+                "itens=${state.playlists.size}",
+        )
         when {
             state.loading -> {
                 binding.playlistsShimmer.isVisible = true
@@ -170,6 +182,7 @@ class PlaylistsFragment : Fragment() {
     }
 
     private fun openPlaylist(id: Long) {
+        AppLog.d(AppLog.TAG_UI, "Abrindo playlist $id")
         findNavController().navigate(
             R.id.playlistDetailFragment,
             bundleOf(ARG_PLAYLIST_ID to id),
@@ -177,6 +190,7 @@ class PlaylistsFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        AppLog.d(AppLog.TAG_UI, "PlaylistsFragment.onDestroyView")
         binding.playlistsList.adapter = null
         super.onDestroyView()
         _binding = null

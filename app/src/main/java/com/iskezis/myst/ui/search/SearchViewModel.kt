@@ -11,6 +11,7 @@ import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.data.youtube.MusicException
 import com.iskezis.myst.data.youtube.Track
+import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -69,7 +70,14 @@ class SearchViewModel(private val app: MystApp) : ViewModel() {
 
     private suspend fun execute(query: String, raw: String) {
         try {
+            AppLog.d(AppLog.TAG_TUBE, "Busca: $query")
+            val startedAt = System.currentTimeMillis()
             val tracks = app.youtube.search(query, 40)
+            AppLog.i(
+                AppLog.TAG_TUBE,
+                "Busca $query: ${tracks.size} resultados em " +
+                    "${System.currentTimeMillis() - startedAt}ms",
+            )
             _state.value = SearchUiState(
                 raw,
                 if (tracks.isEmpty()) SearchState.Empty else SearchState.Results(tracks),
@@ -77,6 +85,7 @@ class SearchViewModel(private val app: MystApp) : ViewModel() {
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (t: Throwable) {
+            AppLog.failure(AppLog.TAG_TUBE, "Busca falhou: $query", t)
             _state.value = SearchUiState(raw, SearchState.Error(errorRes(t)))
         }
     }

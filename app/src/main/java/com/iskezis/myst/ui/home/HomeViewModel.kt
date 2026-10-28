@@ -12,6 +12,7 @@ import com.iskezis.myst.R
 import com.iskezis.myst.data.youtube.MusicException
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.ui.common.LoadState
+import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
@@ -40,11 +41,13 @@ class HomeViewModel(private val app: MystApp) : ViewModel() {
     private var refreshJob: Job? = null
 
     init {
+        AppLog.d(AppLog.TAG_TUBE, "HomeViewModel init")
         viewModelScope.launch {
             val user = runCatching { app.accounts.currentUser() }.getOrNull()
             val session = app.session.session
             val name = user?.displayName?.ifBlank { user.username }
                 ?: session?.displayName.orEmpty()
+            AppLog.d(AppLog.TAG_UI, "Home: usuário atual=$name")
             _state.update { it.copy(accountName = name) }
         }
         observeRecent()
@@ -64,10 +67,12 @@ class HomeViewModel(private val app: MystApp) : ViewModel() {
         recentJob?.cancel()
         recentJob = viewModelScope.launch {
             app.recommendations.observeRecent(userId, 20)
-                .catch {
+                .catch { t ->
+                    AppLog.failure(AppLog.TAG_DB, "Falha observando recentes", t)
                     _state.update { current -> current.copy(recent = LoadState.Error(R.string.error_generic)) }
                 }
                 .collect { tracks ->
+                    AppLog.d(AppLog.TAG_DB, "Recentes: ${tracks.size} faixas")
                     _state.update {
                         it.copy(recent = if (tracks.isEmpty()) LoadState.Empty else LoadState.Data(tracks))
                     }
@@ -120,11 +125,17 @@ class HomeViewModel(private val app: MystApp) : ViewModel() {
 
     private suspend fun fetch(block: suspend () -> List<Track>): LoadState<List<Track>> {
         return try {
+            val startedAt = System.currentTimeMillis()
             val tracks = block()
+            AppLog.i(
+                AppLog.TAG_TUBE,
+                "Home carregou ${tracks.size} faixas em ${System.currentTimeMillis() - startedAt}ms",
+            )
             if (tracks.isEmpty()) LoadState.Empty else LoadState.Data(tracks)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (t: Throwable) {
+            AppLog.failure(AppLog.TAG_TUBE, "Falha carregando seção da home", t)
             LoadState.Error(errorRes(t))
         }
     }

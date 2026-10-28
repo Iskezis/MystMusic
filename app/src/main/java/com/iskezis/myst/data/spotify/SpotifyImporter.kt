@@ -10,6 +10,7 @@ import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.data.db.PlaylistRepository
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.data.youtube.YouTubeRepository
+import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.normalizeText
 import com.iskezis.myst.util.similarity
 import kotlinx.coroutines.CancellationException
@@ -91,11 +92,18 @@ class SpotifyImporter(
         userId: Long,
         onProgress: (done: Int, total: Int) -> Unit,
     ): SpotifyImportSummary {
+        AppLog.i(AppLog.TAG_SPOTIFY, "Iniciando importação: link=${AppLog.urlForLog(link)}")
         val spotifyId = parsePlaylistId(link) ?: throw SpotifyLinkException()
+        AppLog.d(AppLog.TAG_SPOTIFY, "ID do Spotify: $spotifyId")
         val playlist = readPlaylist(spotifyId)
+        AppLog.i(
+            AppLog.TAG_SPOTIFY,
+            "Playlist Spotify lida: ${playlist.name} (${playlist.tracks.size} faixas)",
+        )
         if (playlist.tracks.isEmpty()) throw SpotifyUnavailableException()
 
         val limited = playlist.tracks.take(MAX_TRACKS)
+        AppLog.d(AppLog.TAG_SPOTIFY, "Mapeando ${limited.size} faixas para o YouTube Music")
         // Cada faixa tem um índice fixo. A ordem final é sempre a ordem do
         // Spotify, mesmo com mapeamentos paralelos e faixas não encontradas.
         val mappedSlots = arrayOfNulls<Track>(limited.size)
@@ -117,9 +125,18 @@ class SpotifyImporter(
             }
             slotOffset += chunk.size
             processed += chunk.size
+            AppLog.d(
+                AppLog.TAG_SPOTIFY,
+                "Progresso do mapeamento: $processed/${limited.size}",
+            )
             onProgress(processed, limited.size)
         }
         val mapped = mappedSlots.filterNotNull()
+        AppLog.i(
+            AppLog.TAG_SPOTIFY,
+            "Mapeamento concluído: ${mapped.size} encontradas, " +
+                "${limited.size - mapped.size} não encontradas, falhas=$failures",
+        )
 
         if (mapped.isEmpty()) {
             if (failures > 0) throw SpotifyImportException()
@@ -128,11 +145,13 @@ class SpotifyImporter(
 
         currentCoroutineContext().ensureActive()
         val name = playlist.name.ifBlank { DEFAULT_NAME }
+        AppLog.i(AppLog.TAG_SPOTIFY, "Criando playlist Myst $name com ${mapped.size} faixas")
         val playlistId = playlists.create(userId, name)
         playlists.addTracks(playlistId, mapped)
         playlist.coverUrl?.let { url ->
             downloadCover(url, playlistId)?.let { uri -> playlists.setCover(playlistId, uri) }
         }
+        AppLog.i(AppLog.TAG_SPOTIFY, "Importação concluída: playlistId=$playlistId")
         return SpotifyImportSummary(
             playlistId = playlistId,
             name = name,
@@ -149,18 +168,18 @@ class SpotifyImporter(
             try {
                 val fromApi = readFromApi(spotifyId, clientId, clientSecret)
                 if (fromApi.tracks.isNotEmpty()) {
-                    Log.i(TAG, "Playlist lida pela Web API")
+                    AppLog.i(AppLog.TAG_SPOTIFY, "Playlist lida pela Web API")
                     return@withContext fromApi
                 }
-                Log.w(TAG, "Web API retornou playlist vazia; usando embed")
+                AppLog.w(AppLog.TAG_SPOTIFY, "Web API retornou playlist vazia; usando embed")
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (t: Throwable) {
-                Log.w(TAG, "Web API falhou; usando embed", t)
+                AppLog.failure(AppLog.TAG_SPOTIFY, "Web API do Spotify falhou; usando embed", t)
             }
         }
         val fromEmbed = readFromEmbed(spotifyId)
-        Log.i(TAG, "Playlist lida pelo JSON do embed")
+        AppLog.i(AppLog.TAG_SPOTIFY, "Playlist lida pelo JSON do embed")
         fromEmbed
     }
 

@@ -5,6 +5,7 @@ import android.os.SystemClock
 import com.iskezis.myst.data.account.SessionManager
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.player.PlayerState
+import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -92,7 +93,12 @@ class DiscordPresenceManager(
 
     fun connect(newToken: String) {
         val clean = newToken.trim()
+        AppLog.i(
+            AppLog.TAG_UI,
+            "Discord connect solicitado (token=${clean.length} caracteres)",
+        )
         if (clean.isBlank()) {
+            AppLog.w(AppLog.TAG_UI, "Discord connect com token vazio")
             _state.value = DiscordState(DiscordConnection.ERROR, session.discordName)
             return
         }
@@ -104,6 +110,7 @@ class DiscordPresenceManager(
     }
 
     fun disconnect() {
+        AppLog.i(AppLog.TAG_UI, "Discord disconnect")
         manualStop = true
         token = null
         reconnectJob?.cancel()
@@ -129,6 +136,7 @@ class DiscordPresenceManager(
 
     fun retry() {
         if (token == null) return
+        AppLog.i(AppLog.TAG_UI, "Discord retry")
         manualStop = false
         reconnectAttempt = 0
         openSocket()
@@ -206,6 +214,7 @@ class DiscordPresenceManager(
             val newSocket = client.newWebSocket(request, Listener(currentToken))
             socket = newSocket
         } catch (t: Throwable) {
+            AppLog.failure(AppLog.TAG_UI, "Falha abrindo WebSocket do Discord", t)
             _state.value = DiscordState(DiscordConnection.ERROR, session.discordName)
             scheduleReconnect()
         }

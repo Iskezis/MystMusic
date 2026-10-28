@@ -19,6 +19,7 @@ import com.iskezis.myst.R
 import com.iskezis.myst.databinding.FragmentSearchBinding
 import com.iskezis.myst.ui.common.TrackRowAdapter
 import com.iskezis.myst.ui.player.TrackMenuSheet
+import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.applyFadeThrough
 import com.iskezis.myst.util.UiAnimations.pressScale
 import com.iskezis.myst.util.UiAnimations.staggerVisibleChildren
@@ -51,8 +52,14 @@ class SearchFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        AppLog.d(AppLog.TAG_UI, "SearchFragment.onViewCreated")
         adapter = TrackRowAdapter(
             onPlay = { tracks, index ->
+                AppLog.i(
+                    AppLog.TAG_UI,
+                    "Busca: tocar ${tracks.size} faixas no índice $index " +
+                        "(videoId=${tracks.getOrNull(index)?.videoId})",
+                )
                 (requireActivity().application as MystApp).playerController.play(tracks, index)
             },
             onMore = { track ->
@@ -86,6 +93,7 @@ class SearchFragment : Fragment() {
     }
 
     private fun render(ui: SearchUiState) {
+        AppLog.d(AppLog.TAG_UI, "Search render: estado=${ui.state.javaClass.simpleName}")
         when (val state = ui.state) {
             is SearchState.Idle -> {
                 stopShimmer()
@@ -156,6 +164,7 @@ class SearchFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        AppLog.d(AppLog.TAG_UI, "SearchFragment.onDestroyView")
         binding.searchList.adapter = null
         super.onDestroyView()
         _binding = null

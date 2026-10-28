@@ -22,6 +22,7 @@ import com.iskezis.myst.MainActivity
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.databinding.ActivityAuthBinding
+import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations
 import com.iskezis.myst.util.UiAnimations.pressScale
 import kotlinx.coroutines.launch
@@ -39,15 +40,20 @@ class AuthActivity : AppCompatActivity() {
         if (result.resultCode == RESULT_OK) {
             val data = result.data ?: return@registerForActivityResult
             val cookies = data.getStringExtra(YouTubeLoginActivity.EXTRA_COOKIES).orEmpty()
+            AppLog.d(AppLog.TAG_AUTH, "Retorno do login YouTube: cookies=${cookies.length} bytes")
             if (cookies.isNotBlank()) {
                 viewModel.loginYouTube(cookies, getString(R.string.youtube_account_fallback))
             }
+        } else {
+            AppLog.d(AppLog.TAG_AUTH, "Login YouTube cancelado (resultCode=${result.resultCode})")
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppLog.i(AppLog.TAG_AUTH, "AuthActivity.onCreate")
         if ((application as MystApp).session.isLoggedIn) {
+            AppLog.i(AppLog.TAG_AUTH, "Sessão já existente; indo para MainActivity")
             goToMain()
             return
         }
@@ -229,6 +235,7 @@ class AuthActivity : AppCompatActivity() {
     }
 
     private fun goToMain() {
+        AppLog.i(AppLog.TAG_AUTH, "Abrindo MainActivity")
         startActivity(
             Intent(this, MainActivity::class.java).addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK,

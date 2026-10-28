@@ -21,6 +21,7 @@ import com.iskezis.myst.databinding.DialogPlaylistNameBinding
 import com.iskezis.myst.databinding.SheetAddToPlaylistBinding
 import com.iskezis.myst.ui.common.toBundle
 import com.iskezis.myst.ui.common.toTrack
+import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
@@ -46,9 +47,11 @@ class AddToPlaylistSheet : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
         val track = track
         if (track == null) {
+            AppLog.w(AppLog.TAG_UI, "AddToPlaylistSheet sem faixa nos argumentos")
             dismissAllowingStateLoss()
             return
         }
+        AppLog.d(AppLog.TAG_UI, "AddToPlaylistSheet: ${track.videoId}")
         val app = requireActivity().application as MystApp
         val userId = app.session.session?.userId
 
@@ -66,11 +69,13 @@ class AddToPlaylistSheet : BottomSheetDialogFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 app.playlists.observePlaylists(userId)
-                    .catch {
+                    .catch { t ->
+                        AppLog.failure(AppLog.TAG_DB, "Falha listando playlists no sheet", t)
                         binding.playlistProgress.isVisible = false
                         showEmpty(getString(R.string.error_generic))
                     }
                     .collect { playlists ->
+                        AppLog.d(AppLog.TAG_DB, "Sheet: ${playlists.size} playlists disponíveis")
                         binding.playlistProgress.isVisible = false
                         if (playlists.isEmpty()) {
                             showEmpty(getString(R.string.sheet_no_playlists))
@@ -103,6 +108,10 @@ class AddToPlaylistSheet : BottomSheetDialogFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val added = app.playlists.addTrack(playlist.id, track)
+                AppLog.i(
+                    AppLog.TAG_DB,
+                    "addTrack ${track.videoId} em ${playlist.id}: ${if (added) "adicionada" else "já existia"}",
+                )
                 val message = if (added) {
                     getString(R.string.track_added, playlist.name)
                 } else {
@@ -113,6 +122,7 @@ class AddToPlaylistSheet : BottomSheetDialogFragment() {
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_DB, "Falha adicionando faixa à playlist", t)
                 setBusy(false)
                 Toast.makeText(requireContext(), R.string.error_generic, Toast.LENGTH_SHORT).show()
             }
@@ -143,8 +153,10 @@ class AddToPlaylistSheet : BottomSheetDialogFragment() {
                 positive.isEnabled = false
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
+                        AppLog.i(AppLog.TAG_DB, "Criando playlist $name pelo sheet")
                         val playlistId = app.playlists.create(userId, name)
                         app.playlists.addTrack(playlistId, track)
+                        AppLog.i(AppLog.TAG_DB, "Playlist $playlistId criada e faixa adicionada")
                         Toast.makeText(
                             requireContext(),
                             getString(R.string.track_added, name),
@@ -155,6 +167,7 @@ class AddToPlaylistSheet : BottomSheetDialogFragment() {
                     } catch (cancelled: CancellationException) {
                         throw cancelled
                     } catch (t: Throwable) {
+                        AppLog.failure(AppLog.TAG_DB, "Falha criando playlist pelo sheet", t)
                         positive.isEnabled = true
                         Toast.makeText(requireContext(), R.string.error_generic, Toast.LENGTH_SHORT).show()
                     }
