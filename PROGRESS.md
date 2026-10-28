@@ -24,6 +24,8 @@ Atualize após cada etapa. Marque [x] só quando o build do GitHub estiver verde
 | 40767006166 | 3c00bf9 | verde | PlayerActivity isolado, proteção do MediaController, User-Agent do InnerTube e logs | — |
 | 40772322300 | 164db22 | verde | OkHttp no ExoPlayer, TVHTML5 autenticado, login YouTube no player e erros amigáveis | — |
 | 40776217605 | 39fde6d | verde | Cliente VISIONOS 0.1 do InnerTube, visitorData novo, URL direta validada e diagnóstico copiável | `apks/app.apk`, `apks/app-tv.apk` |
+| 40783122795 | 3645940 | falha | Erros de compilação na serialização do heartbeat/shard do Discord (`JsonNull`/`JsonArray`) | — |
+| 40783625441 | a14f2e7 | verde | Correção da serialização do Discord + proteção contra crash na navegação/busca + log persistente de crash | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
 - Player: `ResolvingDataSource` resolve `myst://track/<id>` na hora de abrir. A extração foi refeita seguindo o caminho que o BitChord usa via InnerTube (`InnerTubeXResolver`/`PlaybackClientCatalog`): o primeiro cliente é o **VISIONOS 0.1** no endpoint `music.youtube.com/youtubei/v1/player`, com `visitorData` novo, `clientId` 101, `X-Goog-Api-Format-Version: 1`, sem cookies e sem `playbackContext`. Ele devolve URL direta, que é validada com Range de 2 bytes antes de chegar ao ExoPlayer.
@@ -42,6 +44,8 @@ Atualize após cada etapa. Marque [x] só quando o build do GitHub estiver verde
 - A capa importada do Spotify usa a maior imagem disponível e é gravada em até 1024 px.
 
 ## Problemas em aberto
-- Reprodução: o APK do run 40776217605 (`39fde6d`) precisa ser testado no aparelho. A resolução com VISIONOS foi validada fora do app nesta mesma rede (`OK`, URL direta e `206 audio/mp4`), então o player deve iniciar sem login. Se ainda falhar, o botão **Copiar diagnóstico** na tela do player traz as linhas `MystStream`/`MystPlayer` com o cliente e o HTTP exatos, sem cookies nem URLs assinadas. Se aparecer `LOGIN_REQUIRED`, o botão **Entrar com YouTube** vincula a conta sem perder a conta Myst.
+- Reprodução: o APK do run 40783625441 (`a14f2e7`) inclui a correção do crash de navegação/busca e a nova conexão Discord. Precisa ser testado no aparelho.
+- Crash: as lambdas de animação de lista em Busca/Playlists usavam `binding` depois de `onDestroyView`; agora são canceladas com o `viewLifecycleOwner`. Um handler persistente também grava a pilha do próximo crash em `myst_last_crash.txt`, carregada no diagnóstico após reiniciar.
+- Discord: o identify usava as chaves erradas (`$os`/`$browser`/`$device`); agora usa o fingerprint Android do Discord, valida o token pela REST, espera ACK do heartbeat, reconecta com backoff e reenvia a presença. Se continuar sem conectar, o diagnóstico mostrará `MystDiscord` com o HTTP/close code exato.
 - Fase 9: protocolo de pareamento criado em `data/pairing/PairingProtocol.kt`, mas servidor HTTP/NSD, tela de pareamento e adaptação completa do flavor TV ainda precisam ser integrados.
 - Fase 10: revisão final da checklist e teste em aparelho físico.
