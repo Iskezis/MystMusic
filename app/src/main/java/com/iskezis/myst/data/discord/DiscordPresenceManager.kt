@@ -579,7 +579,7 @@ class DiscordPresenceManager(
     private fun sendHeartbeat() {
         val payload = buildJsonObject {
             put("op", OP_HEARTBEAT)
-            put("d", sequence ?: JsonNull)
+            put("d", sequence?.let { JsonPrimitive(it) } ?: JsonNull)
         }
         send(payload)
     }
@@ -615,7 +615,13 @@ class DiscordPresenceManager(
                             put("api_code_version", 0)
                         },
                     )
-                    put("shard", buildJsonArray { add(0); add(1) })
+                    put(
+                        "shard",
+                        buildJsonArray {
+                            add(JsonPrimitive(0))
+                            add(JsonPrimitive(1))
+                        },
+                    )
                     put("presence", presencePayload(null))
                 },
             )
