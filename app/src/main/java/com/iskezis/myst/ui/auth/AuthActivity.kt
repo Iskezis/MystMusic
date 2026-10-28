@@ -2,7 +2,6 @@ package com.iskezis.myst.ui.auth
 
 import android.content.Intent
 import android.os.Bundle
-import android.transition.TransitionManager
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import androidx.activity.OnBackPressedCallback
@@ -17,6 +16,7 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.transition.TransitionManager
 import com.google.android.material.transition.MaterialSharedAxis
 import com.iskezis.myst.MainActivity
 import com.iskezis.myst.MystApp
