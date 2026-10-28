@@ -134,6 +134,8 @@
     <string name="player_login_youtube">Entrar com YouTube</string>
     <string name="player_login_success">YouTube conectado. Reproduzindo…</string>
     <string name="player_login_failed">Não foi possível conectar o YouTube. Tente novamente.</string>
+    <string name="player_copy_logs">Copiar diagnóstico</string>
+    <string name="player_logs_copied">Diagnóstico copiado. Cole no relato para ajudar a corrigir o problema.</string>
     <string name="player_connection_error">Não foi possível conectar ao reprodutor. Feche e abra o app novamente.</string>
     <string name="player_open_error">Não foi possível abrir o player. Tente novamente.</string>
     <string name="player_queue">Fila</string>

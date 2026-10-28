@@ -1,6 +1,9 @@
 package com.iskezis.myst.ui.player
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -106,6 +109,7 @@ class PlayerFragment : Fragment() {
         binding.playerRepeat.setOnClickListener { controller?.cycleRepeat() }
         binding.playerRetry.setOnClickListener { retry() }
         binding.playerYouTubeLogin.setOnClickListener { openYouTubeLogin() }
+        binding.playerCopyLogs.setOnClickListener { copyDiagnostics() }
         binding.playerMore.setOnClickListener {
             latest.track?.let { track ->
                 AddToPlaylistSheet.newInstance(track)
@@ -121,6 +125,7 @@ class PlayerFragment : Fragment() {
             binding.playerShuffle,
             binding.playerRepeat,
             binding.playerYouTubeLogin,
+            binding.playerCopyLogs,
         ).forEach { it.pressScale() }
         animateCoverEntrance()
         binding.playerSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -234,6 +239,7 @@ class PlayerFragment : Fragment() {
         binding.playerError.text = state.errorMessage ?: getString(R.string.player_error_stream)
         binding.playerRetry.isVisible = state.error && !state.loginRequired
         binding.playerYouTubeLogin.isVisible = state.loginRequired
+        binding.playerCopyLogs.isVisible = state.error
 
         if (state.track?.videoId != lastLoggedTrack) {
             lastLoggedTrack = state.track?.videoId
@@ -255,6 +261,7 @@ class PlayerFragment : Fragment() {
         binding.playerError.text = getString(R.string.player_connection_error)
         binding.playerRetry.isVisible = true
         binding.playerYouTubeLogin.isVisible = false
+        binding.playerCopyLogs.isVisible = true
     }
 
     private fun retry() {
@@ -276,6 +283,25 @@ class PlayerFragment : Fragment() {
         } catch (t: Throwable) {
             AppLog.failure(AppLog.TAG_AUTH, "Falha abrindo login do YouTube no player", t)
             Toast.makeText(requireContext(), R.string.player_login_failed, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun copyDiagnostics() {
+        try {
+            val clipboard = requireContext()
+                .getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(
+                ClipData.newPlainText("MystMusic", AppLog.diagnostics()),
+            )
+            Toast.makeText(
+                requireContext(),
+                R.string.player_logs_copied,
+                Toast.LENGTH_LONG,
+            ).show()
+            AppLog.i(AppLog.TAG_PLAYER, "Diagnóstico copiado para a área de transferência")
+        } catch (t: Throwable) {
+            AppLog.failure(AppLog.TAG_PLAYER, "Falha copiando diagnóstico", t)
+            Toast.makeText(requireContext(), R.string.error_generic, Toast.LENGTH_LONG).show()
         }
     }
 

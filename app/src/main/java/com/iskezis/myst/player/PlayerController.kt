@@ -14,6 +14,7 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
+import com.iskezis.myst.data.youtube.LoginRequiredException
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CoroutineScope
@@ -82,7 +83,7 @@ class PlayerController(context: Context) {
                     error,
                 )
             }
-            loginRequired = error != null && detectsLoginRequired()
+            loginRequired = error != null && detectsLoginRequired(error)
             _state.value = _state.value.copy(
                 error = error != null || loginRequired,
                 errorMessage = when {
@@ -373,7 +374,18 @@ class PlayerController(context: Context) {
         }
     }
 
-    private fun detectsLoginRequired(): Boolean {
+    private fun detectsLoginRequired(error: PlaybackException?): Boolean {
+        var cause: Throwable? = error
+        while (cause != null) {
+            if (cause is LoginRequiredException) return true
+            val message = cause.message.orEmpty()
+            if (message.contains("login", ignoreCase = true) &&
+                (message.contains("YouTube", ignoreCase = true) || message.contains("faixa", ignoreCase = true))
+            ) {
+                return true
+            }
+            cause = cause.cause
+        }
         val failure = (appContext as? MystApp)?.lastStreamFailure ?: return false
         val videoId = controller?.currentMediaItem?.mediaId ?: return false
         val recent = System.currentTimeMillis() - failure.at < 30_000L

@@ -30,25 +30,53 @@ object AppLog {
     const val TAG_PAIRING = "MystPairing"
     const val TAG_CRASH = "MystCrash"
 
+    private const val MAX_DIAGNOSTIC_LINES = 500
+    private val diagnosticsLock = Any()
+    private val diagnosticsBuffer = ArrayDeque<String>(MAX_DIAGNOSTIC_LINES)
+
     fun d(tag: String, message: String) {
+        record("D", tag, message)
         Log.d(tag, build(message))
     }
 
     fun i(tag: String, message: String) {
+        record("I", tag, message)
         Log.i(tag, build(message))
     }
 
     fun w(tag: String, message: String, error: Throwable? = null) {
+        record("W", tag, message + error?.let { ": ${describe(it)}" }.orEmpty())
         if (error == null) Log.w(tag, build(message)) else Log.w(tag, build(message), error)
     }
 
     fun e(tag: String, message: String, error: Throwable? = null) {
+        record("E", tag, message + error?.let { ": ${describe(it)}" }.orEmpty())
         if (error == null) Log.e(tag, build(message)) else Log.e(tag, build(message), error)
     }
 
     /** Log de erro com mensagem curta e stack trace completa. */
     fun failure(tag: String, message: String, error: Throwable) {
+        record("E", tag, "$message: ${describe(error)}")
         Log.e(tag, build(message) + ": " + describe(error), error)
+    }
+
+    /**
+     * Últimas linhas de log em memória. A tela do player oferece "Copiar
+     * diagnóstico" para o usuário colar no relato sem precisar de adb.
+     */
+    fun diagnostics(): String = synchronized(diagnosticsLock) {
+        diagnosticsBuffer.joinToString("\n")
+    }
+
+    private fun record(level: String, tag: String, message: String) {
+        val time = String.format(Locale.US, "%tT", System.currentTimeMillis())
+        val line = "$time $level/$tag: $message"
+        synchronized(diagnosticsLock) {
+            if (diagnosticsBuffer.size >= MAX_DIAGNOSTIC_LINES) {
+                diagnosticsBuffer.removeFirst()
+            }
+            diagnosticsBuffer.addLast(line)
+        }
     }
 
     /** Identifica a thread atual nos logs assíncronos. */

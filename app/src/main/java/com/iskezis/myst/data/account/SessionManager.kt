@@ -78,6 +78,8 @@ class SessionManager(context: Context) {
     fun saveYouTube(userId: Long, name: String, cookies: String, sapisid: String?) {
         youtubeCookies = cookies
         youtubeSapisid = sapisid
+        youtubeVisitorData = null
+        youtubeDataSyncId = null
         session = Session(TYPE_YOUTUBE, userId, name)
     }
 

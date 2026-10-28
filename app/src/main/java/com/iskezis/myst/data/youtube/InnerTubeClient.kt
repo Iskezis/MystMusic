@@ -138,6 +138,7 @@ class InnerTubeClient(
         val startedAt = System.currentTimeMillis()
         var lastError: Throwable? = null
         var sawLoginRequired = false
+        ensureVisitorData()
         val clients = if (!session.youtubeCookies.isNullOrBlank()) CLIENTS_WITH_COOKIES else CLIENTS_GUEST
         for (clientName in clients) {
             try {
@@ -147,17 +148,19 @@ class InnerTubeClient(
                     put("videoId", videoId)
                     put("contentCheckOk", true)
                     put("racyCheckOk", true)
-                    put("playbackContext", buildJsonObject {
-                        put("contentPlaybackContext", buildJsonObject {
-                            put("html5Preference", "HTML5_PREF_WANTS")
+                    if (clientNeedsPlaybackContext(clientName)) {
+                        put("playbackContext", buildJsonObject {
+                            put("contentPlaybackContext", buildJsonObject {
+                                put("html5Preference", "HTML5_PREF_WANTS")
+                            })
                         })
-                    })
+                    }
                 }
                 val response = post(
                     endpoint = "player",
                     body = body,
                     requestHeaders = headers(clientName),
-                    baseUrl = if (clientName == WEB_REMIX) BASE_URL else YOUTUBE_BASE_URL,
+                    baseUrl = if (usesMusicEndpoint(clientName)) BASE_URL else YOUTUBE_BASE_URL,
                 )
                 val status = response["playabilityStatus"]?.let { element ->
                     (element as? JsonObject)?.get("status")?.let { (it as? JsonPrimitive)?.contentOrNull }
@@ -167,8 +170,14 @@ class InnerTubeClient(
                 }
                 if (status != null && status != "OK" && status != "LIVE_STREAM_OFFLINE") {
                     lastError = MusicException("Faixa indisponível ($status)")
+                    val normalizedReason = reason.orEmpty().lowercase()
                     if (status == "LOGIN_REQUIRED" || status == "SIGN_IN_REQUIRED" ||
-                        status == "AGE_CHECK_REQUIRED"
+                        status == "AGE_CHECK_REQUIRED" ||
+                        normalizedReason.contains("faça login") ||
+                        normalizedReason.contains("nao e um bot") ||
+                        normalizedReason.contains("não é um bot") ||
+                        normalizedReason.contains("not a bot") ||
+                        normalizedReason.contains("sign in")
                     ) {
                         sawLoginRequired = true
                     }
@@ -191,7 +200,7 @@ class InnerTubeClient(
                 }
                 var accepted: StreamInfo? = null
                 for (format in formats) {
-                    val url = formatUrl(format) ?: continue
+                    val url = playableUrl(format) ?: continue
                     val itag = number(format["itag"])?.toInt() ?: -1
                     val mime = (format["mimeType"] as? JsonPrimitive)?.contentOrNull.orEmpty()
                     val bitrate = number(format["bitrate"]) ?: 0L
@@ -306,12 +315,17 @@ class InnerTubeClient(
         }
     }
 
-    private fun streamHeaders(clientName: String): Map<String, String> = mapOf(
-        "User-Agent" to userAgent(clientName),
-        "Origin" to if (clientName == WEB_REMIX) "https://music.youtube.com" else "https://www.youtube.com",
-        "Referer" to if (clientName == WEB_REMIX) "https://music.youtube.com/" else "https://www.youtube.com/",
-        "Accept-Encoding" to "identity",
-    )
+    private fun streamHeaders(clientName: String): Map<String, String> {
+        val music = usesMusicEndpoint(clientName)
+        val origin = if (music) "https://music.youtube.com" else "https://www.youtube.com"
+        return mapOf(
+            "User-Agent" to userAgent(clientName),
+            "Origin" to origin,
+            "Referer" to "$origin/",
+            "Accept" to "*/*",
+            "Accept-Encoding" to "identity",
+        )
+    }
 
     private fun selectAudioFormats(root: JsonObject): List<JsonObject> {
         val streaming = root["streamingData"] as? JsonObject ?: return emptyList()
@@ -333,7 +347,7 @@ class InnerTubeClient(
         return audio.sortedWith(
             compareBy<JsonObject> { audioRank(it) }
                 .thenByDescending { number(it["bitrate"]) },
-        ).filter { format -> formatUrl(format)?.startsWith("http") == true }
+        ).filter(::hasPlayableAudioData)
     }
 
     private fun audioRank(format: JsonObject): Int {
@@ -355,21 +369,23 @@ class InnerTubeClient(
     private fun number(element: JsonElement?): Long? =
         (element as? JsonPrimitive)?.contentOrNull?.toLongOrNull()
 
+    private fun hasPlayableAudioData(format: JsonObject): Boolean {
+        directUrl(format)?.let { return true }
+        val cipher = cipherString(format) ?: return false
+        val params = parseCipher(cipher) ?: return false
+        params.getQueryParameter("url")?.takeIf { it.isNotBlank() } ?: return false
+        return !params.getQueryParameter("sig").isNullOrBlank()
+    }
+
     /**
-     * Muitos formatos vêm em signatureCipher. Quando a assinatura já vem pronta
-     * (sig) ela pode ser anexada; quando vem cifrada (s) não há como decifrar sem
-     * baixar o JS do player, então o formato é ignorado e outro cliente é tentado.
+     * Converte o formato em URL reproduzível. Só usamos `url` direta ou
+     * `signatureCipher` que já traga `sig`; formatos com `s` cifrado são
+     * ignorados porque o cliente VISIONOS devolve URLs diretas.
      */
-    private fun formatUrl(format: JsonObject): String? {
-        (format["url"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
-            ?.let { return it }
-        val cipher = ((format["signatureCipher"] ?: format["cipher"]) as? JsonPrimitive)
-            ?.contentOrNull?.takeIf { it.isNotBlank() } ?: return null
-        val params = try {
-            Uri.parse("https://local.invalid/?$cipher")
-        } catch (t: Throwable) {
-            return null
-        }
+    private fun playableUrl(format: JsonObject): String? {
+        directUrl(format)?.let { return it }
+        val rawCipher = cipherString(format) ?: return null
+        val params = parseCipher(rawCipher) ?: return null
         val url = params.getQueryParameter("url")?.takeIf { it.isNotBlank() } ?: return null
         val signature = params.getQueryParameter("sig")
             ?: params.getQueryParameter("signature")
@@ -377,6 +393,19 @@ class InnerTubeClient(
         val param = params.getQueryParameter("sp")?.takeIf { it.isNotBlank() } ?: "signature"
         val separator = if (url.contains("?")) "&" else "?"
         return "$url$separator$param=$signature"
+    }
+
+    private fun directUrl(format: JsonObject): String? =
+        (format["url"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.startsWith("http") }
+
+    private fun cipherString(format: JsonObject): String? =
+        ((format["signatureCipher"] ?: format["cipher"]) as? JsonPrimitive)
+            ?.contentOrNull?.takeIf { it.isNotBlank() }
+
+    private fun parseCipher(cipher: String): Uri? = try {
+        Uri.parse("https://local.invalid/?$cipher")
+    } catch (t: Throwable) {
+        null
     }
 
     private fun parseTracks(root: JsonObject): List<Track> {
@@ -611,34 +640,95 @@ class InnerTubeClient(
         throw MusicException("Falha ao falar com o YouTube Music.", lastError)
     }
 
+    /**
+     * O VISIONOS só devolve URL direta quando a requisição carrega um visitor
+     * válido. Buscamos o visitor da home do YouTube Music quando ainda não há
+     * um (primeiro play, conta recém-vinculada ou visitor limpo no login).
+     */
+    @Synchronized
+    private fun ensureVisitorData(): String? {
+        session.youtubeVisitorData?.takeIf { it.isNotBlank() }?.let { return it }
+        return try {
+            val request = Request.Builder()
+                .url("https://music.youtube.com/")
+                .header("User-Agent", userAgent(VISIONOS))
+                .header("Accept-Language", "pt-BR,pt;q=0.9,en;q=0.8")
+                .build()
+            http.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    AppLog.w(AppLog.TAG_STREAM, "Falha obtendo visitor: HTTP ${response.code}")
+                    return null
+                }
+                val html = response.body?.string().orEmpty()
+                val visitor = VISITOR_DATA_REGEX.find(html)?.groupValues?.getOrNull(1)
+                if (visitor.isNullOrBlank()) {
+                    AppLog.w(AppLog.TAG_STREAM, "Home do YouTube Music sem visitorData")
+                    return null
+                }
+                session.youtubeVisitorData = visitor
+                AppLog.i(AppLog.TAG_STREAM, "VisitorData renovado (${visitor.length} caracteres)")
+                visitor
+            }
+        } catch (t: Throwable) {
+            AppLog.failure(AppLog.TAG_STREAM, "Falha renovando visitorData", t)
+            null
+        }
+    }
+
     private fun headers(clientName: String): Headers {
-        val origin = if (clientName == WEB_REMIX) "https://music.youtube.com" else "https://www.youtube.com"
+        val origin = if (usesMusicEndpoint(clientName)) "https://music.youtube.com" else "https://www.youtube.com"
         val builder = Headers.Builder()
             .add("Content-Type", "application/json")
             .add("Accept", "application/json")
             .add("Origin", origin)
+            .add("X-Origin", origin)
             .add("Referer", "$origin/")
-            .add("X-Goog-Api-Format-Version", "2")
+            .add("X-Goog-Api-Format-Version", "1")
             .add("X-YouTube-Client-Name", clientId(clientName))
             .add("X-YouTube-Client-Version", clientVersion(clientName))
             .add("User-Agent", userAgent(clientName))
         session.youtubeVisitorData?.takeIf { it.isNotBlank() }?.let {
             builder.add("X-Goog-Visitor-Id", it)
         }
-        // O TVHTML5 aceita cookies de conta e não exige PO token. Enviamos os
-        // cookies também aos clientes de app: a sessão autenticada evita o
-        // bloqueio "faça login para confirmar que você não é um bot".
-        session.youtubeCookies?.takeIf { it.isNotBlank() }?.let {
-            builder.add("Cookie", it)
-            builder.add("X-Goog-AuthUser", "0")
-            builder.add("X-Origin", origin)
-            session.youtubeSapisid?.takeIf { sapisid -> sapisid.isNotBlank() }?.let { sapisid ->
+        // Só os clientes que declaram suporte a login recebem Cookie/Authorization.
+        // O VISIONOS é anônimo por definição: mandar cookies nele faz o YouTube
+        // tratar a requisição como sessão web e cair no bloqueio de bot.
+        if (clientSupportsLogin(clientName)) {
+            val cookies = session.youtubeCookies?.takeIf { it.isNotBlank() }
+            if (clientUsesCookies(clientName) && cookies != null) {
+                builder.add("Cookie", cookies)
+            }
+            val sapisid = session.youtubeSapisid?.takeIf { it.isNotBlank() }
+            if (cookies != null || sapisid != null) {
+                builder.add("X-Goog-AuthUser", "0")
+            }
+            if (sapisid != null) {
                 val timestamp = System.currentTimeMillis() / 1000
                 val hash = sha1Hex("$timestamp $sapisid $origin")
                 builder.add("Authorization", "SAPISIDHASH ${timestamp}_$hash")
             }
         }
         return builder.build()
+    }
+
+    private fun clientSupportsLogin(clientName: String): Boolean = when (clientName) {
+        TVHTML5, WEB_REMIX, WEB_EMBEDDED_PLAYER -> true
+        else -> false
+    }
+
+    private fun clientUsesCookies(clientName: String): Boolean = when (clientName) {
+        TVHTML5, WEB_REMIX, WEB_EMBEDDED_PLAYER -> true
+        else -> false
+    }
+
+    private fun usesMusicEndpoint(clientName: String): Boolean = when (clientName) {
+        WEB_REMIX, VISIONOS, ANDROID_VR -> true
+        else -> false
+    }
+
+    private fun clientNeedsPlaybackContext(clientName: String): Boolean = when (clientName) {
+        TVHTML5, WEB_REMIX, WEB_EMBEDDED_PLAYER -> true
+        else -> false
     }
 
     private fun clientContext(clientName: String): JsonObject = buildJsonObject {
@@ -648,6 +738,14 @@ class InnerTubeClient(
             put("hl", "pt")
             put("gl", "BR")
             when (clientName) {
+                VISIONOS -> {
+                    put("osName", "VISION_OS")
+                    put("osVersion", "1.3")
+                    put("deviceMake", "Apple")
+                    put("deviceModel", "RealityDevice14,1")
+                    put("platform", "MOBILE")
+                    put("userAgent", userAgent(VISIONOS))
+                }
                 WEB_REMIX -> put("originalUrl", "https://music.youtube.com/")
                 IOS -> {
                     put("deviceMake", "Apple")
@@ -682,6 +780,7 @@ class InnerTubeClient(
     }
 
     private fun clientId(clientName: String): String = when (clientName) {
+        VISIONOS -> "101"
         WEB_REMIX -> "67"
         TVHTML5 -> "7"
         WEB_EMBEDDED_PLAYER -> "56"
@@ -693,23 +792,25 @@ class InnerTubeClient(
     }
 
     private fun clientVersion(clientName: String): String = when (clientName) {
+        VISIONOS -> "0.1"
         WEB_REMIX -> "1.20260707.12.00"
         TVHTML5 -> "7.20260707.07.00"
         WEB_EMBEDDED_PLAYER -> "2.20260708.00.00"
         ANDROID_MUSIC -> "6.42.52"
         IOS -> "21.26.4"
-        ANDROID_VR -> "1.62.27"
+        ANDROID_VR -> "1.65.10"
         ANDROID -> "21.26.364"
         else -> "1.20260707.12.00"
     }
 
     private fun userAgent(clientName: String): String = when (clientName) {
+        VISIONOS -> "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"
         WEB_REMIX -> "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
         TVHTML5 -> "Mozilla/5.0 (ChromiumStylePlatform) Cobalt/25.lts.30.1034943-gold (unlike Gecko), Unknown_TV_Unknown_0/Unknown (Unknown, Unknown)"
         WEB_EMBEDDED_PLAYER -> "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.5 Safari/605.1.15,gzip(gfe)"
         ANDROID_MUSIC -> "com.google.android.apps.youtube.music/6.42.52 (Linux; U; Android 11) gzip"
         IOS -> "com.google.ios.youtube/21.26.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)"
-        ANDROID_VR -> "com.google.android.apps.youtube.vr.oculus/1.62.27 (Linux; U; Android 12; en_US; Quest 3 Build/SQ3A.220605.009.A1) gzip"
+        ANDROID_VR -> "com.google.android.apps.youtube.vr.oculus/1.65.10 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip"
         ANDROID -> "com.google.android.youtube/21.26.364 (Linux; U; Android 11) gzip"
         else -> "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     }
@@ -719,6 +820,7 @@ class InnerTubeClient(
     companion object {
         private const val BASE_URL = "https://music.youtube.com/youtubei/v1"
         private const val YOUTUBE_BASE_URL = "https://www.youtube.com/youtubei/v1"
+        private const val VISIONOS = "VISIONOS"
         private const val WEB_REMIX = "WEB_REMIX"
         private const val TVHTML5 = "TVHTML5"
         private const val WEB_EMBEDDED_PLAYER = "WEB_EMBEDDED_PLAYER"
@@ -728,18 +830,21 @@ class InnerTubeClient(
         private const val ANDROID = "ANDROID"
         private const val SONGS_FILTER = "EgWKAQIIAWoKEAkQBRAKEAMQBA=="
         private const val URL_TTL_MS = 30 * 60 * 1000L
+        private val VISITOR_DATA_REGEX =
+            Regex("\"(?:VISITOR_DATA|visitorData)\"\\s*:\\s*\"([^\"]+)\"")
         private val CLIENTS_WITH_COOKIES = listOf(
-            TVHTML5,
+            VISIONOS,
             ANDROID_VR,
             IOS,
             WEB_REMIX,
             WEB_EMBEDDED_PLAYER,
+            TVHTML5,
         )
         private val CLIENTS_GUEST = listOf(
+            VISIONOS,
             ANDROID_VR,
             IOS,
             WEB_REMIX,
-            TVHTML5,
             WEB_EMBEDDED_PLAYER,
             ANDROID_MUSIC,
         )
