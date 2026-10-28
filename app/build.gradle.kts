@@ -25,8 +25,8 @@ android {
         applicationId = "com.iskezis.myst"
         minSdk = 21
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.1"
         multiDexEnabled = true
         vectorDrawables.useSupportLibrary = true
 

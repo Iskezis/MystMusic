@@ -89,7 +89,7 @@ class PairingNsd(context: Context) {
             }
 
             override fun onServiceFound(serviceInfo: NsdServiceInfo) {
-                if (serviceInfo.serviceType != SERVICE_TYPE) return
+                if (!isOurService(serviceInfo.serviceType)) return
                 runCatching {
                     nsd.resolveService(
                         serviceInfo,
@@ -185,5 +185,14 @@ class PairingNsd(context: Context) {
 
     companion object {
         const val SERVICE_TYPE = "_mystmusic._tcp."
+
+        /**
+         * Alguns fabricantes devolvem o tipo sem o ponto final (ou com domínio
+         * extra). Comparar normalizado evita esconder uma TV válida.
+         */
+        fun isOurService(type: String?): Boolean {
+            val clean = type.orEmpty().trim().trimEnd('.').lowercase()
+            return clean == SERVICE_TYPE.trimEnd('.').lowercase()
+        }
     }
 }

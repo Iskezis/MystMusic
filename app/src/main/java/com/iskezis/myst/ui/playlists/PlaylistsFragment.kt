@@ -192,7 +192,6 @@ class PlaylistsFragment : Fragment() {
 
     override fun onDestroyView() {
         AppLog.d(AppLog.TAG_UI, "PlaylistsFragment.onDestroyView")
-        binding.playlistsList.adapter = null
         super.onDestroyView()
         _binding = null
     }

@@ -45,6 +45,7 @@ class PhonePairingActivity : AppCompatActivity() {
     private var code: String? = null
     private var nonce: String = PairingCrypto.newNonce()
     private var expiryJob: Job? = null
+    private var discoveryTimeoutJob: Job? = null
     private var requestInFlight = false
 
     @Volatile
@@ -67,11 +68,14 @@ class PhonePairingActivity : AppCompatActivity() {
             return
         }
         nsd = PairingNsd(this)
-        startServer()
-        if (serverPort > 0) startDiscovery()
+        if (startServer()) {
+            startDiscovery()
+        } else {
+            showError(getString(R.string.pairing_error))
+        }
     }
 
-    private fun startServer() {
+    private fun startServer(): Boolean {
         val pairingServer = LocalPairingServer { path, body, _ ->
             if (path != "/confirm") {
                 LocalPairingServer.HttpResult(404, json.encodeToString(PairAck.serializer(), PairAck(false, "not_found")))
@@ -79,13 +83,17 @@ class PhonePairingActivity : AppCompatActivity() {
                 handleConfirm(body)
             }
         }
-        runCatching {
+        return runCatching {
             serverPort = pairingServer.start()
             server = pairingServer
             AppLog.i(AppLog.TAG_PAIRING, "Celular ouvindo confirmação na porta $serverPort")
-        }.onFailure {
+            true
+        }.getOrElse {
             AppLog.failure(AppLog.TAG_PAIRING, "Falha abrindo servidor do celular", it)
-            showError(getString(R.string.pairing_error))
+            runCatching { pairingServer.close() }
+            serverPort = 0
+            server = null
+            false
         }
     }
 
@@ -147,6 +155,8 @@ class PhonePairingActivity : AppCompatActivity() {
 
     private fun startDiscovery() {
         val helper = nsd ?: return
+        discoveryTimeoutJob?.cancel()
+        discoveryTimeoutJob = null
         requestInFlight = false
         selected = null
         code = null
@@ -163,6 +173,8 @@ class PhonePairingActivity : AppCompatActivity() {
             onFound = { target ->
                 runOnUiThread {
                     if (isFinishing || isDestroyed || paired) return@runOnUiThread
+                    discoveryTimeoutJob?.cancel()
+                    discoveryTimeoutJob = null
                     addTarget(target)
                 }
             },
@@ -176,12 +188,26 @@ class PhonePairingActivity : AppCompatActivity() {
                 runOnUiThread {
                     if (isFinishing || isDestroyed || paired) return@runOnUiThread
                     AppLog.w(AppLog.TAG_PAIRING, "Descoberta indisponível: $error")
+                    discoveryTimeoutJob?.cancel()
+                    discoveryTimeoutJob = null
                     binding.phonePairProgress.isVisible = false
                     binding.phonePairRetry.isVisible = true
                     setStatus(getString(R.string.pairing_error), R.color.error)
                 }
             },
         )
+        // Estado vazio: sem nenhuma TV após alguns segundos, deixa de mostrar
+        // apenas o spinner e oferece uma nova busca.
+        discoveryTimeoutJob = lifecycleScope.launch {
+            delay(DISCOVERY_TIMEOUT_MS)
+            if (paired || isFinishing || isDestroyed) return@launch
+            if (targets.isEmpty() && !requestInFlight) {
+                binding.phonePairProgress.isVisible = false
+                binding.phonePairNone.isVisible = true
+                binding.phonePairRetry.isVisible = true
+                setStatus(getString(R.string.pairing_none), R.color.text_dim)
+            }
+        }
     }
 
     private fun addTarget(target: PairingNsd.Target) {
@@ -211,6 +237,12 @@ class PhonePairingActivity : AppCompatActivity() {
 
     private fun selectTarget(target: PairingNsd.Target) {
         if (requestInFlight || paired) return
+        if (serverPort <= 0 && !startServer()) {
+            showError(getString(R.string.pairing_error))
+            return
+        }
+        discoveryTimeoutJob?.cancel()
+        discoveryTimeoutJob = null
         nsd?.stopDiscovery()
         selected = target
         val newCode = PairingCrypto.newCode()
@@ -247,6 +279,7 @@ class PhonePairingActivity : AppCompatActivity() {
                 AppLog.failure(AppLog.TAG_PAIRING, "TV não aceitou a conexão", t)
                 requestInFlight = false
                 code = null
+                expired = false
                 binding.phonePairTvList.isVisible = true
                 binding.phonePairRetry.isVisible = true
                 binding.phonePairProgress.isVisible = false
@@ -271,6 +304,10 @@ class PhonePairingActivity : AppCompatActivity() {
     private fun resetFlow() {
         if (paired) return
         expiryJob?.cancel()
+        if (serverPort <= 0 && !startServer()) {
+            showError(getString(R.string.pairing_error))
+            return
+        }
         startDiscovery()
         binding.phonePairTvList.isVisible = true
     }
@@ -289,6 +326,8 @@ class PhonePairingActivity : AppCompatActivity() {
     override fun onDestroy() {
         AppLog.i(AppLog.TAG_PAIRING, "PhonePairingActivity.onDestroy")
         expiryJob?.cancel()
+        discoveryTimeoutJob?.cancel()
+        discoveryTimeoutJob = null
         runCatching { server?.close() }
         server = null
         runCatching { nsd?.close() }
@@ -298,5 +337,6 @@ class PhonePairingActivity : AppCompatActivity() {
 
     companion object {
         private const val CODE_TTL_MS = 2 * 60 * 1000L
+        private const val DISCOVERY_TIMEOUT_MS = 12_000L
     }
 }

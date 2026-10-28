@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -50,8 +51,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         AppLog.i(AppLog.TAG_UI, "MainActivity.onCreate savedInstanceState=${savedInstanceState != null}")
         val app = application as MystApp
-        if (BuildConfig.FLAVOR == "tv" && !app.session.tvPaired) {
-            AppLog.i(AppLog.TAG_UI, "TV ainda não pareada; abrindo TvPairingActivity")
+        if (BuildConfig.FLAVOR == "tv" && (!app.session.tvPaired || !app.session.isLoggedIn)) {
+            // Na TV não há teclado físico confortável: conta e playlists chegam
+            // sempre pelo pareamento com o celular. Isso também cobre o caso de
+            // sessão apagada com a flag de pareamento ainda ligada.
+            AppLog.i(AppLog.TAG_UI, "TV precisa de pareamento; abrindo TvPairingActivity")
             startActivity(
                 Intent(this, TvPairingActivity::class.java).addFlags(
                     Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK,
@@ -126,6 +130,26 @@ class MainActivity : AppCompatActivity() {
             renderMiniPlayer()
         }
         updateSelection(navController.currentDestination?.id ?: R.id.homeFragment)
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (navController.currentDestination?.id != navController.graph.startDestinationId) {
+                    val moved = runCatching { navController.popBackStack() }.getOrDefault(false)
+                    if (!moved) navigateTo(navController.graph.startDestinationId)
+                    return
+                }
+                if (playerState.track != null) {
+                    // Voltar na home não encerra o app com música tocando; a
+                    // reprodução continua no PlaybackService e o usuário pode
+                    // retornar sem perder a fila.
+                    AppLog.d(AppLog.TAG_UI, "Back na home com música; indo para segundo plano")
+                    moveTaskToBack(true)
+                    return
+                }
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+            }
+        })
 
         observePlayer()
         requestNotificationPermissionIfNeeded()

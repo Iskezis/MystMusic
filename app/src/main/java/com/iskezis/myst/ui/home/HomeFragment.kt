@@ -102,7 +102,9 @@ class HomeFragment : Fragment() {
 
     override fun onDestroyView() {
         AppLog.d(AppLog.TAG_UI, "HomeFragment.onDestroyView")
-        binding.homeList.adapter = null
+        // Mantém o adapter anexado: limpá-lo durante o layout/scroll da saída
+        // de tela provoca IllegalStateException no RecyclerView. A view e o
+        // adapter são descartados juntos quando o fragment é destruído.
         super.onDestroyView()
         _binding = null
     }

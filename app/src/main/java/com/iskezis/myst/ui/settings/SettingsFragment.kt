@@ -24,6 +24,7 @@ import com.iskezis.myst.databinding.FragmentSettingsBinding
 import com.iskezis.myst.ui.auth.AuthActivity
 import com.iskezis.myst.ui.auth.DiscordLoginActivity
 import com.iskezis.myst.ui.pairing.PhonePairingActivity
+import com.iskezis.myst.ui.pairing.TvPairingActivity
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.applyFadeThrough
 import com.iskezis.myst.util.UiAnimations.pressScale
@@ -116,7 +117,14 @@ class SettingsFragment : Fragment() {
                 launch {
                     viewModel.loggedOut.collect { done ->
                         if (done) {
-                            val intent = Intent(requireContext(), AuthActivity::class.java).addFlags(
+                            // Na TV o login por teclado/WebView não é viável com
+                            // controle remoto; deslogar volta para o pareamento.
+                            val target = if (BuildConfig.FLAVOR == "tv") {
+                                TvPairingActivity::class.java
+                            } else {
+                                AuthActivity::class.java
+                            }
+                            val intent = Intent(requireContext(), target).addFlags(
                                 Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK,
                             )
                             startActivity(intent)

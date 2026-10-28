@@ -87,3 +87,6 @@ release.properties
 # APKs de entrega (obrigatórios no repositório)
 !apks/
 !apks/*.apk
+
+# Export de sessão do agente (pode conter credenciais)
+CONTEXTO.json

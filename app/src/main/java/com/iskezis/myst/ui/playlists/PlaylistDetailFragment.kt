@@ -392,7 +392,6 @@ class PlaylistDetailFragment : Fragment() {
     override fun onDestroyView() {
         AppLog.d(AppLog.TAG_UI, "PlaylistDetailFragment.onDestroyView id=$playlistId")
         adapter.onDragStart = null
-        binding.detailTracks.adapter = null
         super.onDestroyView()
         _binding = null
     }

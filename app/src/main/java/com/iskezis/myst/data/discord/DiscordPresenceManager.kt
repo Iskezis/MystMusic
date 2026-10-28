@@ -92,6 +92,7 @@ class DiscordPresenceManager(
     private var reconnectJob: Job? = null
     private var pauseClearJob: Job? = null
     private var helloTimeoutJob: Job? = null
+    private var readyTimeoutJob: Job? = null
 
     @Volatile
     private var ready = false
@@ -144,6 +145,8 @@ class DiscordPresenceManager(
         heartbeatJob = null
         helloTimeoutJob?.cancel()
         helloTimeoutJob = null
+        readyTimeoutJob?.cancel()
+        readyTimeoutJob = null
         pauseClearJob?.cancel()
         pauseClearJob = null
         ready = false
@@ -245,6 +248,8 @@ class DiscordPresenceManager(
         heartbeatJob = null
         helloTimeoutJob?.cancel()
         helloTimeoutJob = null
+        readyTimeoutJob?.cancel()
+        readyTimeoutJob = null
         ready = false
         sequence = null
         sessionId = null
@@ -320,6 +325,8 @@ class DiscordPresenceManager(
         heartbeatJob = null
         helloTimeoutJob?.cancel()
         helloTimeoutJob = null
+        readyTimeoutJob?.cancel()
+        readyTimeoutJob = null
         ready = false
         session.clearDiscord()
         runCatching { socket?.cancel() }
@@ -332,6 +339,8 @@ class DiscordPresenceManager(
         reconnectJob?.cancel()
         reconnectJob = null
         helloTimeoutJob?.cancel()
+        readyTimeoutJob?.cancel()
+        readyTimeoutJob = null
         val url = resumeUrl ?: GATEWAY_URL
         AppLog.i(AppLog.TAG_DISCORD, "Abrindo WebSocket do Discord em $url")
         try {
@@ -341,6 +350,10 @@ class DiscordPresenceManager(
             val request = Request.Builder()
                 .url(url)
                 .header("User-Agent", DiscordSuperProperties.userAgent)
+                .header("X-Super-Properties", DiscordSuperProperties.base64)
+                .header("Accept-Language", "pt-BR,pt;q=0.9,en;q=0.8")
+                .header("Cache-Control", "no-cache")
+                .header("Pragma", "no-cache")
                 .build()
             socket = client.newWebSocket(request, Listener(currentToken))
             _state.value = DiscordState(DiscordConnection.CONNECTING, session.discordName)
@@ -417,6 +430,8 @@ class DiscordPresenceManager(
         heartbeatJob = null
         helloTimeoutJob?.cancel()
         helloTimeoutJob = null
+        readyTimeoutJob?.cancel()
+        readyTimeoutJob = null
         awaitingAck = false
         if (failure != null) {
             // Se o resume URL falhou, o próximo HELLO usa o gateway base e
@@ -460,6 +475,7 @@ class DiscordPresenceManager(
                     sendIdentify(currentToken)
                 }
                 startHeartbeat(interval)
+                armReadyTimeout(currentToken)
             }
             OP_HEARTBEAT_ACK -> {
                 awaitingAck = false
@@ -478,12 +494,37 @@ class DiscordPresenceManager(
                 resumeUrl = null
                 scope.launch {
                     delay(150)
-                    if (!manualStop && currentToken == token) sendIdentify(currentToken)
+                    if (!manualStop && currentToken == token) {
+                        sendIdentify(currentToken)
+                        armReadyTimeout(currentToken)
+                    }
                 }
             }
             OP_DISPATCH -> when ((root["t"] as? JsonPrimitive)?.contentOrNull) {
                 "READY" -> handleReady(root, currentToken)
                 "RESUMED" -> handleResumed()
+            }
+        }
+    }
+
+    /**
+     * O gateway pode aceitar o HELLO e manter o socket aberto sem nunca emitir
+     * READY (identify rejeitado por política, shard inválido etc.). Sem este
+     * prazo a tela ficaria em "Conectando" indefinidamente.
+     */
+    private fun armReadyTimeout(currentToken: String) {
+        readyTimeoutJob?.cancel()
+        readyTimeoutJob = scope.launch {
+            delay(READY_TIMEOUT_MS)
+            if (!ready && currentToken == token && socket != null && !manualStop) {
+                AppLog.w(
+                    AppLog.TAG_DISCORD,
+                    "Discord não ficou pronto em ${READY_TIMEOUT_MS / 1000}s; descartando socket",
+                )
+                _state.value = DiscordState(DiscordConnection.ERROR, session.discordName)
+                socket?.cancel()
+                socket = null
+                scheduleReconnect()
             }
         }
     }
@@ -506,6 +547,8 @@ class DiscordPresenceManager(
         ready = true
         helloTimeoutJob?.cancel()
         helloTimeoutJob = null
+        readyTimeoutJob?.cancel()
+        readyTimeoutJob = null
         reconnectAttempt = 0
         awaitAckReset()
         _state.value = DiscordState(DiscordConnection.CONNECTED, name ?: session.discordName)
@@ -525,6 +568,8 @@ class DiscordPresenceManager(
         ready = true
         helloTimeoutJob?.cancel()
         helloTimeoutJob = null
+        readyTimeoutJob?.cancel()
+        readyTimeoutJob = null
         reconnectAttempt = 0
         awaitAckReset()
         _state.value = DiscordState(DiscordConnection.CONNECTED, session.discordName)
@@ -650,6 +695,8 @@ class DiscordPresenceManager(
         ready = false
         heartbeatJob?.cancel()
         heartbeatJob = null
+        readyTimeoutJob?.cancel()
+        readyTimeoutJob = null
         socket?.cancel()
         socket = null
         scheduleReconnect()
@@ -658,6 +705,14 @@ class DiscordPresenceManager(
     private fun scheduleReconnect() {
         if (manualStop || token == null) return
         if (reconnectJob?.isActive == true) return
+        if (reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) {
+            AppLog.w(
+                AppLog.TAG_DISCORD,
+                "Limite de reconexões do Discord atingido; aguardando ação do usuário",
+            )
+            _state.value = DiscordState(DiscordConnection.ERROR, session.discordName)
+            return
+        }
         val wait = min(60_000L, 1_000L * (1L shl reconnectAttempt.coerceAtMost(5)))
         reconnectAttempt++
         AppLog.i(AppLog.TAG_DISCORD, "Reconectando Discord em ${wait}ms")
@@ -737,6 +792,8 @@ class DiscordPresenceManager(
         private const val OP_HEARTBEAT_ACK = 11
         private const val HEARTBEAT_GRACE_MS = 15_000L
         private const val HELLO_TIMEOUT_MS = 15_000L
+        private const val READY_TIMEOUT_MS = 20_000L
+        private const val MAX_RECONNECT_ATTEMPTS = 3
         private const val PAUSE_CLEAR_MS = 2 * 60 * 1000L
         private val AUTH_CLOSE_CODES = setOf(4003, 4004, 4010, 4011, 4012, 4013, 4014, 401, 403)
     }

@@ -169,7 +169,10 @@ class SearchFragment : Fragment() {
 
     override fun onDestroyView() {
         AppLog.d(AppLog.TAG_UI, "SearchFragment.onDestroyView")
-        binding.searchList.adapter = null
+        // Não desanexar o adapter aqui: ao sair da busca durante um layout ou
+        // animação, RecyclerView lança "Cannot call this method while
+        // RecyclerView is computing a layout or scrolling". A view é descartada
+        // junto com o fragment e o adapter é coletado com ele.
         super.onDestroyView()
         _binding = null
     }
