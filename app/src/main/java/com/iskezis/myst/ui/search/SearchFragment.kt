@@ -19,6 +19,9 @@ import com.iskezis.myst.R
 import com.iskezis.myst.databinding.FragmentSearchBinding
 import com.iskezis.myst.ui.common.TrackRowAdapter
 import com.iskezis.myst.ui.player.TrackMenuSheet
+import com.iskezis.myst.util.UiAnimations.applyFadeThrough
+import com.iskezis.myst.util.UiAnimations.pressScale
+import com.iskezis.myst.util.UiAnimations.staggerVisibleChildren
 import kotlinx.coroutines.launch
 
 class SearchFragment : Fragment() {
@@ -29,6 +32,13 @@ class SearchFragment : Fragment() {
         SearchViewModel.factory(requireActivity().application)
     }
     private lateinit var adapter: TrackRowAdapter
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        applyFadeThrough()
+    }
+
+    private var animatedOnce = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -65,6 +75,8 @@ class SearchFragment : Fragment() {
             }
         }
         binding.searchState.stateRetry.setOnClickListener { viewModel.retry() }
+        binding.searchState.stateRetry.pressScale()
+        binding.searchBack.pressScale()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -96,6 +108,13 @@ class SearchFragment : Fragment() {
                 binding.searchState.stateRoot.isVisible = false
                 binding.searchList.isVisible = true
                 adapter.submitList(state.tracks)
+                if (!animatedOnce) {
+                    animatedOnce = true
+                    binding.searchList.postDelayed(
+                        { binding.searchList.staggerVisibleChildren() },
+                        120,
+                    )
+                }
             }
             is SearchState.Empty -> {
                 stopShimmer()

@@ -18,6 +18,8 @@ import com.iskezis.myst.data.spotify.SpotifyImporter
 import com.iskezis.myst.data.spotify.SpotifyLinkException
 import com.iskezis.myst.data.spotify.SpotifyUnavailableException
 import com.iskezis.myst.databinding.SheetSpotifyImportBinding
+import com.iskezis.myst.util.UiAnimations.pressScale
+import com.iskezis.myst.util.UiAnimations.shake
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -48,6 +50,8 @@ class SpotifyImportSheet : BottomSheetDialogFragment() {
             }
         }
         binding.spotifyImport.setOnClickListener { startImport() }
+        binding.spotifyImport.pressScale()
+        binding.spotifyCancel.pressScale()
         binding.spotifyInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_GO) {
                 startImport()
@@ -69,6 +73,7 @@ class SpotifyImportSheet : BottomSheetDialogFragment() {
         val link = binding.spotifyInput.text?.toString().orEmpty()
         if (SpotifyImporter.parsePlaylistId(link) == null) {
             binding.spotifyLayout.error = getString(R.string.spotify_invalid)
+            binding.spotifyInput.shake()
             return
         }
         binding.spotifyLayout.error = null
@@ -109,6 +114,7 @@ class SpotifyImportSheet : BottomSheetDialogFragment() {
                 throw cancelled
             } catch (linkError: SpotifyLinkException) {
                 binding.spotifyLayout.error = getString(R.string.spotify_invalid)
+                binding.spotifyInput.shake()
                 setImporting(false)
             } catch (privateError: SpotifyUnavailableException) {
                 showError(getString(R.string.spotify_private))

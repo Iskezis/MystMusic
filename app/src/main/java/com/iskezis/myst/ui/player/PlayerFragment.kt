@@ -18,6 +18,9 @@ import com.iskezis.myst.R
 import com.iskezis.myst.databinding.FragmentPlayerBinding
 import com.iskezis.myst.player.PlayerState
 import com.iskezis.myst.ui.playlists.AddToPlaylistSheet
+import com.iskezis.myst.util.UiAnimations.animatePlayIcon
+import com.iskezis.myst.util.UiAnimations.applySlideUp
+import com.iskezis.myst.util.UiAnimations.pressScale
 import com.iskezis.myst.util.formatDuration
 import kotlinx.coroutines.launch
 
@@ -28,6 +31,11 @@ class PlayerFragment : Fragment() {
     private val controller get() = (requireActivity().application as MystApp).playerController
     private var latest: PlayerState = PlayerState()
     private var seeking = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        applySlideUp()
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -53,6 +61,16 @@ class PlayerFragment : Fragment() {
                     .show(childFragmentManager, AddToPlaylistSheet.TAG)
             }
         }
+        listOf(
+            binding.playerBack,
+            binding.playerMore,
+            binding.playerPlay,
+            binding.playerNext,
+            binding.playerPrevious,
+            binding.playerShuffle,
+            binding.playerRepeat,
+        ).forEach { it.pressScale() }
+        animateCoverEntrance()
         binding.playerSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser && latest.durationMs > 0) {
@@ -112,9 +130,7 @@ class PlayerFragment : Fragment() {
         }
 
         binding.playerPlay.isEnabled = track != null
-        binding.playerPlay.setImageResource(
-            if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play,
-        )
+        animatePlayIcon(binding.playerPlay, state.isPlaying, R.drawable.ic_play, R.drawable.ic_pause)
         binding.playerPlay.contentDescription = context.getString(
             if (state.isPlaying) R.string.player_pause else R.string.player_play,
         )
@@ -143,5 +159,25 @@ class PlayerFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun animateCoverEntrance() {
+        val reduced = !com.iskezis.myst.util.UiAnimations.enabled(requireContext())
+        if (reduced) {
+            binding.playerCover.alpha = 1f
+            binding.playerCover.scaleX = 1f
+            binding.playerCover.scaleY = 1f
+            return
+        }
+        binding.playerCover.alpha = 0f
+        binding.playerCover.scaleX = 0.92f
+        binding.playerCover.scaleY = 0.92f
+        binding.playerCover.animate()
+            .alpha(1f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(350)
+            .setInterpolator(androidx.interpolator.view.animation.FastOutSlowInInterpolator())
+            .start()
     }
 }

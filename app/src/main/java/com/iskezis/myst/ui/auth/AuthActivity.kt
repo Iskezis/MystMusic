@@ -22,6 +22,8 @@ import com.iskezis.myst.MainActivity
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.databinding.ActivityAuthBinding
+import com.iskezis.myst.util.UiAnimations
+import com.iskezis.myst.util.UiAnimations.pressScale
 import kotlinx.coroutines.launch
 
 class AuthActivity : AppCompatActivity() {
@@ -74,6 +76,11 @@ class AuthActivity : AppCompatActivity() {
             renderMode(registerMode)
         }
         binding.authSubmit.setOnClickListener { submit() }
+        binding.youtubeButton.pressScale()
+        binding.mystButton.pressScale()
+        binding.authSubmit.pressScale()
+        binding.authBack.pressScale()
+        binding.authSwitch.pressScale()
         binding.authConfirmInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 submit()
@@ -97,6 +104,34 @@ class AuthActivity : AppCompatActivity() {
         })
 
         collectState()
+        animateEntry()
+    }
+
+    private fun animateEntry() {
+        if (!UiAnimations.enabled(this)) return
+        val logo = binding.authLogo
+        val items = listOf(binding.authTitle, binding.authSubtitle, binding.entryPanel)
+        logo.alpha = 0f
+        logo.scaleX = 0.9f
+        logo.scaleY = 0.9f
+        items.forEach { it.alpha = 0f }
+        binding.authRoot.post {
+            logo.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(400)
+                .start()
+            items.forEachIndexed { index, view ->
+                view.translationY = 24f * resources.displayMetrics.density
+                view.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setStartDelay(100L + index * 70L)
+                    .setDuration(400)
+                    .start()
+            }
+        }
     }
 
     private fun collectState() {

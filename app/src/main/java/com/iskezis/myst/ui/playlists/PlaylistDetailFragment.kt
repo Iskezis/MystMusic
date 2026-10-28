@@ -25,6 +25,9 @@ import com.iskezis.myst.R
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.databinding.FragmentPlaylistDetailBinding
 import com.iskezis.myst.ui.common.LoadState
+import com.iskezis.myst.util.UiAnimations.applyFadeThrough
+import com.iskezis.myst.util.UiAnimations.pressScale
+import com.iskezis.myst.util.UiAnimations.staggerVisibleChildren
 import kotlinx.coroutines.launch
 
 class PlaylistDetailFragment : Fragment() {
@@ -43,11 +46,17 @@ class PlaylistDetailFragment : Fragment() {
     private var dragging = false
     private var orderDirty = false
     private var navigatedAway = false
+    private var animatedOnce = false
 
     private val coverPicker = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
         if (uri != null) saveCover(uri)
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        applyFadeThrough()
     }
 
     override fun onCreateView(
@@ -79,6 +88,10 @@ class PlaylistDetailFragment : Fragment() {
         binding.detailCoverEdit.setOnClickListener { launchCoverPicker() }
         binding.detailPlayAll.setOnClickListener { playAll(shuffle = false) }
         binding.detailShuffle.setOnClickListener { playAll(shuffle = true) }
+        binding.detailPlayAll.pressScale()
+        binding.detailShuffle.pressScale()
+        binding.detailBack.pressScale()
+        binding.detailMore.pressScale()
         binding.detailState.stateRetry.setOnClickListener {
             if (currentState.errorRes != null) viewModel.retry() else viewModel.retryTracks()
         }
@@ -140,6 +153,13 @@ class PlaylistDetailFragment : Fragment() {
                 binding.detailTracks.isVisible = true
                 if (!dragging) adapter.submit(tracks.value)
                 setPlayButtons(tracks.value.isNotEmpty())
+                if (!animatedOnce && tracks.value.isNotEmpty()) {
+                    animatedOnce = true
+                    binding.detailTracks.postDelayed(
+                        { binding.detailTracks.staggerVisibleChildren() },
+                        120,
+                    )
+                }
             }
             is LoadState.Empty -> {
                 stopShimmer()
@@ -333,13 +353,19 @@ class PlaylistDetailFragment : Fragment() {
             if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
                 dragging = true
                 orderDirty = false
-                viewHolder?.itemView?.alpha = 0.7f
+                viewHolder?.itemView?.apply {
+                    alpha = 0.9f
+                    elevation = resources.displayMetrics.density * 8f
+                    animate().scaleX(1.03f).scaleY(1.03f).setDuration(150).start()
+                }
             }
         }
 
         override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
             super.clearView(recyclerView, viewHolder)
+            viewHolder.itemView.animate().scaleX(1f).scaleY(1f).setDuration(180).start()
             viewHolder.itemView.alpha = 1f
+            viewHolder.itemView.elevation = 0f
             if (dragging) {
                 dragging = false
                 if (orderDirty) {

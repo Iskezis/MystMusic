@@ -16,6 +16,9 @@ import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.snackbar.Snackbar
 import com.iskezis.myst.R
 import com.iskezis.myst.databinding.FragmentPlaylistsBinding
+import com.iskezis.myst.util.UiAnimations.applyFadeThrough
+import com.iskezis.myst.util.UiAnimations.pressScale
+import com.iskezis.myst.util.UiAnimations.staggerVisibleChildren
 import kotlinx.coroutines.launch
 
 class PlaylistsFragment : Fragment() {
@@ -27,6 +30,12 @@ class PlaylistsFragment : Fragment() {
     }
     private lateinit var adapter: PlaylistGridAdapter
     private var currentState = PlaylistsUiState()
+    private var animatedOnce = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        applyFadeThrough()
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -49,6 +58,7 @@ class PlaylistsFragment : Fragment() {
             SpotifyImportSheet.newInstance()
                 .show(childFragmentManager, SpotifyImportSheet.TAG)
         }
+        binding.spotifyButton.pressScale()
         binding.playlistsState.stateRetry.setOnClickListener {
             if (currentState.errorRes != null) viewModel.retry() else showCreateDialog()
         }
@@ -133,6 +143,13 @@ class PlaylistsFragment : Fragment() {
                         state.playlists.forEach { add(PlaylistGridItem.Item(it)) }
                     },
                 )
+                if (!animatedOnce) {
+                    animatedOnce = true
+                    binding.playlistsList.postDelayed(
+                        { binding.playlistsList.staggerVisibleChildren() },
+                        120,
+                    )
+                }
             }
         }
     }

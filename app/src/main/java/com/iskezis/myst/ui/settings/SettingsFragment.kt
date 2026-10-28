@@ -22,6 +22,8 @@ import com.iskezis.myst.data.discord.DiscordState
 import com.iskezis.myst.databinding.FragmentSettingsBinding
 import com.iskezis.myst.ui.auth.AuthActivity
 import com.iskezis.myst.ui.auth.DiscordLoginActivity
+import com.iskezis.myst.util.UiAnimations.applyFadeThrough
+import com.iskezis.myst.util.UiAnimations.pressScale
 import kotlinx.coroutines.launch
 
 class SettingsFragment : Fragment() {
@@ -41,6 +43,11 @@ class SettingsFragment : Fragment() {
                 .orEmpty()
             if (token.isNotBlank()) viewModel.connectDiscord(token)
         }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        applyFadeThrough()
     }
 
     override fun onCreateView(
@@ -72,6 +79,8 @@ class SettingsFragment : Fragment() {
 
         binding.settingsDiscordAction.setOnClickListener { onDiscordAction() }
         binding.settingsDiscordCard.setOnClickListener { onDiscordAction() }
+        binding.settingsLogout.pressScale()
+        binding.settingsDiscordAction.pressScale()
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {

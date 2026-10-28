@@ -15,6 +15,7 @@ import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.databinding.FragmentHomeBinding
 import com.iskezis.myst.ui.player.TrackMenuSheet
+import com.iskezis.myst.util.UiAnimations.applyFadeThrough
 import kotlinx.coroutines.launch
 
 class HomeFragment : Fragment() {
@@ -25,6 +26,11 @@ class HomeFragment : Fragment() {
         HomeViewModel.factory(requireActivity().application)
     }
     private lateinit var adapter: HomeAdapter
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        applyFadeThrough()
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -54,6 +60,7 @@ class HomeFragment : Fragment() {
         binding.homeList.layoutManager = LinearLayoutManager(requireContext())
         binding.homeList.adapter = adapter
         binding.homeRefresh.setOnRefreshListener { viewModel.refresh() }
+        binding.homeList.setHasFixedSize(false)
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {

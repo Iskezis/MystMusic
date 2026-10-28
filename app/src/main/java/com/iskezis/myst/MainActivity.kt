@@ -23,6 +23,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.iskezis.myst.databinding.ActivityMainBinding
 import com.iskezis.myst.player.PlayerState
 import com.iskezis.myst.ui.auth.AuthActivity
+import com.iskezis.myst.util.UiAnimations.animatePlayIcon
+import com.iskezis.myst.util.UiAnimations.pressScale
 import com.iskezis.myst.util.formatDuration
 import kotlinx.coroutines.launch
 
@@ -31,6 +33,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var navController: NavController
     private var playerState = PlayerState()
+    private var miniVisible = false
+    private var navBarHidden = false
 
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -68,6 +72,11 @@ class MainActivity : AppCompatActivity() {
         binding.navBar.navHome.setOnClickListener { navigateTo(R.id.homeFragment) }
         binding.navBar.navPlaylists.setOnClickListener { navigateTo(R.id.playlistsFragment) }
         binding.navBar.navSettings.setOnClickListener { navigateTo(R.id.settingsFragment) }
+        binding.navBar.navHome.pressScale()
+        binding.navBar.navPlaylists.pressScale()
+        binding.navBar.navSettings.pressScale()
+        binding.navBar.navCenterCard.pressScale()
+        binding.miniPlayer.root.pressScale()
 
         binding.miniPlayer.root.setOnClickListener {
             if (navController.currentDestination?.id != R.id.playerFragment) {
@@ -105,7 +114,36 @@ class MainActivity : AppCompatActivity() {
         val state = playerState
         val track = state.track
         val onPlayerScreen = navController.currentDestination?.id == R.id.playerFragment
-        binding.miniPlayer.root.isVisible = track != null && !onPlayerScreen
+        val shouldShow = track != null && !onPlayerScreen
+        if (shouldShow) {
+            if (!miniVisible) {
+                miniVisible = true
+                binding.miniPlayer.root.animate().cancel()
+                binding.miniPlayer.root.isVisible = true
+                binding.miniPlayer.root.alpha = 0f
+                binding.miniPlayer.root.translationY = dp(20f)
+                binding.miniPlayer.root.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(240)
+                    .start()
+            }
+        } else {
+            if (miniVisible) {
+                miniVisible = false
+                binding.miniPlayer.root.animate().cancel()
+                binding.miniPlayer.root.animate()
+                    .alpha(0f)
+                    .translationY(dp(20f))
+                    .setDuration(180)
+                    .withEndAction {
+                        if (!miniVisible) binding.miniPlayer.root.isVisible = false
+                    }
+                    .start()
+            } else if (!onPlayerScreen) {
+                binding.miniPlayer.root.isVisible = false
+            }
+        }
         if (track == null) return
 
         binding.miniPlayer.miniTitle.text = track.title.ifBlank {
@@ -123,8 +161,11 @@ class MainActivity : AppCompatActivity() {
             placeholder(R.drawable.bg_cover_placeholder)
             error(R.drawable.bg_cover_placeholder)
         }
-        binding.miniPlayer.miniPlay.setImageResource(
-            if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play,
+        animatePlayIcon(
+            binding.miniPlayer.miniPlay,
+            state.isPlaying,
+            R.drawable.ic_play,
+            R.drawable.ic_pause,
         )
         binding.miniPlayer.miniPlay.contentDescription = getString(
             if (state.isPlaying) R.string.player_pause else R.string.player_play,
@@ -134,7 +175,10 @@ class MainActivity : AppCompatActivity() {
         } else {
             0
         }
-        binding.miniPlayer.miniProgress.progress = progress
+        com.iskezis.myst.util.UiAnimations.animateProgress(
+            binding.miniPlayer.miniProgress,
+            progress,
+        )
         binding.miniPlayer.root.contentDescription = getString(
             R.string.player_now_playing,
         ) + ": " + track.title + " — " + formatDuration(state.positionMs)
@@ -163,7 +207,31 @@ class MainActivity : AppCompatActivity() {
         binding.navBar.navHome.isSelected = destinationId == R.id.homeFragment
         binding.navBar.navPlaylists.isSelected = destinationId == R.id.playlistsFragment
         binding.navBar.navSettings.isSelected = destinationId == R.id.settingsFragment
+        animateNavBar(visible = destinationId != R.id.playerFragment)
     }
+
+    private fun animateNavBar(visible: Boolean) {
+        if (visible == !navBarHidden) return
+        navBarHidden = !visible
+        binding.navBar.animate().cancel()
+        if (visible) {
+            binding.navBar.animate()
+                .translationY(0f)
+                .alpha(1f)
+                .setDuration(250)
+                .start()
+        } else {
+            val height = binding.navBar.height.takeIf { it > 0 } ?: dp(80f).toInt()
+            val offset = height + resources.getDimension(R.dimen.nav_margin_bottom)
+            binding.navBar.animate()
+                .translationY(offset)
+                .alpha(0f)
+                .setDuration(250)
+                .start()
+        }
+    }
+
+    private fun dp(value: Float): Float = value * resources.displayMetrics.density
 
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
