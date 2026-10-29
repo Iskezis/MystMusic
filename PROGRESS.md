@@ -30,6 +30,8 @@ Atualize após cada etapa. Marque [x] só quando o build do GitHub estiver verde
 | 40785219360 | 029b71a | verde | Exportação do pareamento movida para `withContext(Dispatchers.IO)` | — |
 | 40788161795 | f4013c1 | verde | Navegação durante reprodução, Discord com identify válido e pareamento TV estabilizado | — |
 | 40790472742 | 9146214 | verde | Logs persistentes em arquivo, tela de diagnóstico, cópia/compartilhamento e stack de crash no arquivo (v1.0.2) | `apks/app.apk`, `apks/app-tv.apk` |
+| 40791173336 | 0b30817 | verde | Commit dos APKs do run 40790472742 + PROGRESS | — |
+| 40792909555 | 6784eb2 | verde | Coil sem bitmaps de hardware para as transições de fragmento não quebrarem no snapshot (v1.0.3) | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
 - Player: `ResolvingDataSource` resolve `myst://track/<id>` na hora de abrir. A extração foi refeita seguindo o caminho que o BitChord usa via InnerTube (`InnerTubeXResolver`/`PlaybackClientCatalog`): o primeiro cliente é o **VISIONOS 0.1** no endpoint `music.youtube.com/youtubei/v1/player`, com `visitorData` novo, `clientId` 101, `X-Goog-Api-Format-Version: 1`, sem cookies e sem `playbackContext`. Ele devolve URL direta, que é validada com Range de 2 bytes antes de chegar ao ExoPlayer.
@@ -44,6 +46,7 @@ Atualize após cada etapa. Marque [x] só quando o build do GitHub estiver verde
 - Pareamento: a TV exige o código de 5 dígitos quando não há sessão pareada; o celular exporta conta Myst/YouTube, cookies e playlists por HTTP local com AES-GCM derivado do código. O NSD compara o tipo de serviço normalizado e o celular pode reiniciar o servidor local.
 - TV: como digitar cookies no controle remoto é inviável, o login chega pelo pareamento. O logout na TV volta ao `TvPairingActivity`; no celular, ao `AuthActivity`.
 - Configurações: além de **Deslogar** e do item opt-in **Discord**, há **Conectar à TV** (necessário para o pareamento) e **Logs e diagnóstico** (solicitado para relatar bugs). Nenhuma outra opção foi adicionada.
+- Imagens: `MystApp` implementa `ImageLoaderFactory` com `allowHardware(false)`. As transições de fragmento (`MaterialSharedAxis`) tiram um snapshot da tela em um `Canvas` de software; uma capa carregada pelo Coil como bitmap de hardware lançava `IllegalArgumentException: Software rendering doesn't support hardware bitmaps` ao sair da Busca com resultados. O crossfade continua; só a otimização de bitmap de hardware foi desativada.
 - Formatos de áudio priorizam AAC (itag 140/141/139) e depois Opus (251/250/249), para funcionar também em TVs 32 bits sem decodificador Opus.
 - Em erro de rede/HTTP do player, o `PlaybackService` invalida o cache da URL e tenta uma vez de novo. O botão "Tentar novamente" também limpa o estado de erro.
 - Capas: o parser escolhe a maior miniatura disponível, eleva URLs do YouTube para `maxresdefault`/1080 e a UI aplica essa melhoria também a faixas antigas salvas no banco. Capas de playlist escolhidas pelo usuário são salvas em 1024 px (JPEG 92).
@@ -51,7 +54,8 @@ Atualize após cada etapa. Marque [x] só quando o build do GitHub estiver verde
 - A capa importada do Spotify usa a maior imagem disponível e é gravada em até 1024 px.
 
 ## Problemas em aberto
-- Teste em aparelho físico do run 40790472742 (`9146214`, v1.0.2): reprodução lenta, fechamento ao navegar durante a reprodução, Discord e pareamento TV. Os detalhes devem ser relatados com os logs de **Configurações → Logs e diagnóstico**.
+- Teste em aparelho físico do run 40792909555 (`6784eb2`, v1.0.3): confirmar que navegar pela navbar/mini player com música tocando não fecha mais o app; depois validar reprodução lenta, Discord e pareamento TV. Relatar com os logs de **Configurações → Logs e diagnóstico**.
+- Crash corrigido: o log de 28/10 mostrou `IllegalArgumentException: Software rendering doesn't support hardware bitmaps` em `TransitionUtils.createViewBitmap` ao sair da Busca com capas carregadas. A causa era o bitmap de hardware padrão do Coil; `MystApp.newImageLoader()` usa `allowHardware(false)` e o build 40792909555 inclui a correção.
 - Logcat Reader: qualquer leitor externo precisa receber `android.permission.READ_LOGS` por ADB/root; sem isso o Android só mostra ao leitor os próprios logs. Exemplo (troque pelo pacote do leitor): `adb shell pm grant com.dp.logcatapp android.permission.READ_LOGS`. Os logs internos e o botão Compartilhar funcionam sem ADB.
 - Crash: as lambdas de animação de lista em Busca/Playlists usavam `binding` depois de `onDestroyView`; agora são canceladas com o `viewLifecycleOwner`. O handler persistente grava a pilha em `myst_last_crash.txt`, carrega no diagnóstico após reiniciar e agora também grava a pilha completa no arquivo de log de forma síncrona.
 - Discord: o identify usa o fingerprint Android do Discord, valida o token pela REST, espera ACK do heartbeat, reconecta com backoff e reenvia a presença. Se continuar sem conectar, a tela de logs mostrará `MystDiscord` com o HTTP/close code exato.
