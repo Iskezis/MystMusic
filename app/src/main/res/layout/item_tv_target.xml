@@ -7,10 +7,10 @@
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
-    app:cardBackgroundColor="@color/surface"
+    app:cardBackgroundColor="?attr/mystSurface"
     app:cardCornerRadius="@dimen/corner_medium"
     app:cardElevation="0dp"
-    app:strokeColor="@color/white_8"
+    app:strokeColor="?attr/mystStroke"
     app:strokeWidth="1dp">
 
     <LinearLayout
@@ -26,7 +26,7 @@
             android:contentDescription="@null"
             android:padding="@dimen/space_s"
             android:src="@drawable/ic_tv"
-            app:tint="@color/sky_400" />
+            app:tint="?attr/mystAccentText" />
 
         <TextView
             android:id="@+id/tvTargetName"
@@ -37,7 +37,7 @@
             android:ellipsize="end"
             android:fontFamily="sans-serif-medium"
             android:maxLines="1"
-            android:textColor="@color/text"
+            android:textColor="?attr/mystOnSurface"
             android:textSize="16sp" />
 
         <ImageView
@@ -46,6 +46,6 @@
             android:contentDescription="@null"
             android:padding="@dimen/space_m"
             android:src="@drawable/ic_chevron_right"
-            app:tint="@color/text_dim" />
+            app:tint="?attr/mystOnSurfaceDim" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

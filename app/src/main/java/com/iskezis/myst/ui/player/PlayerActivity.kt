@@ -1,13 +1,14 @@
 package com.iskezis.myst.ui.player
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
+import com.iskezis.myst.ui.common.BaseActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import com.iskezis.myst.R
 import com.iskezis.myst.databinding.ActivityPlayerBinding
 import com.iskezis.myst.util.AppLog
+import com.iskezis.myst.util.MystTheme
 
 /**
  * Tela de reprodução em uma Activity própria.
@@ -18,7 +19,7 @@ import com.iskezis.myst.util.AppLog
  * O [PlayerFragment] continua sendo usado e reconhece quando está sem NavHost
  * (caso desta Activity), fechando a Activity ao tocar na seta de voltar.
  */
-class PlayerActivity : AppCompatActivity() {
+class PlayerActivity : BaseActivity() {
 
     private lateinit var binding: ActivityPlayerBinding
 
@@ -29,10 +30,7 @@ class PlayerActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowCompat.getInsetsController(window, binding.root).apply {
-            isAppearanceLightStatusBars = false
-            isAppearanceLightNavigationBars = false
-        }
+        MystTheme.applySystemBars(this)
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom)

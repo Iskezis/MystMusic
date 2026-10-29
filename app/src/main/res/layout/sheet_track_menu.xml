@@ -45,7 +45,7 @@
                 android:ellipsize="end"
                 android:fontFamily="sans-serif-medium"
                 android:maxLines="1"
-                android:textColor="@color/text"
+                android:textColor="?attr/mystOnSurface"
                 android:textSize="@dimen/text_body" />
 
             <TextView
@@ -55,7 +55,7 @@
                 android:layout_marginTop="2dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="@color/text_dim"
+                android:textColor="?attr/mystOnSurfaceDim"
                 android:textSize="@dimen/text_small" />
         </LinearLayout>
     </LinearLayout>
@@ -64,7 +64,7 @@
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="@dimen/space_m"
-        android:background="@color/white_8" />
+        android:background="?attr/mystStroke" />
 
     <LinearLayout
         android:id="@+id/menuPlayNow"
@@ -81,14 +81,14 @@
             android:layout_height="22dp"
             android:contentDescription="@null"
             android:src="@drawable/ic_play"
-            app:tint="@color/sky_400" />
+            app:tint="?attr/mystAccentText" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/space_m"
             android:text="@string/track_menu_play"
-            android:textColor="@color/text"
+            android:textColor="?attr/mystOnSurface"
             android:textSize="@dimen/text_body" />
     </LinearLayout>
 
@@ -107,14 +107,14 @@
             android:layout_height="22dp"
             android:contentDescription="@null"
             android:src="@drawable/ic_queue"
-            app:tint="@color/sky_400" />
+            app:tint="?attr/mystAccentText" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/space_m"
             android:text="@string/track_menu_play_next"
-            android:textColor="@color/text"
+            android:textColor="?attr/mystOnSurface"
             android:textSize="@dimen/text_body" />
     </LinearLayout>
 
@@ -133,14 +133,14 @@
             android:layout_height="22dp"
             android:contentDescription="@null"
             android:src="@drawable/ic_add_to_playlist"
-            app:tint="@color/sky_400" />
+            app:tint="?attr/mystAccentText" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/space_m"
             android:text="@string/track_menu_add"
-            android:textColor="@color/text"
+            android:textColor="?attr/mystOnSurface"
             android:textSize="@dimen/text_body" />
     </LinearLayout>
 </LinearLayout>

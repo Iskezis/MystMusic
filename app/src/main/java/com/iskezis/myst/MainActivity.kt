@@ -7,7 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
+import com.iskezis.myst.ui.common.BaseActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -27,12 +27,13 @@ import com.iskezis.myst.ui.auth.AuthActivity
 import com.iskezis.myst.ui.pairing.TvPairingActivity
 import com.iskezis.myst.ui.player.PlayerActivity
 import com.iskezis.myst.util.AppLog
+import com.iskezis.myst.util.MystTheme
 import com.iskezis.myst.util.UiAnimations.animatePlayIcon
 import com.iskezis.myst.util.UiAnimations.pressScale
 import com.iskezis.myst.util.formatDuration
 import kotlinx.coroutines.launch
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : BaseActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var navController: NavController
@@ -78,10 +79,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowCompat.getInsetsController(window, binding.root).apply {
-            isAppearanceLightStatusBars = false
-            isAppearanceLightNavigationBars = false
-        }
+        MystTheme.applySystemBars(this)
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
@@ -297,7 +295,8 @@ class MainActivity : AppCompatActivity() {
     private fun updateSelection(destinationId: Int) {
         binding.navBar.navHome.isSelected = destinationId == R.id.homeFragment
         binding.navBar.navPlaylists.isSelected = destinationId == R.id.playlistsFragment
-        binding.navBar.navSettings.isSelected = destinationId == R.id.settingsFragment
+        binding.navBar.navSettings.isSelected =
+            destinationId == R.id.settingsFragment || destinationId == R.id.appearanceFragment
         animateNavBar(visible = destinationId != R.id.playerFragment)
     }
 

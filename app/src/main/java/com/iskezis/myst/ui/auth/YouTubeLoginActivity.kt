@@ -13,7 +13,7 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
-import androidx.appcompat.app.AppCompatActivity
+import com.iskezis.myst.ui.common.BaseActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -23,7 +23,7 @@ import com.iskezis.myst.data.account.AccountRepository
 import com.iskezis.myst.databinding.ActivityYoutubeLoginBinding
 import com.iskezis.myst.util.AppLog
 
-class YouTubeLoginActivity : AppCompatActivity() {
+class YouTubeLoginActivity : BaseActivity() {
 
     private lateinit var binding: ActivityYoutubeLoginBinding
     private val handler = Handler(Looper.getMainLooper())

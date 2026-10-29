@@ -4,10 +4,10 @@
     android:id="@+id/miniPlayerRoot"
     android:layout_width="match_parent"
     android:layout_height="@dimen/mini_player_height"
-    app:cardBackgroundColor="@color/surface_92"
+    app:cardBackgroundColor="?attr/mystNavbarBg"
     app:cardCornerRadius="20dp"
     app:cardElevation="10dp"
-    app:strokeColor="@color/white_8"
+    app:strokeColor="?attr/mystStroke"
     app:strokeWidth="1dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -36,7 +36,7 @@
             android:ellipsize="end"
             android:fontFamily="sans-serif-medium"
             android:maxLines="1"
-            android:textColor="@color/text"
+            android:textColor="?attr/mystOnSurface"
             android:textSize="@dimen/text_body"
             app:layout_constraintBottom_toTopOf="@id/miniArtist"
             app:layout_constraintEnd_toStartOf="@id/miniPlay"
@@ -49,7 +49,7 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="@dimen/text_small"
             app:layout_constraintBottom_toBottomOf="@id/miniCover"
             app:layout_constraintEnd_toEndOf="@id/miniTitle"
@@ -66,7 +66,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:tint="@color/sky_400" />
+            app:tint="?attr/mystAccentText" />
 
         <ProgressBar
             android:id="@+id/miniProgress"
@@ -77,8 +77,8 @@
             android:layout_marginEnd="@dimen/space_s"
             android:layout_marginBottom="6dp"
             android:max="1000"
-            android:progressTint="@color/sky_400"
-            android:progressBackgroundTint="@color/white_12"
+            android:progressTint="?attr/mystAccentText"
+            android:progressBackgroundTint="?attr/mystStrokeStrong"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent" />

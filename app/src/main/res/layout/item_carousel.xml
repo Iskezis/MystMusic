@@ -18,8 +18,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:shimmer_auto_start="true"
-        app:shimmer_base_color="@color/surface_alt"
-        app:shimmer_highlight_color="@color/surface"
+        app:shimmer_base_color="?attr/mystSurfaceAlt"
+        app:shimmer_highlight_color="?attr/mystSurface"
         android:paddingStart="@dimen/screen_margin"
         android:paddingEnd="@dimen/screen_margin">
 
@@ -58,7 +58,7 @@
             android:layout_height="32dp"
             android:contentDescription="@null"
             android:src="@drawable/ic_music"
-            app:tint="@color/text_dim" />
+            app:tint="?attr/mystOnSurfaceDim" />
 
         <TextView
             android:id="@+id/carouselStateTitle"
@@ -66,7 +66,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_s"
             android:gravity="center"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="@dimen/text_body" />
 
         <com.google.android.material.button.MaterialButton

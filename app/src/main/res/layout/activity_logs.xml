@@ -24,7 +24,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/common_back"
             android:src="@drawable/ic_back"
-            app:tint="@color/text" />
+            app:tint="?attr/mystOnSurface" />
 
         <TextView
             android:layout_width="0dp"
@@ -33,7 +33,7 @@
             android:layout_weight="1"
             android:fontFamily="sans-serif-medium"
             android:text="@string/logs_title"
-            android:textColor="@color/text"
+            android:textColor="?attr/mystOnSurface"
             android:textSize="@dimen/text_title" />
 
         <ImageButton
@@ -43,7 +43,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/logs_share"
             android:src="@drawable/ic_share"
-            app:tint="@color/sky_400" />
+            app:tint="?attr/mystAccentText" />
     </LinearLayout>
 
     <TextView
@@ -51,7 +51,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/space_s"
-        android:textColor="@color/text_dim"
+        android:textColor="?attr/mystOnSurfaceDim"
         android:textSize="@dimen/text_small" />
 
     <TextView
@@ -60,7 +60,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/space_xs"
         android:text="@string/logs_logcat_hint"
-        android:textColor="@color/text_dim"
+        android:textColor="?attr/mystOnSurfaceDim"
         android:textSize="@dimen/text_small" />
 
     <ScrollView
@@ -80,7 +80,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:fontFamily="monospace"
-            android:textColor="@color/text"
+            android:textColor="?attr/mystOnSurface"
             android:textIsSelectable="true"
             android:textSize="@dimen/text_small" />
     </ScrollView>

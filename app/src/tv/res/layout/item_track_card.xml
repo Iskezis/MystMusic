@@ -34,7 +34,7 @@
             android:contentDescription="@string/common_more"
             android:padding="10dp"
             android:src="@drawable/ic_more"
-            app:tint="@color/text" />
+            app:tint="?attr/mystOnSurface" />
     </FrameLayout>
 
     <TextView
@@ -45,7 +45,7 @@
         android:ellipsize="end"
         android:fontFamily="sans-serif-medium"
         android:maxLines="1"
-        android:textColor="@color/text"
+        android:textColor="?attr/mystOnSurface"
         android:textSize="22sp" />
 
     <TextView
@@ -55,6 +55,6 @@
         android:layout_marginTop="2dp"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textColor="@color/text_dim"
+        android:textColor="?attr/mystOnSurfaceDim"
         android:textSize="18sp" />
 </LinearLayout>

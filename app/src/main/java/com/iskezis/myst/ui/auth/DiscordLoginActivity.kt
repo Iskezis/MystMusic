@@ -15,7 +15,7 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
-import androidx.appcompat.app.AppCompatActivity
+import com.iskezis.myst.ui.common.BaseActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -36,7 +36,7 @@ import com.iskezis.myst.util.AppLog
  * armazenamento real; o valor chega por `alert` — o mesmo método usado pelo
  * KizzyRPC/BitChord. O token nunca é gravado no Logcat.
  */
-class DiscordLoginActivity : AppCompatActivity() {
+class DiscordLoginActivity : BaseActivity() {
 
     private lateinit var binding: ActivityDiscordLoginBinding
     private val handler = Handler(Looper.getMainLooper())

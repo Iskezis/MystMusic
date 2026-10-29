@@ -9,10 +9,10 @@
     android:clickable="true"
     android:contentDescription="@string/search_hint"
     android:focusable="true"
-    app:cardBackgroundColor="@color/surface_alt"
+    app:cardBackgroundColor="?attr/mystSurfaceAlt"
     app:cardCornerRadius="38dp"
     app:cardElevation="0dp"
-    app:strokeColor="@color/white_8"
+    app:strokeColor="?attr/mystStroke"
     app:strokeWidth="1dp">
 
     <LinearLayout
@@ -28,7 +28,7 @@
             android:layout_height="30dp"
             android:contentDescription="@null"
             android:src="@drawable/ic_search"
-            app:tint="@color/text_dim" />
+            app:tint="?attr/mystOnSurfaceDim" />
 
         <TextView
             android:layout_width="0dp"
@@ -36,7 +36,7 @@
             android:layout_marginStart="@dimen/space_m"
             android:layout_weight="1"
             android:text="@string/search_hint"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="22sp" />
 
         <FrameLayout
@@ -50,7 +50,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:fontFamily="sans-serif-medium"
-                android:textColor="@color/sky_400"
+                android:textColor="?attr/mystAccentText"
                 android:textSize="20sp" />
         </FrameLayout>
     </LinearLayout>

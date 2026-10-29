@@ -7,7 +7,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+import com.iskezis.myst.ui.common.BaseActivity
 import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -19,6 +19,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.iskezis.myst.R
 import com.iskezis.myst.databinding.ActivityLogsBinding
 import com.iskezis.myst.util.AppLog
+import com.iskezis.myst.util.MystTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -27,7 +28,7 @@ import kotlinx.coroutines.launch
  * completo e ações de copiar/compartilhar. Funciona sem ADB e sem root, ao
  * contrário de leitores externos de Logcat (que precisam de READ_LOGS).
  */
-class LogsActivity : AppCompatActivity() {
+class LogsActivity : BaseActivity() {
 
     private lateinit var binding: ActivityLogsBinding
     private var lastSnapshot: String? = null
@@ -37,10 +38,7 @@ class LogsActivity : AppCompatActivity() {
         binding = ActivityLogsBinding.inflate(layoutInflater)
         setContentView(binding.root)
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowCompat.getInsetsController(window, binding.root).apply {
-            isAppearanceLightStatusBars = false
-            isAppearanceLightNavigationBars = false
-        }
+        MystTheme.applySystemBars(this)
         val basePadding = listOf(
             binding.logsRoot.paddingLeft,
             binding.logsRoot.paddingTop,

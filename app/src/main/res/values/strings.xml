@@ -90,6 +90,8 @@
     <string name="settings_account_youtube">Conta YouTube</string>
     <string name="settings_logout">Deslogar</string>
     <string name="settings_logout_confirm">Sair da conta %1$s? Suas playlists continuam neste aparelho.</string>
+    <string name="settings_appearance">Aparência</string>
+    <string name="settings_appearance_subtitle">Tema claro, escuro, sistema ou Preto AMOLED</string>
     <string name="settings_discord">Discord</string>
     <string name="settings_discord_off">Rich Presence desativado</string>
     <string name="settings_discord_on">Rich Presence ativo</string>
@@ -115,6 +117,18 @@
     <string name="logs_logcat_hint">O Android só mostra os logs de um app para leitores externos com a permissão READ_LOGS, concedida por ADB ou root. Para ver os logs sem ADB, use esta tela ou o botão Compartilhar.</string>
     <string name="settings_about">Sobre</string>
     <string name="settings_version">Versão %1$s</string>
+
+    <string name="appearance_title">Aparência</string>
+    <string name="appearance_subtitle">Escolha como o MystMusic deve aparecer neste aparelho.</string>
+    <string name="appearance_theme_system">Sistema</string>
+    <string name="appearance_theme_system_desc">Segue o tema claro ou escuro do aparelho</string>
+    <string name="appearance_theme_light">Claro</string>
+    <string name="appearance_theme_light_desc">Fundo claro com texto escuro</string>
+    <string name="appearance_theme_dark">Escuro</string>
+    <string name="appearance_theme_dark_desc">Fundo escuro com texto claro</string>
+    <string name="appearance_amoled">Preto AMOLED</string>
+    <string name="appearance_amoled_desc">Fundo #000000 e superfícies quase pretas</string>
+    <string name="appearance_device_note">O tema é salvo neste aparelho e não altera a sua conta Myst.</string>
 
     <string name="discord_warning_title">Discord Rich Presence</string>
     <string name="discord_warning">O Rich Presence usa um token de usuário do Discord via conexão não oficial. Isso fica na zona cinzenta dos termos do Discord e pode levar a bloqueio da conta. Ative apenas se aceitar o risco. Para exibir a capa, o MystMusic usa o media proxy do Discord por meio de um aplicativo público de código aberto; nenhum aplicativo é criado na sua conta. O MystMusic funciona normalmente sem isso.</string>

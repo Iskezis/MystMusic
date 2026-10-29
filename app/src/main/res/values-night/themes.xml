@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Theme.MystMusic" parent="Theme.MystMusic.Base">
+        <item name="colorPrimary">@color/dark_accent</item>
+        <item name="colorOnPrimary">@color/on_accent</item>
+        <item name="colorPrimaryContainer">@color/dark_accent_dark</item>
+        <item name="colorOnPrimaryContainer">@color/on_accent</item>
+        <item name="colorSecondary">@color/dark_accent_text</item>
+        <item name="colorOnSecondary">@color/on_accent</item>
+        <item name="colorSurface">@color/dark_surface</item>
+        <item name="colorOnSurface">@color/dark_text</item>
+        <item name="colorSurfaceVariant">@color/dark_surface_alt</item>
+        <item name="colorOnSurfaceVariant">@color/dark_text_dim</item>
+        <item name="colorOutline">@color/dark_stroke_strong</item>
+        <item name="colorError">@color/dark_error</item>
+        <item name="colorOnError">@color/white</item>
+        <item name="colorControlNormal">@color/dark_text_dim</item>
+        <item name="colorControlActivated">@color/dark_accent</item>
+        <item name="colorControlHighlight">@color/accent_alpha_24</item>
+        <item name="android:colorBackground">@color/dark_bg</item>
+        <item name="android:textColorPrimary">@color/dark_text</item>
+        <item name="android:textColorSecondary">@color/dark_text_dim</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
+
+        <item name="mystBackground">@color/dark_bg</item>
+        <item name="mystSurface">@color/dark_surface</item>
+        <item name="mystSurfaceAlt">@color/dark_surface_alt</item>
+        <item name="mystOnSurface">@color/dark_text</item>
+        <item name="mystOnSurfaceDim">@color/dark_text_dim</item>
+        <item name="mystNavbarBg">@color/dark_navbar</item>
+        <item name="mystStroke">@color/dark_stroke</item>
+        <item name="mystStrokeStrong">@color/dark_stroke_strong</item>
+        <item name="mystGradientStart">@color/dark_bg</item>
+        <item name="mystGradientEnd">@color/dark_surface</item>
+        <item name="mystAccent">@color/dark_accent</item>
+        <item name="mystAccentDark">@color/dark_accent_dark</item>
+        <item name="mystAccentText">@color/dark_accent_text</item>
+        <item name="mystOnAccent">@color/on_accent</item>
+        <item name="mystOnImage">@color/on_image</item>
+        <item name="mystImageScrim">@color/image_scrim</item>
+        <item name="mystPlayerScrim">@color/dark_player_scrim</item>
+        <item name="mystError">@color/dark_error</item>
+        <item name="mystSuccess">@color/dark_success</item>
+        <item name="mystAccentAlpha16">@color/accent_alpha_16</item>
+        <item name="mystAccentAlpha24">@color/accent_alpha_24</item>
+    </style>
+
+    <!--
+      Aplicado por BaseActivity antes de super.onCreate quando o tema efetivo é
+      escuro e "Preto AMOLED" está ligado. Substitui os tokens e as cores do
+      Material para que fundos, cards, textos, ícones e sheets fiquem pretos.
+    -->
+    <style name="ThemeOverlay.MystMusic.Amoled" parent="">
+        <item name="mystBackground">@color/amoled_bg</item>
+        <item name="mystSurface">@color/amoled_surface</item>
+        <item name="mystSurfaceAlt">@color/amoled_surface_alt</item>
+        <item name="mystOnSurface">@color/dark_text</item>
+        <item name="mystOnSurfaceDim">@color/dark_text_dim</item>
+        <item name="mystNavbarBg">@color/amoled_navbar</item>
+        <item name="mystStroke">@color/amoled_stroke</item>
+        <item name="mystStrokeStrong">@color/amoled_stroke_strong</item>
+        <item name="mystGradientStart">@color/amoled_bg</item>
+        <item name="mystGradientEnd">@color/amoled_surface</item>
+        <item name="mystAccent">@color/dark_accent</item>
+        <item name="mystAccentDark">@color/dark_accent_dark</item>
+        <item name="mystAccentText">@color/dark_accent_text</item>
+        <item name="mystOnAccent">@color/on_accent</item>
+        <item name="mystOnImage">@color/on_image</item>
+        <item name="mystImageScrim">@color/image_scrim</item>
+        <item name="mystPlayerScrim">@color/amoled_player_scrim</item>
+        <item name="mystError">@color/dark_error</item>
+        <item name="mystSuccess">@color/dark_success</item>
+        <item name="mystAccentAlpha16">@color/accent_alpha_16</item>
+        <item name="mystAccentAlpha24">@color/accent_alpha_24</item>
+
+        <item name="android:colorBackground">@color/amoled_bg</item>
+        <item name="colorSurface">@color/amoled_surface</item>
+        <item name="colorOnSurface">@color/dark_text</item>
+        <item name="colorSurfaceVariant">@color/amoled_surface_alt</item>
+        <item name="colorOnSurfaceVariant">@color/dark_text_dim</item>
+        <item name="colorOutline">@color/amoled_stroke_strong</item>
+        <item name="colorControlNormal">@color/dark_text_dim</item>
+        <item name="colorControlActivated">@color/dark_accent</item>
+        <item name="android:textColorPrimary">@color/dark_text</item>
+        <item name="android:textColorSecondary">@color/dark_text_dim</item>
+        <item name="android:windowBackground">@drawable/bg_app</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
+    </style>
+</resources>

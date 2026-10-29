@@ -7,13 +7,14 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
+import com.iskezis.myst.util.MystTheme
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.R
@@ -85,6 +86,13 @@ class SettingsFragment : Fragment() {
 
         binding.settingsDiscordAction.setOnClickListener { onDiscordAction() }
         binding.settingsDiscordCard.setOnClickListener { onDiscordAction() }
+        binding.settingsAppearanceCard.setOnClickListener {
+            runCatching { findNavController().navigate(R.id.appearanceFragment) }
+                .onFailure {
+                    AppLog.failure(AppLog.TAG_UI, "Falha abrindo Aparência", it)
+                }
+        }
+        binding.settingsAppearanceCard.pressScale()
         binding.settingsTvCard.isVisible = BuildConfig.FLAVOR != "tv"
         binding.settingsTvCard.setOnClickListener {
             runCatching {
@@ -183,25 +191,25 @@ class SettingsFragment : Fragment() {
         val (statusRes, colorRes, buttonRes, iconRes) = when (state.connection) {
             DiscordConnection.CONNECTED -> Quad(
                 R.string.settings_discord_on,
-                R.color.sky_400,
+                R.attr.mystAccentText,
                 R.string.discord_disconnect,
                 R.drawable.ic_close,
             )
             DiscordConnection.CONNECTING -> Quad(
                 R.string.settings_discord_connecting,
-                R.color.text_dim,
+                R.attr.mystOnSurfaceDim,
                 R.string.discord_disconnect,
                 R.drawable.ic_close,
             )
             DiscordConnection.ERROR -> Quad(
                 R.string.settings_discord_error,
-                R.color.error,
+                R.attr.mystError,
                 R.string.settings_discord_retry,
                 R.drawable.ic_sync,
             )
             DiscordConnection.DISCONNECTED -> Quad(
                 R.string.settings_discord_off,
-                R.color.text_dim,
+                R.attr.mystOnSurfaceDim,
                 R.string.settings_discord_connect,
                 R.drawable.ic_discord,
             )
@@ -212,7 +220,7 @@ class SettingsFragment : Fragment() {
             else -> getString(statusRes)
         }
         binding.settingsDiscordStatus.text = status
-        binding.settingsDiscordStatus.setTextColor(ContextCompat.getColor(context, colorRes))
+        binding.settingsDiscordStatus.setTextColor(MystTheme.color(context, colorRes))
         binding.settingsDiscordAction.setText(buttonRes)
         binding.settingsDiscordAction.setIconResource(iconRes)
     }

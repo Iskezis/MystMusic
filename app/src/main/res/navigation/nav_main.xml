@@ -20,6 +20,11 @@
         android:label="@string/nav_settings" />
 
     <fragment
+        android:id="@+id/appearanceFragment"
+        android:name="com.iskezis.myst.ui.settings.AppearanceFragment"
+        android:label="@string/settings_appearance" />
+
+    <fragment
         android:id="@+id/searchFragment"
         android:name="com.iskezis.myst.ui.search.SearchFragment"
         android:label="@string/search_title" />

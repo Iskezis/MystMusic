@@ -47,7 +47,7 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/auth_back"
                     android:src="@drawable/ic_arrow_down"
-                    app:tint="@color/text" />
+                    app:tint="?attr/mystOnSurface" />
 
                 <TextView
                     android:layout_width="0dp"
@@ -55,7 +55,7 @@
                     android:layout_weight="1"
                     android:gravity="center"
                     android:text="@string/player_now_playing"
-                    android:textColor="@color/text_dim"
+                    android:textColor="?attr/mystOnSurfaceDim"
                     android:textSize="@dimen/text_small" />
 
                 <ImageButton
@@ -65,7 +65,7 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/player_add_playlist"
                     android:src="@drawable/ic_add_to_playlist"
-                    app:tint="@color/text" />
+                    app:tint="?attr/mystOnSurface" />
             </LinearLayout>
 
             <com.google.android.material.imageview.ShapeableImageView
@@ -88,7 +88,7 @@
                 android:fontFamily="sans-serif-medium"
                 android:gravity="center"
                 android:maxLines="2"
-                android:textColor="@color/text"
+                android:textColor="?attr/mystOnSurface"
                 android:textSize="22sp" />
 
             <TextView
@@ -99,7 +99,7 @@
                 android:ellipsize="end"
                 android:gravity="center"
                 android:maxLines="1"
-                android:textColor="@color/text_dim"
+                android:textColor="?attr/mystOnSurfaceDim"
                 android:textSize="@dimen/text_body" />
 
             <SeekBar
@@ -109,9 +109,9 @@
                 android:layout_marginTop="@dimen/space_l"
                 android:max="1000"
                 android:minHeight="32dp"
-                android:progressBackgroundTint="@color/white_12"
-                android:progressTint="@color/sky_400"
-                android:thumbTint="@color/sky_400" />
+                android:progressBackgroundTint="?attr/mystStrokeStrong"
+                android:progressTint="?attr/mystAccentText"
+                android:thumbTint="?attr/mystAccentText" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -123,14 +123,14 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:textColor="@color/text_dim"
+                    android:textColor="?attr/mystOnSurfaceDim"
                     android:textSize="@dimen/text_small" />
 
                 <TextView
                     android:id="@+id/playerDuration"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/text_dim"
+                    android:textColor="?attr/mystOnSurfaceDim"
                     android:textSize="@dimen/text_small" />
             </LinearLayout>
 
@@ -158,7 +158,7 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/player_previous"
                     android:src="@drawable/ic_previous"
-                    app:tint="@color/text" />
+                    app:tint="?attr/mystOnSurface" />
 
                 <ImageButton
                     android:id="@+id/playerPlay"
@@ -170,7 +170,7 @@
                     android:contentDescription="@string/player_play"
                     android:padding="22dp"
                     android:src="@drawable/ic_play"
-                    app:tint="@color/bg" />
+                    app:tint="?attr/mystOnAccent" />
 
                 <ImageButton
                     android:id="@+id/playerNext"
@@ -179,7 +179,7 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/player_next"
                     android:src="@drawable/ic_next"
-                    app:tint="@color/text" />
+                    app:tint="?attr/mystOnSurface" />
 
                 <ImageButton
                     android:id="@+id/playerRepeat"
@@ -199,7 +199,7 @@
                 android:layout_marginTop="@dimen/space_m"
                 android:gravity="center"
                 android:text="@string/player_error_stream"
-                android:textColor="@color/error"
+                android:textColor="?attr/mystError"
                 android:textSize="@dimen/text_small"
                 android:visibility="gone" />
 

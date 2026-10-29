@@ -21,7 +21,7 @@
         android:layout_marginTop="@dimen/space_l"
         android:fontFamily="sans-serif-medium"
         android:text="@string/spotify_title"
-        android:textColor="@color/text"
+        android:textColor="?attr/mystOnSurface"
         android:textSize="@dimen/text_title" />
 
     <TextView
@@ -29,7 +29,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/space_xs"
         android:text="@string/spotify_private"
-        android:textColor="@color/text_dim"
+        android:textColor="?attr/mystOnSurfaceDim"
         android:textSize="@dimen/text_small" />
 
     <com.google.android.material.textfield.TextInputLayout
@@ -48,14 +48,14 @@
             android:imeOptions="actionGo"
             android:inputType="textUri"
             android:maxLines="1"
-            android:textColor="@color/text" />
+            android:textColor="?attr/mystOnSurface" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <TextView
         android:id="@+id/spotifyError"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@color/error"
+        android:textColor="?attr/mystError"
         android:textSize="@dimen/text_small"
         android:visibility="gone" />
 
@@ -73,10 +73,10 @@
             android:layout_width="match_parent"
             android:layout_height="8dp"
             android:indeterminate="true"
-            android:indeterminateTint="@color/sky_400"
+            android:indeterminateTint="?attr/mystAccentText"
             android:max="100"
-            android:progressTint="@color/sky_400"
-            android:progressBackgroundTint="@color/white_12" />
+            android:progressTint="?attr/mystAccentText"
+            android:progressBackgroundTint="?attr/mystStrokeStrong" />
 
         <TextView
             android:id="@+id/spotifyProgressLabel"
@@ -84,7 +84,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_s"
             android:text="@string/spotify_loading"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="@dimen/text_small" />
     </LinearLayout>
 

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="mystBackground" format="color" />
+    <attr name="mystSurface" format="color" />
+    <attr name="mystSurfaceAlt" format="color" />
+    <attr name="mystOnSurface" format="color" />
+    <attr name="mystOnSurfaceDim" format="color" />
+    <attr name="mystNavbarBg" format="color" />
+    <attr name="mystStroke" format="color" />
+    <attr name="mystStrokeStrong" format="color" />
+    <attr name="mystGradientStart" format="color" />
+    <attr name="mystGradientEnd" format="color" />
+    <attr name="mystAccent" format="color" />
+    <attr name="mystAccentDark" format="color" />
+    <attr name="mystAccentText" format="color" />
+    <attr name="mystOnAccent" format="color" />
+    <attr name="mystOnImage" format="color" />
+    <attr name="mystImageScrim" format="color" />
+    <attr name="mystPlayerScrim" format="color" />
+    <attr name="mystError" format="color" />
+    <attr name="mystSuccess" format="color" />
+    <attr name="mystAccentAlpha16" format="color" />
+    <attr name="mystAccentAlpha24" format="color" />
+</resources>

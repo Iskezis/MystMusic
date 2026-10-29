@@ -15,7 +15,7 @@
         android:layout_height="48dp"
         android:contentDescription="@null"
         android:src="@drawable/ic_cloud_off"
-        app:tint="@color/text_dim" />
+        app:tint="?attr/mystOnSurfaceDim" />
 
     <TextView
         android:id="@+id/stateTitle"
@@ -24,7 +24,7 @@
         android:layout_marginTop="@dimen/space_m"
         android:fontFamily="sans-serif-medium"
         android:text="@string/state_empty"
-        android:textColor="@color/text"
+        android:textColor="?attr/mystOnSurface"
         android:textSize="@dimen/text_body" />
 
     <TextView
@@ -33,7 +33,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/space_xs"
         android:gravity="center"
-        android:textColor="@color/text_dim"
+        android:textColor="?attr/mystOnSurfaceDim"
         android:textSize="@dimen/text_small"
         android:visibility="gone" />
 

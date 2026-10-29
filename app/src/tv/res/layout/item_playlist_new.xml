@@ -7,10 +7,10 @@
     android:layout_margin="8dp"
     android:clickable="true"
     android:focusable="true"
-    app:cardBackgroundColor="@color/surface_alt"
+    app:cardBackgroundColor="?attr/mystSurfaceAlt"
     app:cardCornerRadius="@dimen/corner_medium"
     app:cardElevation="0dp"
-    app:strokeColor="@color/sky_alpha_24"
+    app:strokeColor="?attr/mystAccentAlpha24"
     app:strokeWidth="1dp">
 
     <LinearLayout
@@ -33,7 +33,7 @@
                 android:contentDescription="@null"
                 android:padding="22dp"
                 android:src="@drawable/ic_add"
-                app:tint="@color/bg" />
+                app:tint="?attr/mystOnAccent" />
         </FrameLayout>
 
         <TextView
@@ -44,7 +44,7 @@
             android:fontFamily="sans-serif-medium"
             android:maxLines="1"
             android:text="@string/playlists_new"
-            android:textColor="@color/sky_200"
+            android:textColor="?attr/mystAccentText"
             android:textSize="22sp" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

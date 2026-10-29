@@ -24,7 +24,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/auth_back"
             android:src="@drawable/ic_back"
-            app:tint="@color/text" />
+            app:tint="?attr/mystOnSurface" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/searchLayout"
@@ -43,7 +43,7 @@
                 android:imeOptions="actionSearch"
                 android:inputType="text"
                 android:maxLines="1"
-                android:textColor="@color/text"
+                android:textColor="?attr/mystOnSurface"
                 android:textSize="@dimen/text_body" />
         </com.google.android.material.textfield.TextInputLayout>
     </LinearLayout>
@@ -72,8 +72,8 @@
             android:layout_height="wrap_content"
             android:paddingTop="@dimen/space_s"
             app:shimmer_auto_start="true"
-            app:shimmer_base_color="@color/surface_alt"
-            app:shimmer_highlight_color="@color/surface">
+            app:shimmer_base_color="?attr/mystSurfaceAlt"
+            app:shimmer_highlight_color="?attr/mystSurface">
 
             <LinearLayout
                 android:layout_width="match_parent"

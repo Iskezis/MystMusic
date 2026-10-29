@@ -28,7 +28,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/common_back"
                 android:src="@drawable/ic_back"
-                app:tint="@color/text" />
+                app:tint="?attr/mystOnSurface" />
 
             <TextView
                 android:layout_width="0dp"
@@ -37,7 +37,7 @@
                 android:layout_weight="1"
                 android:fontFamily="sans-serif-medium"
                 android:text="@string/pairing_title"
-                android:textColor="@color/text"
+                android:textColor="?attr/mystOnSurface"
                 android:textSize="24sp" />
         </LinearLayout>
 
@@ -46,7 +46,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_m"
             android:text="@string/pairing_phone_help"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="@dimen/text_body" />
 
         <com.google.android.material.progressindicator.LinearProgressIndicator
@@ -55,8 +55,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_l"
             android:indeterminate="true"
-            app:indicatorColor="@color/sky_400"
-            app:trackColor="@color/white_8"
+            app:indicatorColor="?attr/mystAccentText"
+            app:trackColor="?attr/mystStroke"
             app:trackThickness="3dp" />
 
         <TextView
@@ -65,7 +65,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_m"
             android:text="@string/pairing_searching"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="@dimen/text_body" />
 
         <com.google.android.material.card.MaterialCardView
@@ -74,10 +74,10 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_l"
             android:visibility="gone"
-            app:cardBackgroundColor="@color/surface"
+            app:cardBackgroundColor="?attr/mystSurface"
             app:cardCornerRadius="@dimen/corner_large"
             app:cardElevation="0dp"
-            app:strokeColor="@color/white_8"
+            app:strokeColor="?attr/mystStroke"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -92,7 +92,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
                     android:text="@string/pairing_code_title"
-                    android:textColor="@color/text"
+                    android:textColor="?attr/mystOnSurface"
                     android:textSize="18sp" />
 
                 <TextView
@@ -107,7 +107,7 @@
                     android:paddingTop="@dimen/space_m"
                     android:paddingEnd="@dimen/space_l"
                     android:paddingBottom="@dimen/space_m"
-                    android:textColor="@color/sky_400"
+                    android:textColor="?attr/mystAccentText"
                     android:textSize="40sp" />
 
                 <TextView
@@ -115,7 +115,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/space_m"
                     android:text="@string/pairing_code_help"
-                    android:textColor="@color/text_dim"
+                    android:textColor="?attr/mystOnSurfaceDim"
                     android:textSize="@dimen/text_small" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -126,7 +126,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_l"
             android:text="@string/pairing_none"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="@dimen/text_body"
             android:visibility="gone" />
 

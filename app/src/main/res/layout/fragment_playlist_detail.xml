@@ -24,7 +24,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/auth_back"
             android:src="@drawable/ic_back"
-            app:tint="@color/text" />
+            app:tint="?attr/mystOnSurface" />
 
         <TextView
             android:id="@+id/detailBarTitle"
@@ -35,7 +35,7 @@
             android:fontFamily="sans-serif-medium"
             android:maxLines="1"
             android:text="@string/playlists_title"
-            android:textColor="@color/text"
+            android:textColor="?attr/mystOnSurface"
             android:textSize="@dimen/text_title" />
 
         <ImageButton
@@ -45,7 +45,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/common_more"
             android:src="@drawable/ic_more"
-            app:tint="@color/text" />
+            app:tint="?attr/mystOnSurface" />
     </LinearLayout>
 
     <LinearLayout
@@ -79,7 +79,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:fontFamily="sans-serif-medium"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/mystOnImage"
                     android:textSize="56sp" />
 
                 <com.google.android.material.imageview.ShapeableImageView
@@ -100,7 +100,7 @@
                     android:contentDescription="@string/playlist_change_cover"
                     android:padding="8dp"
                     android:src="@drawable/ic_image"
-                    app:tint="@color/text" />
+                    app:tint="?attr/mystOnSurface" />
             </FrameLayout>
 
             <TextView
@@ -112,7 +112,7 @@
                 android:fontFamily="sans-serif-medium"
                 android:gravity="center"
                 android:maxLines="2"
-                android:textColor="@color/text"
+                android:textColor="?attr/mystOnSurface"
                 android:textSize="22sp" />
 
             <TextView
@@ -120,7 +120,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:textColor="@color/text_dim"
+                android:textColor="?attr/mystOnSurfaceDim"
                 android:textSize="@dimen/text_small" />
 
             <LinearLayout
@@ -173,8 +173,8 @@
                 android:layout_height="wrap_content"
                 android:visibility="gone"
                 app:shimmer_auto_start="true"
-                app:shimmer_base_color="@color/surface_alt"
-                app:shimmer_highlight_color="@color/surface">
+                app:shimmer_base_color="?attr/mystSurfaceAlt"
+                app:shimmer_highlight_color="?attr/mystSurface">
 
                 <LinearLayout
                     android:layout_width="match_parent"

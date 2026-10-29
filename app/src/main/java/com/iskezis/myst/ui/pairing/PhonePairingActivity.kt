@@ -4,8 +4,8 @@ import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
+import com.iskezis.myst.ui.common.BaseActivity
+import com.iskezis.myst.util.MystTheme
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.iskezis.myst.MystApp
@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
  * Celular: descobre a TV via NSD, pede para a TV abrir a sessão e mostra o
  * código de 5 dígitos. O payload só é liberado para quem provar o código.
  */
-class PhonePairingActivity : AppCompatActivity() {
+class PhonePairingActivity : BaseActivity() {
 
     private lateinit var binding: ActivityPhonePairingBinding
     private val app by lazy { application as MystApp }
@@ -137,7 +137,7 @@ class PhonePairingActivity : AppCompatActivity() {
             binding.phonePairCodeRoot.isVisible = false
             binding.phonePairTvList.isVisible = false
             binding.phonePairNone.isVisible = false
-            binding.phonePairStatus.setTextColor(ContextCompat.getColor(this@PhonePairingActivity, R.color.sky_400))
+            binding.phonePairStatus.setTextColor(MystTheme.color(this, R.attr.mystAccentText))
             binding.phonePairStatus.setText(R.string.pairing_success)
             binding.phonePairRetry.isVisible = false
             Toast.makeText(this@PhonePairingActivity, R.string.pairing_success, Toast.LENGTH_SHORT).show()
@@ -168,7 +168,7 @@ class PhonePairingActivity : AppCompatActivity() {
         binding.phonePairRetry.isVisible = false
         binding.phonePairNone.isVisible = false
         binding.phonePairProgress.isVisible = true
-        setStatus(getString(R.string.pairing_searching), R.color.text_dim)
+        setStatus(getString(R.string.pairing_searching), R.attr.mystOnSurfaceDim)
         helper.discover(
             onFound = { target ->
                 runOnUiThread {
@@ -192,7 +192,7 @@ class PhonePairingActivity : AppCompatActivity() {
                     discoveryTimeoutJob = null
                     binding.phonePairProgress.isVisible = false
                     binding.phonePairRetry.isVisible = true
-                    setStatus(getString(R.string.pairing_error), R.color.error)
+                    setStatus(getString(R.string.pairing_error), R.attr.mystError)
                 }
             },
         )
@@ -205,7 +205,7 @@ class PhonePairingActivity : AppCompatActivity() {
                 binding.phonePairProgress.isVisible = false
                 binding.phonePairNone.isVisible = true
                 binding.phonePairRetry.isVisible = true
-                setStatus(getString(R.string.pairing_none), R.color.text_dim)
+                setStatus(getString(R.string.pairing_none), R.attr.mystOnSurfaceDim)
             }
         }
     }
@@ -222,10 +222,10 @@ class PhonePairingActivity : AppCompatActivity() {
         binding.phonePairProgress.isVisible = values.isEmpty() && !requestInFlight
         if (values.isEmpty()) {
             binding.phonePairStatus.setText(R.string.pairing_searching)
-            binding.phonePairStatus.setTextColor(ContextCompat.getColor(this, R.color.text_dim))
+            binding.phonePairStatus.setTextColor(MystTheme.color(this, R.attr.mystOnSurfaceDim))
         } else {
             binding.phonePairProgress.isVisible = false
-            setStatus(getString(R.string.pairing_choose_tv), R.color.text_dim)
+            setStatus(getString(R.string.pairing_choose_tv), R.attr.mystOnSurfaceDim)
         }
         values.forEach { target ->
             val item = ItemTvTargetBinding.inflate(LayoutInflater.from(this), binding.phonePairTvList, false)
@@ -254,7 +254,7 @@ class PhonePairingActivity : AppCompatActivity() {
         binding.phonePairNone.isVisible = false
         binding.phonePairProgress.isVisible = true
         binding.phonePairRetry.isVisible = false
-        setStatus(getString(R.string.pairing_connecting_tv, target.name), R.color.text_dim)
+        setStatus(getString(R.string.pairing_connecting_tv, target.name), R.attr.mystOnSurfaceDim)
         lifecycleScope.launch {
             try {
                 val request = PairRequest(
@@ -273,7 +273,7 @@ class PhonePairingActivity : AppCompatActivity() {
                 binding.phonePairCode.text = newCode
                 binding.phonePairCodeRoot.isVisible = true
                 binding.phonePairStatus.setText(R.string.pairing_waiting)
-                binding.phonePairStatus.setTextColor(ContextCompat.getColor(this@PhonePairingActivity, R.color.sky_400))
+                binding.phonePairStatus.setTextColor(MystTheme.color(this, R.attr.mystAccentText))
                 scheduleExpiry()
             } catch (t: Throwable) {
                 AppLog.failure(AppLog.TAG_PAIRING, "TV não aceitou a conexão", t)
@@ -283,7 +283,7 @@ class PhonePairingActivity : AppCompatActivity() {
                 binding.phonePairTvList.isVisible = true
                 binding.phonePairRetry.isVisible = true
                 binding.phonePairProgress.isVisible = false
-                setStatus(getString(R.string.pairing_error), R.color.error)
+                setStatus(getString(R.string.pairing_error), R.attr.mystError)
             }
         }
     }
@@ -297,7 +297,7 @@ class PhonePairingActivity : AppCompatActivity() {
             code = null
             binding.phonePairCodeRoot.isVisible = false
             binding.phonePairRetry.isVisible = true
-            setStatus(getString(R.string.pairing_expired), R.color.error)
+            setStatus(getString(R.string.pairing_expired), R.attr.mystError)
         }
     }
 
@@ -312,15 +312,15 @@ class PhonePairingActivity : AppCompatActivity() {
         binding.phonePairTvList.isVisible = true
     }
 
-    private fun setStatus(message: String, color: Int) {
+    private fun setStatus(message: String, colorAttr: Int) {
         binding.phonePairStatus.text = message
-        binding.phonePairStatus.setTextColor(ContextCompat.getColor(this, color))
+        binding.phonePairStatus.setTextColor(MystTheme.color(this, colorAttr))
     }
 
     private fun showError(message: String) {
         binding.phonePairProgress.isVisible = false
         binding.phonePairRetry.isVisible = true
-        setStatus(message, R.color.error)
+        setStatus(message, R.attr.mystError)
     }
 
     override fun onDestroy() {

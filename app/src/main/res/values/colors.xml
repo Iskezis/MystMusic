@@ -1,8 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Marca (azul céu) -->
     <color name="sky_400">#38BDF8</color>
     <color name="sky_500">#0EA5E9</color>
     <color name="sky_200">#BAE6FD</color>
+    <color name="on_accent">#04202E</color>
+    <color name="on_image">#FFFFFF</color>
+    <color name="accent_alpha_16">#2938BDF8</color>
+    <color name="accent_alpha_24">#3D38BDF8</color>
+
+    <!-- Tema claro -->
+    <color name="light_bg">#F6FAFE</color>
+    <color name="light_surface">#FFFFFF</color>
+    <color name="light_surface_alt">#E8F3FC</color>
+    <color name="light_text">#0F172A</color>
+    <color name="light_text_dim">#475569</color>
+    <color name="light_navbar">#EBFFFFFF</color>
+    <color name="light_stroke">#1A0F172A</color>
+    <color name="light_stroke_strong">#330F172A</color>
+    <color name="light_accent">#0EA5E9</color>
+    <color name="light_accent_dark">#0284C7</color>
+    <color name="light_accent_text">#0369A1</color>
+    <color name="light_error">#DC2626</color>
+    <color name="light_success">#15803D</color>
+
+    <!-- Tema escuro -->
+    <color name="dark_bg">#0B1220</color>
+    <color name="dark_surface">#111A2E</color>
+    <color name="dark_surface_alt">#16223A</color>
+    <color name="dark_text">#F1F5F9</color>
+    <color name="dark_text_dim">#94A3B8</color>
+    <color name="dark_navbar">#EB111A2E</color>
+    <color name="dark_stroke">#14FFFFFF</color>
+    <color name="dark_stroke_strong">#33FFFFFF</color>
+    <color name="dark_accent">#38BDF8</color>
+    <color name="dark_accent_dark">#0EA5E9</color>
+    <color name="dark_accent_text">#BAE6FD</color>
+    <color name="dark_error">#F87171</color>
+    <color name="dark_success">#4ADE80</color>
+
+    <!-- Preto AMOLED -->
+    <color name="amoled_bg">#000000</color>
+    <color name="amoled_surface">#0A0A0A</color>
+    <color name="amoled_surface_alt">#141414</color>
+    <color name="amoled_navbar">#EB000000</color>
+    <color name="amoled_stroke">#1FFFFFFF</color>
+    <color name="amoled_stroke_strong">#33FFFFFF</color>
+
+    <!-- Sobreposições e utilidades -->
+    <color name="image_scrim">#80000000</color>
+    <color name="light_player_scrim">#CCF6FAFE</color>
+    <color name="dark_player_scrim">#CC0B1220</color>
+    <color name="amoled_player_scrim">#CC000000</color>
+    <color name="transparent">#00000000</color>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+
+    <!-- Cores antigas mantidas para compatibilidade de recursos -->
     <color name="bg">#0B1220</color>
     <color name="surface">#111A2E</color>
     <color name="surface_alt">#16223A</color>
@@ -10,9 +64,6 @@
     <color name="text_dim">#94A3B8</color>
     <color name="error">#F87171</color>
     <color name="success">#4ADE80</color>
-    <color name="transparent">#00000000</color>
-    <color name="black">#000000</color>
-    <color name="white">#FFFFFF</color>
     <color name="sky_alpha_16">#2938BDF8</color>
     <color name="sky_alpha_24">#3D38BDF8</color>
     <color name="white_8">#14FFFFFF</color>
@@ -20,4 +71,8 @@
     <color name="white_20">#33FFFFFF</color>
     <color name="surface_92">#EB111A2E</color>
     <color name="scrim">#B3000000</color>
+
+    <!-- Miniaturas da tela Aparência (cores fixas de prévia) -->
+    <color name="preview_light_bg">#F6FAFE</color>
+    <color name="preview_dark_bg">#0B1220</color>
 </resources>

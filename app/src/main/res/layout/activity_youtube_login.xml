@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg">
+    android:background="?attr/mystBackground">
 
     <LinearLayout
         android:id="@+id/loginTopBar"
@@ -23,7 +23,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/auth_back"
             android:src="@drawable/ic_close"
-            app:tint="@color/text" />
+            app:tint="?attr/mystOnSurface" />
 
         <TextView
             android:layout_width="0dp"
@@ -32,7 +32,7 @@
             android:layout_weight="1"
             android:fontFamily="sans-serif-medium"
             android:text="@string/youtube_login_title"
-            android:textColor="@color/text"
+            android:textColor="?attr/mystOnSurface"
             android:textSize="18sp" />
     </LinearLayout>
 
@@ -41,15 +41,15 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:indeterminate="true"
-        app:indicatorColor="@color/sky_400"
+        app:indicatorColor="?attr/mystAccentText"
         app:layout_constraintTop_toBottomOf="@id/loginTopBar"
-        app:trackColor="@color/surface" />
+        app:trackColor="?attr/mystSurface" />
 
     <WebView
         android:id="@+id/loginWebView"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="@color/bg"
+        android:background="?attr/mystBackground"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -73,7 +73,7 @@
             android:layout_height="56dp"
             android:contentDescription="@null"
             android:src="@drawable/ic_cloud_off"
-            app:tint="@color/text_dim" />
+            app:tint="?attr/mystOnSurfaceDim" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -81,7 +81,7 @@
             android:layout_marginTop="@dimen/space_m"
             android:gravity="center"
             android:text="@string/youtube_login_error"
-            android:textColor="@color/text"
+            android:textColor="?attr/mystOnSurface"
             android:textSize="@dimen/text_body" />
 
         <com.google.android.material.button.MaterialButton

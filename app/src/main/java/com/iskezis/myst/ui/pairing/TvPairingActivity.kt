@@ -5,8 +5,8 @@ import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
+import com.iskezis.myst.ui.common.BaseActivity
+import com.iskezis.myst.util.MystTheme
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.iskezis.myst.MainActivity
@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
  * TV: anuncia o serviço na rede, recebe a solicitação do celular e exige o
  * código de 5 dígitos antes de baixar a conta/playlists cifradas.
  */
-class TvPairingActivity : AppCompatActivity() {
+class TvPairingActivity : BaseActivity() {
 
     private lateinit var binding: ActivityTvPairingBinding
     private val app by lazy { application as MystApp }
@@ -148,7 +148,7 @@ class TvPairingActivity : AppCompatActivity() {
                 R.string.pairing_tv_request_received,
                 request.deviceName.ifBlank { getString(R.string.pairing_tv_service) },
             )
-            binding.tvPairStatus.setTextColor(ContextCompat.getColor(this, R.color.sky_400))
+            binding.tvPairStatus.setTextColor(MystTheme.color(this, R.attr.mystAccentText))
             binding.tvPairRetry.isVisible = false
             binding.tvPairConfirm.isEnabled = false
             binding.tvKey1.requestFocus()
@@ -172,7 +172,7 @@ class TvPairingActivity : AppCompatActivity() {
             binding.tvPairRetry.isVisible = true
             binding.tvPairConfirm.isEnabled = false
             binding.tvPairStatus.setText(R.string.pairing_expired)
-            binding.tvPairStatus.setTextColor(ContextCompat.getColor(this@TvPairingActivity, R.color.error))
+            binding.tvPairStatus.setTextColor(MystTheme.color(this, R.attr.mystError))
         }
     }
 
@@ -223,14 +223,14 @@ class TvPairingActivity : AppCompatActivity() {
                 binding.tvPairStatus.setText(R.string.pairing_tv_blocked)
             } else {
                 binding.tvPairStatus.text = getString(R.string.pairing_tv_wrong, remaining)
-                binding.tvPairStatus.setTextColor(ContextCompat.getColor(this, R.color.error))
+                binding.tvPairStatus.setTextColor(MystTheme.color(this, R.attr.mystError))
             }
             return
         }
         busy = true
         binding.tvPairConfirm.isEnabled = false
         binding.tvPairStatus.setText(R.string.pairing_tv_connecting_phone)
-        binding.tvPairStatus.setTextColor(ContextCompat.getColor(this, R.color.sky_400))
+        binding.tvPairStatus.setTextColor(MystTheme.color(this, R.attr.mystAccentText))
         val code = entered
         val host = pendingHost
         lifecycleScope.launch {
@@ -252,7 +252,7 @@ class TvPairingActivity : AppCompatActivity() {
                 success = true
                 busy = false
                 binding.tvPairStatus.setText(R.string.pairing_tv_success)
-                binding.tvPairStatus.setTextColor(ContextCompat.getColor(this@TvPairingActivity, R.color.sky_400))
+                binding.tvPairStatus.setTextColor(MystTheme.color(this, R.attr.mystAccentText))
                 binding.tvPairRetry.isVisible = false
                 binding.tvPairConfirm.isEnabled = false
                 Toast.makeText(this@TvPairingActivity, R.string.pairing_success, Toast.LENGTH_SHORT).show()
@@ -271,7 +271,7 @@ class TvPairingActivity : AppCompatActivity() {
                 binding.tvPairConfirm.isEnabled = true
                 binding.tvPairRetry.isVisible = true
                 binding.tvPairStatus.setText(R.string.pairing_tv_error)
-                binding.tvPairStatus.setTextColor(ContextCompat.getColor(this@TvPairingActivity, R.color.error))
+                binding.tvPairStatus.setTextColor(MystTheme.color(this, R.attr.mystError))
             }
         }
     }
@@ -287,7 +287,7 @@ class TvPairingActivity : AppCompatActivity() {
         blockedUntil = 0L
         binding.tvPairRetry.isVisible = false
         binding.tvPairStatus.setText(R.string.pairing_tv_no_request)
-        binding.tvPairStatus.setTextColor(ContextCompat.getColor(this, R.color.text_dim))
+        binding.tvPairStatus.setTextColor(MystTheme.color(this, R.attr.mystOnSurfaceDim))
         updateCode()
     }
 

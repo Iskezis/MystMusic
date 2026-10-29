@@ -18,7 +18,7 @@
             android:layout_height="wrap_content"
             android:fontFamily="sans-serif-medium"
             android:text="@string/pairing_tv_title"
-            android:textColor="@color/text"
+            android:textColor="?attr/mystOnSurface"
             android:textSize="34sp" />
 
         <TextView
@@ -27,7 +27,7 @@
             android:layout_marginTop="@dimen/space_m"
             android:gravity="center"
             android:text="@string/pairing_tv_waiting"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="20sp" />
 
         <TextView
@@ -37,7 +37,7 @@
             android:layout_marginTop="@dimen/space_m"
             android:gravity="center"
             android:text="@string/pairing_tv_no_request"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="20sp" />
 
         <TextView
@@ -46,7 +46,7 @@
             android:layout_marginTop="@dimen/space_m"
             android:fontFamily="sans-serif-medium"
             android:text="@string/pairing_tv_pin_title"
-            android:textColor="@color/text"
+            android:textColor="?attr/mystOnSurface"
             android:textSize="22sp" />
 
         <TextView
@@ -59,7 +59,7 @@
             android:gravity="center"
             android:letterSpacing="0.22"
             android:text="_____"
-            android:textColor="@color/sky_400"
+            android:textColor="?attr/mystAccentText"
             android:textSize="46sp" />
 
         <TextView
@@ -67,7 +67,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_xs"
             android:text="@string/pairing_tv_seconds"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="16sp" />
 
         <GridLayout
@@ -202,7 +202,7 @@
             android:layout_marginTop="@dimen/space_m"
             android:gravity="center"
             android:text="@string/pairing_tv_service"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="14sp" />
     </LinearLayout>
 </FrameLayout>

@@ -29,7 +29,7 @@
         android:ellipsize="end"
         android:fontFamily="sans-serif-medium"
         android:maxLines="1"
-        android:textColor="@color/text"
+        android:textColor="?attr/mystOnSurface"
         android:textSize="@dimen/text_body" />
 
     <ImageView
@@ -37,5 +37,5 @@
         android:layout_height="24dp"
         android:contentDescription="@null"
         android:src="@drawable/ic_add"
-        app:tint="@color/sky_400" />
+        app:tint="?attr/mystAccentText" />
 </LinearLayout>

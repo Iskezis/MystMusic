@@ -33,7 +33,7 @@
                 android:layout_gravity="center"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_music"
-                app:tint="@color/bg" />
+                app:tint="?attr/mystOnAccent" />
         </FrameLayout>
 
         <TextView
@@ -43,7 +43,7 @@
             android:layout_marginTop="@dimen/space_l"
             android:fontFamily="sans-serif-medium"
             android:text="@string/app_name"
-            android:textColor="@color/text"
+            android:textColor="?attr/mystOnSurface"
             android:textSize="32sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -56,7 +56,7 @@
             android:layout_marginTop="@dimen/space_s"
             android:gravity="center"
             android:text="@string/auth_subtitle"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="@dimen/text_body"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -99,7 +99,7 @@
                 android:layout_marginTop="@dimen/space_l"
                 android:gravity="center"
                 android:text="@string/auth_disclaimer"
-                android:textColor="@color/text_dim"
+                android:textColor="?attr/mystOnSurfaceDim"
                 android:textSize="@dimen/text_small" />
         </LinearLayout>
 
@@ -109,13 +109,13 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_l"
             android:visibility="gone"
-            app:cardBackgroundColor="@color/surface"
+            app:cardBackgroundColor="?attr/mystSurface"
             app:cardCornerRadius="@dimen/corner_large"
             app:cardElevation="0dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/authSubtitle"
-            app:strokeColor="@color/white_8"
+            app:strokeColor="?attr/mystStroke"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -137,7 +137,7 @@
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="@string/auth_back"
                         android:src="@drawable/ic_back"
-                        app:tint="@color/text" />
+                        app:tint="?attr/mystOnSurface" />
 
                     <TextView
                         android:id="@+id/authFormTitle"
@@ -147,7 +147,7 @@
                         android:layout_weight="1"
                         android:fontFamily="sans-serif-medium"
                         android:text="@string/auth_login_title"
-                        android:textColor="@color/text"
+                        android:textColor="?attr/mystOnSurface"
                         android:textSize="20sp" />
                 </LinearLayout>
 
@@ -166,7 +166,7 @@
                         android:imeOptions="actionNext"
                         android:inputType="text"
                         android:maxLength="20"
-                        android:textColor="@color/text" />
+                        android:textColor="?attr/mystOnSurface" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -184,7 +184,7 @@
                         android:layout_height="wrap_content"
                         android:imeOptions="actionDone"
                         android:inputType="textPassword"
-                        android:textColor="@color/text" />
+                        android:textColor="?attr/mystOnSurface" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -203,7 +203,7 @@
                         android:layout_height="wrap_content"
                         android:imeOptions="actionDone"
                         android:inputType="textPassword"
-                        android:textColor="@color/text" />
+                        android:textColor="?attr/mystOnSurface" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <TextView
@@ -211,7 +211,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/space_s"
-                    android:textColor="@color/error"
+                    android:textColor="?attr/mystError"
                     android:textSize="@dimen/text_small"
                     android:visibility="gone" />
 
@@ -230,7 +230,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/space_s"
                     android:text="@string/auth_switch_register"
-                    android:textColor="@color/sky_200" />
+                    android:textColor="?attr/mystAccentText" />
 
                 <com.google.android.material.progressindicator.CircularProgressIndicator
                     android:id="@+id/authProgress"
@@ -240,8 +240,8 @@
                     android:layout_marginTop="@dimen/space_s"
                     android:indeterminate="true"
                     android:visibility="gone"
-                    app:indicatorColor="@color/sky_400"
-                    app:trackColor="@color/surface_alt" />
+                    app:indicatorColor="?attr/mystAccentText"
+                    app:trackColor="?attr/mystSurfaceAlt" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </androidx.constraintlayout.widget.ConstraintLayout>

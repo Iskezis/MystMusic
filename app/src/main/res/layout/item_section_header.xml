@@ -13,7 +13,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:fontFamily="sans-serif-medium"
-        android:textColor="@color/text"
+        android:textColor="?attr/mystOnSurface"
         android:textSize="@dimen/text_section" />
 
     <TextView
@@ -21,7 +21,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:textColor="@color/text_dim"
+        android:textColor="?attr/mystOnSurfaceDim"
         android:textSize="@dimen/text_small"
         android:visibility="gone" />
 </LinearLayout>

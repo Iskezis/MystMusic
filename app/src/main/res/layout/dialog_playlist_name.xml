@@ -24,6 +24,6 @@
             android:inputType="textCapSentences"
             android:maxLength="40"
             android:maxLines="1"
-            android:textColor="@color/text" />
+            android:textColor="?attr/mystOnSurface" />
     </com.google.android.material.textfield.TextInputLayout>
 </LinearLayout>

@@ -20,7 +20,7 @@
         android:contentDescription="@string/playlist_reorder"
         android:padding="10dp"
         android:src="@drawable/ic_drag"
-        app:tint="@color/text_dim" />
+        app:tint="?attr/mystOnSurfaceDim" />
 
     <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/trackCover"
@@ -45,7 +45,7 @@
             android:ellipsize="end"
             android:fontFamily="sans-serif-medium"
             android:maxLines="1"
-            android:textColor="@color/text"
+            android:textColor="?attr/mystOnSurface"
             android:textSize="@dimen/text_body" />
 
         <TextView
@@ -55,7 +55,7 @@
             android:layout_marginTop="2dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="@dimen/text_small" />
     </LinearLayout>
 
@@ -64,7 +64,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/space_s"
-        android:textColor="@color/text_dim"
+        android:textColor="?attr/mystOnSurfaceDim"
         android:textSize="@dimen/text_small" />
 
     <ImageButton
@@ -74,5 +74,5 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/common_more"
         android:src="@drawable/ic_more"
-        app:tint="@color/text_dim" />
+        app:tint="?attr/mystOnSurfaceDim" />
 </LinearLayout>

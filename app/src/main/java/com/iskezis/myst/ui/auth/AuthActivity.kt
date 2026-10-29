@@ -7,7 +7,7 @@ import android.view.inputmethod.EditorInfo
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
+import com.iskezis.myst.ui.common.BaseActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -23,11 +23,12 @@ import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.databinding.ActivityAuthBinding
 import com.iskezis.myst.util.AppLog
+import com.iskezis.myst.util.MystTheme
 import com.iskezis.myst.util.UiAnimations
 import com.iskezis.myst.util.UiAnimations.pressScale
 import kotlinx.coroutines.launch
 
-class AuthActivity : AppCompatActivity() {
+class AuthActivity : BaseActivity() {
 
     private lateinit var binding: ActivityAuthBinding
     private val viewModel: AuthViewModel by viewModels { AuthViewModel.factory(application) }
@@ -60,10 +61,7 @@ class AuthActivity : AppCompatActivity() {
         binding = ActivityAuthBinding.inflate(layoutInflater)
         setContentView(binding.root)
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowCompat.getInsetsController(window, binding.root).apply {
-            isAppearanceLightStatusBars = false
-            isAppearanceLightNavigationBars = false
-        }
+        MystTheme.applySystemBars(this)
         ViewCompat.setOnApplyWindowInsetsListener(binding.authRoot) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom)

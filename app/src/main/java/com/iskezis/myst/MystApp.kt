@@ -1,6 +1,7 @@
 package com.iskezis.myst
 
 import android.app.Application
+import androidx.appcompat.app.AppCompatDelegate
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import com.iskezis.myst.data.account.AccountRepository
@@ -8,6 +9,7 @@ import com.iskezis.myst.data.account.SessionManager
 import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.PlaylistRepository
 import com.iskezis.myst.data.discord.DiscordPresenceManager
+import com.iskezis.myst.data.settings.AppearancePreferences
 import com.iskezis.myst.data.recommendations.RecommendationRepository
 import com.iskezis.myst.data.spotify.SpotifyImporter
 import com.iskezis.myst.data.youtube.InnerTubeClient
@@ -46,6 +48,7 @@ class MystApp : Application(), ImageLoaderFactory {
 
     val database: AppDatabase by lazy { AppDatabase.get(this) }
     val session: SessionManager by lazy { SessionManager(this) }
+    val appearance: AppearancePreferences by lazy { AppearancePreferences(this) }
     val innerTube: InnerTubeClient by lazy { InnerTubeClient(this, session) }
     val youtube: YouTubeRepository by lazy { YouTubeRepository(innerTube) }
     val accounts: AccountRepository by lazy { AccountRepository(this, database, session, innerTube) }
@@ -61,6 +64,10 @@ class MystApp : Application(), ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        // Precisa ser síncrono e antes de qualquer Activity: evita o flash do
+        // tema errado ao abrir o app, inclusive quando o usuário escolheu
+        // Claro/Escuro em vez de seguir o sistema.
+        AppCompatDelegate.setDefaultNightMode(appearance.nightMode)
         AppLog.attach(this)
         installCrashLogger()
         AppLog.i(
@@ -68,6 +75,11 @@ class MystApp : Application(), ImageLoaderFactory {
             "MystMusic iniciado (${BuildConfig.VERSION_NAME}, ${BuildConfig.FLAVOR}, " +
                 "Android ${android.os.Build.VERSION.RELEASE}) em " +
                 (AppLog.logFilePath() ?: "<sem arquivo de log>"),
+        )
+        AppLog.i(
+            AppLog.TAG,
+            "Aparência: modo=${appearance.themeMode.storageValue} " +
+                "amoled=${appearance.amoled}",
         )
         AppLog.i(
             AppLog.TAG,
