@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
@@ -15,6 +16,7 @@ import com.iskezis.myst.util.formatDuration
 class PlaylistTrackAdapter(
     private val onPlay: (List<Track>, Int) -> Unit,
     private val onRemove: (Track, Int) -> Unit,
+    private val editable: Boolean = true,
 ) : RecyclerView.Adapter<PlaylistTrackAdapter.Holder>() {
 
     private var items: List<Track> = emptyList()
@@ -75,12 +77,16 @@ class PlaylistTrackAdapter(
     override fun getItemCount(): Int = items.size
 
     override fun onBindViewHolder(holder: Holder, position: Int) {
-        holder.bind(items[position], items, onPlay, onRemove)
-        holder.dragHandle.setOnTouchListener { _, event ->
-            if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-                onDragStart?.invoke(holder)
+        holder.bind(items[position], items, onPlay, onRemove, editable)
+        if (editable) {
+            holder.dragHandle.setOnTouchListener { _, event ->
+                if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                    onDragStart?.invoke(holder)
+                }
+                false
             }
-            false
+        } else {
+            holder.dragHandle.setOnTouchListener(null)
         }
     }
 
@@ -92,8 +98,11 @@ class PlaylistTrackAdapter(
             tracks: List<Track>,
             onPlay: (List<Track>, Int) -> Unit,
             onRemove: (Track, Int) -> Unit,
+            editable: Boolean,
         ) {
             val context = binding.root.context
+            binding.trackDrag.isVisible = editable
+            binding.trackMore.isVisible = editable
             binding.trackTitle.text = track.title.ifBlank {
                 context.getString(R.string.player_unknown_title)
             }
@@ -116,12 +125,18 @@ class PlaylistTrackAdapter(
                 val index = tracks.indexOfFirst { it.videoId == track.videoId }
                 onPlay(tracks, if (index >= 0) index else 0)
             }
-            binding.trackMore.setOnClickListener {
-                val index = bindingAdapterPosition
-                if (index != RecyclerView.NO_POSITION) {
-                    onRemove(track, index)
-                }
-            }
+            binding.trackMore.setOnClickListener(
+                if (editable) {
+                    View.OnClickListener {
+                        val index = bindingAdapterPosition
+                        if (index != RecyclerView.NO_POSITION) {
+                            onRemove(track, index)
+                        }
+                    }
+                } else {
+                    null
+                },
+            )
         }
     }
 }

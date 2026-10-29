@@ -3,13 +3,14 @@ package com.iskezis.myst.data.recommendations
 import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.ArtistAffinityEntity
 import com.iskezis.myst.data.db.HistoryEntity
+import com.iskezis.myst.data.db.YtHistoryEntity
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.data.youtube.YouTubeRepository
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.normalizeText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
@@ -21,22 +22,53 @@ class RecommendationRepository(
 ) {
 
     fun observeRecent(userId: Long, limit: Int = 20): Flow<List<Track>> =
-        database.historyDao().observeRecent(userId, limit).map { list ->
-            list.map { it.toTrack() }
+        combine(
+            database.historyDao().observeRecent(userId, limit),
+            database.youTubeLibraryDao().observeHistory(userId, limit * 5),
+        ) { local, youtubeHistory ->
+            mergeRecent(local, youtubeHistory, limit)
         }
+
+    /**
+     * Home personalizada do YouTube Music. Erros de rede são tratados pela
+     * tela, que cai para o algoritmo local; sessão expirada é propagada para
+     * exibir o aviso de entrar de novo.
+     */
+    suspend fun personalizedForUser(userId: Long): List<Track> = withContext(Dispatchers.IO) {
+        AppLog.d(AppLog.TAG_TUBE, "Buscando recomendados da home do YouTube para $userId")
+        youtube.personalizedHome(40)
+            .filter { it.videoId.isNotBlank() }
+            .distinctBy { it.videoId }
+            .take(30)
+    }
 
     suspend fun trendingForUser(userId: Long): List<Track> = withContext(Dispatchers.IO) {
         AppLog.d(AppLog.TAG_DB, "Calculando Em Alta para usuário $userId")
         val trending = youtube.trending(40)
         val affinities = database.affinityDao().top(userId, 100)
-        if (affinities.isEmpty()) return@withContext trending.take(30)
+        val ytHistory = database.youTubeLibraryDao().history(userId, 100)
+        val ytCounts = ytHistory
+            .map { normalizeText(it.artist) }
+            .filter { it.isNotBlank() }
+            .groupingBy { it }
+            .eachCount()
+        if (affinities.isEmpty() && ytCounts.isEmpty()) {
+            return@withContext trending.take(30)
+        }
         val maxScore = max(affinities.maxOfOrNull { it.score } ?: 1.0, 1.0)
+        val maxYtCount = max(ytCounts.values.maxOrNull() ?: 1, 1)
         trending.mapIndexed { index, track ->
             val artistKey = normalizeText(track.artist)
             val affinity = if (artistKey.isBlank()) 0.0 else
                 (affinities.firstOrNull { it.artist == artistKey }?.score ?: 0.0) / maxScore
+            val ytAffinity = if (artistKey.isBlank()) 0.0 else
+                (ytCounts[artistKey] ?: 0).toDouble() / maxYtCount
             val position = 1.0 - index.toDouble() / max(trending.size, 1)
-            track to (0.6 * affinity.coerceIn(0.0, 1.0) + 0.4 * position)
+            track to (
+                0.45 * affinity.coerceIn(0.0, 1.0) +
+                    0.25 * ytAffinity.coerceIn(0.0, 1.0) +
+                    0.30 * position
+                )
         }.sortedByDescending { it.second }
             .map { it.first }
             .take(30)
@@ -134,7 +166,52 @@ class RecommendationRepository(
         )
     }
 
+    /**
+     * Mescla o histórico local (timestamps reais) com o do YouTube Music
+     * (ordem relativa convertida em timestamps espaçados no repositório).
+     * Duplicatas por videoId ficam com a metadata local e o instante mais
+     * recente dos dois lados.
+     */
+    private fun mergeRecent(
+        local: List<HistoryEntity>,
+        youtubeHistory: List<YtHistoryEntity>,
+        limit: Int,
+    ): List<Track> {
+        data class Entry(val track: Track, val at: Long)
+
+        val merged = LinkedHashMap<String, Entry>()
+        youtubeHistory.forEach { entity ->
+            val track = entity.toTrack()
+            val previous = merged[entity.videoId]
+            if (previous == null || entity.playedAt > previous.at) {
+                merged[entity.videoId] = Entry(track, entity.playedAt)
+            }
+        }
+        local.forEach { entity ->
+            val track = entity.toTrack()
+            val previous = merged[entity.videoId]
+            val at = if (previous != null && previous.at > entity.playedAt) {
+                previous.at
+            } else {
+                entity.playedAt
+            }
+            merged[entity.videoId] = Entry(track, at)
+        }
+        return merged.values
+            .sortedByDescending { it.at }
+            .map { it.track }
+            .take(limit)
+    }
+
     private fun HistoryEntity.toTrack(): Track = Track(
+        videoId = videoId,
+        title = title,
+        artist = artist,
+        thumbnailUrl = thumbnailUrl,
+        durationMs = durationMs,
+    )
+
+    private fun YtHistoryEntity.toTrack(): Track = Track(
         videoId = videoId,
         title = title,
         artist = artist,

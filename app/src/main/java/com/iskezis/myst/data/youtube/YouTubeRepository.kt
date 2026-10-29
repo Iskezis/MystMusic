@@ -30,6 +30,26 @@ class YouTubeRepository(private val source: MusicSource) {
         return cached("home:$limit") { source.homeFeed(limit) }
     }
 
+    suspend fun libraryPlaylists(limit: Int = 300): List<YtPlaylist> {
+        AppLog.d(AppLog.TAG_TUBE, "Playlists da biblioteca solicitadas limite=$limit")
+        return source.libraryPlaylists(limit)
+    }
+
+    suspend fun accountHistory(limit: Int = 50): List<Track> {
+        AppLog.d(AppLog.TAG_TUBE, "Histórico da conta solicitado limite=$limit")
+        return source.accountHistory(limit)
+    }
+
+    suspend fun personalizedHome(limit: Int = 40): List<Track> {
+        AppLog.d(AppLog.TAG_TUBE, "Home personalizada solicitada limite=$limit")
+        return cached("personalized-home:$limit") { source.personalizedHome(limit) }
+    }
+
+    suspend fun playlistTracks(playlistId: String, limit: Int = 500): List<Track> {
+        AppLog.d(AppLog.TAG_TUBE, "Faixas da playlist $playlistId solicitadas limite=$limit")
+        return source.playlistTracks(playlistId, limit)
+    }
+
     suspend fun accountName(): String? = source.accountName()
 
     fun streamUrlBlocking(videoId: String): String {

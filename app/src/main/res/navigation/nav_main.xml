@@ -42,4 +42,21 @@
             android:name="playlistId"
             app:argType="long" />
     </fragment>
+
+    <fragment
+        android:id="@+id/ytPlaylistDetailFragment"
+        android:name="com.iskezis.myst.ui.playlists.YtPlaylistDetailFragment"
+        android:label="@string/playlists_youtube_section">
+        <argument
+            android:name="ytId"
+            app:argType="string" />
+        <argument
+            android:name="ytTitle"
+            android:defaultValue=""
+            app:argType="string" />
+        <argument
+            android:name="ytThumbnail"
+            android:defaultValue=""
+            app:argType="string" />
+    </fragment>
 </navigation>

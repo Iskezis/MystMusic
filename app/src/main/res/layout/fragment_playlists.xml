@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/playlistsRoot"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
     <LinearLayout
         android:id="@+id/playlistsHeader"
@@ -12,10 +13,7 @@
         android:orientation="vertical"
         android:paddingStart="@dimen/screen_margin"
         android:paddingTop="@dimen/screen_margin"
-        android:paddingEnd="@dimen/screen_margin"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:paddingEnd="@dimen/screen_margin">
 
         <TextView
             android:layout_width="wrap_content"
@@ -36,24 +34,36 @@
             app:iconGravity="textStart" />
     </LinearLayout>
 
-    <FrameLayout
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/playlistsHeader">
+    <include
+        android:id="@+id/playlistsYtBanner"
+        layout="@layout/view_yt_session_banner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/screen_margin"
+        android:layout_marginTop="@dimen/space_m"
+        android:layout_marginEnd="@dimen/screen_margin" />
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/playlistsList"
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/playlistsRefresh"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:overScrollMode="never"
-            android:paddingStart="14dp"
-            android:paddingTop="@dimen/space_m"
-            android:paddingEnd="14dp"
-            android:paddingBottom="@dimen/content_bottom_padding_playing" />
+            android:layout_height="match_parent">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/playlistsList"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:overScrollMode="never"
+                android:paddingStart="14dp"
+                android:paddingTop="@dimen/space_s"
+                android:paddingEnd="14dp"
+                android:paddingBottom="@dimen/content_bottom_padding_playing" />
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
         <com.facebook.shimmer.ShimmerFrameLayout
             android:id="@+id/playlistsShimmer"
@@ -120,4 +130,4 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center" />
     </FrameLayout>
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

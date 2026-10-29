@@ -96,7 +96,7 @@ class SessionManager(context: Context) {
         get() = prefs.getLong(KEY_LEGACY_USER_ID, -1L)
 
     val hasLegacyData: Boolean
-        get() = legacyDataUserId > 0L && legacyDataUserId != mystUserId
+        get() = hasMyst && legacyDataUserId > 0L && legacyDataUserId != mystUserId
 
     val isLoggedIn: Boolean
         get() = hasMyst && hasYouTube && !youtubeConflict

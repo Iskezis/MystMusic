@@ -13,6 +13,7 @@ import com.iskezis.myst.data.settings.AppearancePreferences
 import com.iskezis.myst.data.recommendations.RecommendationRepository
 import com.iskezis.myst.data.spotify.SpotifyImporter
 import com.iskezis.myst.data.youtube.InnerTubeClient
+import com.iskezis.myst.data.youtube.YouTubeLibraryRepository
 import com.iskezis.myst.data.youtube.YouTubeRepository
 import com.iskezis.myst.player.PlayerController
 import com.iskezis.myst.util.AppLog
@@ -53,6 +54,9 @@ class MystApp : Application(), ImageLoaderFactory {
     val youtube: YouTubeRepository by lazy { YouTubeRepository(innerTube) }
     val accounts: AccountRepository by lazy { AccountRepository(this, database, session, innerTube) }
     val playlists: PlaylistRepository by lazy { PlaylistRepository(database) }
+    val ytLibrary: YouTubeLibraryRepository by lazy {
+        YouTubeLibraryRepository(database, youtube, playlists, session)
+    }
     val recommendations: RecommendationRepository by lazy { RecommendationRepository(database, youtube) }
     val spotify: SpotifyImporter by lazy { SpotifyImporter(this, youtube, playlists) }
     val playerController: PlayerController by lazy { PlayerController(this) }

@@ -65,6 +65,13 @@
             android:paddingStart="@dimen/screen_margin"
             android:paddingEnd="@dimen/screen_margin">
 
+            <include
+                android:id="@+id/detailYtBanner"
+                layout="@layout/view_yt_session_banner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/space_m" />
+
             <FrameLayout
                 android:id="@+id/detailCoverFrame"
                 android:layout_width="180dp"
@@ -149,6 +156,17 @@
                     app:icon="@drawable/ic_shuffle"
                     app:iconGravity="textStart" />
             </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/detailCopy"
+                style="@style/Widget.MystMusic.Button.Secondary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_s"
+                android:text="@string/yt_copy_to_myst"
+                android:visibility="gone"
+                app:icon="@drawable/ic_add_to_playlist"
+                app:iconGravity="textStart" />
         </LinearLayout>
 
         <FrameLayout

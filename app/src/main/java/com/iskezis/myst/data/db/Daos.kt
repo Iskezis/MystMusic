@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -145,4 +146,102 @@ interface AffinityDao {
 
     @Query("DELETE FROM artist_affinity WHERE userId = :from")
     suspend fun deleteUser(from: Long)
+}
+
+@Dao
+interface YouTubeLibraryDao {
+    @Query(
+        """
+        SELECT * FROM yt_playlists WHERE userId = :userId
+        ORDER BY liked DESC, title COLLATE NOCASE ASC
+        """,
+    )
+    fun observePlaylists(userId: Long): Flow<List<YtPlaylistEntity>>
+
+    @Query(
+        """
+        SELECT * FROM yt_playlists WHERE userId = :userId
+        ORDER BY liked DESC, title COLLATE NOCASE ASC
+        """,
+    )
+    suspend fun playlists(userId: Long): List<YtPlaylistEntity>
+
+    @Query("SELECT * FROM yt_playlists WHERE userId = :userId AND ytId = :ytId LIMIT 1")
+    fun observePlaylist(userId: Long, ytId: String): Flow<YtPlaylistEntity?>
+
+    @Query("SELECT * FROM yt_playlists WHERE userId = :userId AND ytId = :ytId LIMIT 1")
+    suspend fun playlist(userId: Long, ytId: String): YtPlaylistEntity?
+
+    @Upsert
+    suspend fun upsertPlaylists(playlists: List<YtPlaylistEntity>)
+
+    @Query("DELETE FROM yt_playlists WHERE userId = :userId AND ytId NOT IN (:keep)")
+    suspend fun deletePlaylistsNotIn(userId: Long, keep: List<String>)
+
+    @Query("DELETE FROM yt_playlists WHERE userId = :userId")
+    suspend fun deletePlaylists(userId: Long)
+
+    @Query(
+        "UPDATE yt_playlists SET trackCount = :count, syncedAt = :syncedAt " +
+            "WHERE userId = :userId AND ytId = :ytId",
+    )
+    suspend fun updatePlaylistCount(
+        userId: Long,
+        ytId: String,
+        count: Int,
+        syncedAt: Long,
+    )
+
+    @Query(
+        """
+        SELECT * FROM yt_playlist_tracks WHERE userId = :userId AND ytId = :ytId
+        ORDER BY position ASC
+        """,
+    )
+    fun observePlaylistTracks(userId: Long, ytId: String): Flow<List<YtPlaylistTrackEntity>>
+
+    @Query(
+        """
+        SELECT * FROM yt_playlist_tracks WHERE userId = :userId AND ytId = :ytId
+        ORDER BY position ASC
+        """,
+    )
+    suspend fun playlistTracks(userId: Long, ytId: String): List<YtPlaylistTrackEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertPlaylistTracks(tracks: List<YtPlaylistTrackEntity>)
+
+    @Query("DELETE FROM yt_playlist_tracks WHERE userId = :userId AND ytId = :ytId")
+    suspend fun deletePlaylistTracks(userId: Long, ytId: String)
+
+    @Query(
+        """
+        SELECT * FROM yt_history WHERE userId = :userId
+        ORDER BY playedAt DESC LIMIT :limit
+        """,
+    )
+    fun observeHistory(userId: Long, limit: Int): Flow<List<YtHistoryEntity>>
+
+    @Query(
+        """
+        SELECT * FROM yt_history WHERE userId = :userId
+        ORDER BY playedAt DESC LIMIT :limit
+        """,
+    )
+    suspend fun history(userId: Long, limit: Int): List<YtHistoryEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertHistory(history: List<YtHistoryEntity>)
+
+    @Query("DELETE FROM yt_history WHERE userId = :userId")
+    suspend fun deleteHistory(userId: Long)
+
+    @Query("SELECT * FROM yt_sync_state WHERE userId = :userId AND section = :section LIMIT 1")
+    suspend fun sync(userId: Long, section: String): YtSyncEntity?
+
+    @Upsert
+    suspend fun upsertSync(sync: YtSyncEntity)
+
+    @Query("DELETE FROM yt_sync_state WHERE userId = :userId")
+    suspend fun deleteSync(userId: Long)
 }

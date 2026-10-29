@@ -4,7 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.fragment.app.Fragment
+import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -14,12 +14,13 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.databinding.FragmentHomeBinding
+import com.iskezis.myst.ui.common.YouTubeLoginFragment
 import com.iskezis.myst.ui.player.TrackMenuSheet
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.applyFadeThrough
 import kotlinx.coroutines.launch
 
-class HomeFragment : Fragment() {
+class HomeFragment : YouTubeLoginFragment() {
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = checkNotNull(_binding)
@@ -68,6 +69,7 @@ class HomeFragment : Fragment() {
         binding.homeList.adapter = adapter
         binding.homeRefresh.setOnRefreshListener { viewModel.refresh() }
         binding.homeList.setHasFixedSize(false)
+        binding.homeYtBanner.ytBannerAction.setOnClickListener { requestYouTubeLogin() }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -76,6 +78,10 @@ class HomeFragment : Fragment() {
                 }
             }
         }
+    }
+
+    override fun onYouTubeRelinked() {
+        viewModel.onYouTubeRelinked()
     }
 
     override fun onResume() {
@@ -92,6 +98,7 @@ class HomeFragment : Fragment() {
                 "recomendados=${state.recommended.javaClass.simpleName}",
         )
         binding.homeRefresh.isRefreshing = state.refreshing
+        binding.homeYtBanner.ytBannerRoot.isVisible = state.sessionExpired
         adapter.submitList(
             listOf(
                 HomeItem.Greeting(state.accountName, state.avatarPath),

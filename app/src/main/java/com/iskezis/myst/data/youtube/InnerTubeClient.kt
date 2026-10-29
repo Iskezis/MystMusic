@@ -94,6 +94,108 @@ class InnerTubeClient(
         parseTracks(response).take(limit)
     }
 
+    /**
+     * Playlists da biblioteca da conta. "Músicas curtidas" (VLLM) é uma
+     * playlist especial e vem sempre primeiro. A paginação é defensiva: para
+     * quando o token repete, quando o limite chega ou quando o YouTube para de
+     * devolver continuação.
+     */
+    override suspend fun libraryPlaylists(limit: Int): List<YtPlaylist> =
+        withContext(Dispatchers.IO) {
+            requireSession()
+            val found = LinkedHashMap<String, YtPlaylist>()
+            var continuation: String? = null
+            var page = 0
+            val seenTokens = HashSet<String>()
+            do {
+                val response = browse("FEmusic_liked_playlists", continuation)
+                collectLibraryPlaylists(response, found, limit)
+                if (found.size >= limit) break
+                continuation = continuationToken(response)
+                if (continuation != null && !seenTokens.add(continuation)) continuation = null
+                page++
+            } while (continuation != null && page < MAX_LIBRARY_PAGES)
+
+            if (found.isEmpty()) {
+                // Algumas contas devolvem a grade em library_landing em vez de
+                // liked_playlists. O parser filtra apenas playlists (VL...).
+                val landing = browse("FEmusic_library_landing")
+                collectLibraryPlaylists(landing, found, limit)
+            }
+
+            val items = found.values.toMutableList()
+            val liked = items.firstOrNull { it.liked }
+                ?: YtPlaylist(
+                    id = LIKED_PLAYLIST_ID,
+                    title = "Músicas curtidas",
+                    liked = true,
+                )
+            (listOf(liked) + items.filterNot { it.liked }).take(limit)
+        }
+
+    override suspend fun accountHistory(limit: Int): List<Track> =
+        withContext(Dispatchers.IO) {
+            requireSession()
+            val found = LinkedHashMap<String, Track>()
+            var continuation: String? = null
+            var page = 0
+            val seenTokens = HashSet<String>()
+            do {
+                val response = browse("FEmusic_history", continuation)
+                parseTracks(response).forEach { track ->
+                    if (found.size < limit) found.putIfAbsent(track.videoId, track)
+                }
+                if (found.size >= limit) break
+                continuation = continuationToken(response)
+                if (continuation != null && !seenTokens.add(continuation)) continuation = null
+                page++
+            } while (continuation != null && page < MAX_HISTORY_PAGES)
+            found.values.toList()
+        }
+
+    override suspend fun personalizedHome(limit: Int): List<Track> =
+        withContext(Dispatchers.IO) {
+            requireSession()
+            val found = LinkedHashMap<String, Track>()
+            var continuation: String? = null
+            var page = 0
+            val seenTokens = HashSet<String>()
+            do {
+                val response = browse("FEmusic_home", continuation)
+                parseTracks(response).forEach { track ->
+                    if (found.size < limit) found.putIfAbsent(track.videoId, track)
+                }
+                if (found.size >= limit) break
+                continuation = continuationToken(response)
+                if (continuation != null && !seenTokens.add(continuation)) continuation = null
+                page++
+            } while (continuation != null && page < MAX_HOME_PAGES)
+            found.values.toList()
+        }
+
+    override suspend fun playlistTracks(playlistId: String, limit: Int): List<Track> =
+        withContext(Dispatchers.IO) {
+            requireSession()
+            val id = playlistId.trim()
+            if (id.isBlank()) throw MusicException("Playlist do YouTube Music sem identificador")
+            val browseId = if (id.startsWith("VL")) id else "VL$id"
+            val found = LinkedHashMap<String, Track>()
+            var continuation: String? = null
+            var page = 0
+            val seenTokens = HashSet<String>()
+            do {
+                val response = browse(browseId, continuation)
+                parseTracks(response).forEach { track ->
+                    if (found.size < limit) found.putIfAbsent(track.videoId, track)
+                }
+                if (found.size >= limit) break
+                continuation = continuationToken(response)
+                if (continuation != null && !seenTokens.add(continuation)) continuation = null
+                page++
+            } while (continuation != null && page < MAX_PLAYLIST_PAGES)
+            found.values.toList()
+        }
+
     override suspend fun streamUrl(videoId: String): String = withContext(Dispatchers.IO) {
         resolveStreamInfo(videoId).url
     }
@@ -416,6 +518,135 @@ class InnerTubeClient(
         Uri.parse("https://local.invalid/?$cipher")
     } catch (t: Throwable) {
         null
+    }
+
+    private fun requireSession() {
+        if (session.youtubeCookies.isNullOrBlank()) {
+            throw SessionExpiredException("Sessão do YouTube Music não está disponível")
+        }
+    }
+
+    private fun browse(browseId: String, continuation: String? = null): JsonObject {
+        val body = buildJsonObject {
+            put("context", clientContext(WEB_REMIX))
+            if (continuation.isNullOrBlank()) {
+                put("browseId", browseId)
+            } else {
+                put("continuation", continuation)
+            }
+        }
+        return try {
+            post("browse", body, headers(WEB_REMIX))
+        } catch (t: Throwable) {
+            if (t.isHttpAuthFailure()) {
+                throw SessionExpiredException(
+                    "Sessão do YouTube Music expirou",
+                    t,
+                )
+            }
+            throw t
+        }
+    }
+
+    private fun Throwable.isHttpAuthFailure(): Boolean =
+        generateSequence(this) { it.cause }.any { failure ->
+            val message = failure.message.orEmpty()
+            message.startsWith("HTTP 401") || message.startsWith("HTTP 403")
+        }
+
+    private fun continuationToken(root: JsonObject): String? {
+        val command = findFirstObject(root, "continuationCommand") ?: return null
+        return (command["token"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
+    }
+
+    private fun collectLibraryPlaylists(
+        root: JsonObject,
+        found: MutableMap<String, YtPlaylist>,
+        limit: Int,
+    ) {
+        walkObjects(root) { item ->
+            playlistSummary(item)?.let { playlist ->
+                if (found.size < limit && !found.containsKey(playlist.id)) {
+                    found[playlist.id] = playlist
+                }
+            }
+        }
+    }
+
+    private fun playlistSummary(item: JsonObject): YtPlaylist? {
+        return when {
+            item["musicTwoRowItemRenderer"] is JsonObject -> {
+                val renderer = item["musicTwoRowItemRenderer"] as JsonObject
+                val title = (renderer["title"] as? JsonObject)?.let(::runsText).orEmpty()
+                val subtitle = (renderer["subtitle"] as? JsonObject)?.let(::runsText).orEmpty()
+                buildPlaylistSummary(renderer, title, subtitle)
+            }
+            item["musicResponsiveListItemRenderer"] is JsonObject -> {
+                val renderer = item["musicResponsiveListItemRenderer"] as JsonObject
+                val columns = (renderer["flexColumns"] as? JsonArray)?.mapNotNull { column ->
+                    (column as? JsonObject)
+                        ?.get("musicResponsiveListItemFlexColumnRenderer")
+                        ?.let { it as? JsonObject }
+                        ?.get("text")
+                        ?.let { it as? JsonObject }
+                }.orEmpty()
+                val title = columns.getOrNull(0)?.let(::runsText).orEmpty()
+                val subtitle = columns.getOrNull(1)?.let(::runsText).orEmpty()
+                buildPlaylistSummary(renderer, title, subtitle)
+            }
+            else -> null
+        }
+    }
+
+    private fun buildPlaylistSummary(
+        renderer: JsonObject,
+        rawTitle: String,
+        subtitle: String,
+    ): YtPlaylist? {
+        val title = rawTitle.trim()
+        if (title.isBlank()) return null
+        val browseId = directBrowseId(renderer)
+            ?: findFirstObject(renderer, "browseEndpoint")
+                ?.get("browseId")
+                ?.let { (it as? JsonPrimitive)?.contentOrNull }
+        if (browseId.isNullOrBlank()) return null
+        if (!browseId.startsWith("VL")) return null
+        val normalizedTitle = title.lowercase()
+        val liked = browseId == LIKED_PLAYLIST_ID ||
+            normalizedTitle == "músicas curtidas" ||
+            normalizedTitle == "liked music" ||
+            normalizedTitle == "títulos curtidos"
+        val id = if (liked) LIKED_PLAYLIST_ID else browseId
+        return YtPlaylist(
+            id = id,
+            title = title,
+            thumbnailUrl = extractThumbnail(renderer),
+            trackCount = parseTrackCount(subtitle),
+            liked = liked,
+        )
+    }
+
+    private fun directBrowseId(renderer: JsonObject): String? =
+        ((renderer["navigationEndpoint"] as? JsonObject)
+            ?.get("browseEndpoint") as? JsonObject)
+            ?.get("browseId")
+            ?.let { (it as? JsonPrimitive)?.contentOrNull }
+
+    private fun parseTrackCount(raw: String): Int {
+        if (raw.isBlank()) return 0
+        val normalized = raw.replace(".", "").replace(",", "")
+        return Regex("\\d{1,6}").find(normalized)?.value?.toIntOrNull() ?: 0
+    }
+
+    private fun walkObjects(element: JsonElement, visit: (JsonObject) -> Unit) {
+        when (element) {
+            is JsonObject -> {
+                visit(element)
+                element.values.forEach { walkObjects(it, visit) }
+            }
+            is JsonArray -> element.forEach { walkObjects(it, visit) }
+            else -> Unit
+        }
     }
 
     private fun parseTracks(root: JsonObject): List<Track> {
@@ -840,6 +1071,11 @@ class InnerTubeClient(
         private const val ANDROID = "ANDROID"
         private const val SONGS_FILTER = "EgWKAQIIAWoKEAkQBRAKEAMQBA=="
         private const val URL_TTL_MS = 30 * 60 * 1000L
+        private const val LIKED_PLAYLIST_ID = "VLLM"
+        private const val MAX_LIBRARY_PAGES = 8
+        private const val MAX_HISTORY_PAGES = 4
+        private const val MAX_HOME_PAGES = 3
+        private const val MAX_PLAYLIST_PAGES = 12
         private val VISITOR_DATA_REGEX =
             Regex("\"(?:VISITOR_DATA|visitorData)\"\\s*:\\s*\"([^\"]+)\"")
         private val CLIENTS_WITH_COOKIES = listOf(

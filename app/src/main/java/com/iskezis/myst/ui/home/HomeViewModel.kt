@@ -10,6 +10,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.data.youtube.MusicException
+import com.iskezis.myst.data.youtube.SessionExpiredException
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.ui.common.LoadState
 import com.iskezis.myst.util.AppLog
@@ -31,6 +32,7 @@ data class HomeUiState(
     val trending: LoadState<List<Track>> = LoadState.Loading,
     val recommended: LoadState<List<Track>> = LoadState.Loading,
     val refreshing: Boolean = false,
+    val sessionExpired: Boolean = false,
 )
 
 class HomeViewModel(private val app: MystApp) : ViewModel() {
@@ -40,12 +42,19 @@ class HomeViewModel(private val app: MystApp) : ViewModel() {
 
     private var recentJob: Job? = null
     private var refreshJob: Job? = null
+    private var historyJob: Job? = null
+    private var historyLoaded = false
+    private var historyErrorRes: Int? = null
 
     init {
         AppLog.d(AppLog.TAG_TUBE, "HomeViewModel init")
         refreshAccount()
         observeRecent()
-        viewModelScope.launch {
+        // Em Alta e Recomendados usam o histórico e a afinidade da conta do
+        // YouTube. O histórico é atualizado antes para a primeira carga já
+        // refletir os dados reais, não apenas o cache vazio.
+        historyJob = viewModelScope.launch {
+            loadYouTubeHistory(force = false)
             coroutineScope {
                 launch { fetchTrending() }
                 launch { fetchRecommended() }
@@ -79,9 +88,14 @@ class HomeViewModel(private val app: MystApp) : ViewModel() {
                 }
                 .collect { tracks ->
                     AppLog.d(AppLog.TAG_DB, "Recentes: ${tracks.size} faixas")
-                    _state.update {
-                        it.copy(recent = if (tracks.isEmpty()) LoadState.Empty else LoadState.Data(tracks))
+                    val error = historyErrorRes
+                    val recent = when {
+                        tracks.isNotEmpty() -> LoadState.Data(tracks)
+                        !historyLoaded -> LoadState.Loading
+                        error != null -> LoadState.Error(error)
+                        else -> LoadState.Empty
                     }
+                    _state.update { it.copy(recent = recent) }
                 }
         }
     }
@@ -89,15 +103,20 @@ class HomeViewModel(private val app: MystApp) : ViewModel() {
     fun refresh() {
         if (refreshJob?.isActive == true) return
         refreshAccount()
+        historyJob?.cancel()
         refreshJob = viewModelScope.launch {
             _state.update { it.copy(refreshing = true) }
-            coroutineScope {
-                launch { fetchTrending() }
-                launch { fetchRecommended() }
+            try {
+                historyLoaded = false
+                loadYouTubeHistory(force = true)
+                coroutineScope {
+                    launch { fetchTrending() }
+                    launch { fetchRecommended() }
+                }
+            } finally {
+                _state.update { it.copy(refreshing = false) }
             }
-            _state.update { it.copy(refreshing = false) }
         }
-        observeRecent()
     }
 
     fun retryTrending() {
@@ -116,6 +135,68 @@ class HomeViewModel(private val app: MystApp) : ViewModel() {
 
     fun retryRecent() {
         observeRecent()
+        requestYouTubeHistory(force = true)
+    }
+
+    /** Chamado após o usuário entrar de novo com o YouTube. */
+    fun onYouTubeRelinked() {
+        AppLog.i(AppLog.TAG_TUBE, "YouTube reconectado; atualizando a home")
+        app.youtube.invalidate()
+        _state.update { it.copy(sessionExpired = false) }
+        refresh()
+    }
+
+    private fun requestYouTubeHistory(force: Boolean) {
+        if (historyJob?.isActive == true || refreshJob?.isActive == true) return
+        if (force) {
+            historyLoaded = false
+            historyErrorRes = null
+            _state.update { current ->
+                if (current.recent is LoadState.Data) current else current.copy(recent = LoadState.Loading)
+            }
+        }
+        historyJob = viewModelScope.launch { loadYouTubeHistory(force) }
+    }
+
+    private suspend fun loadYouTubeHistory(force: Boolean) {
+        val userId = app.session.session?.userId ?: run {
+            historyLoaded = true
+            _state.update { it.copy(recent = LoadState.Empty) }
+            return
+        }
+        try {
+            app.ytLibrary.refreshHistory(userId, force)
+            historyLoaded = true
+            historyErrorRes = null
+            _state.update { current ->
+                current.copy(
+                    sessionExpired = false,
+                    recent = if (current.recent is LoadState.Data) {
+                        current.recent
+                    } else {
+                        LoadState.Empty
+                    },
+                )
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (t: Throwable) {
+            AppLog.failure(AppLog.TAG_TUBE, "Falha sincronizando histórico do YouTube", t)
+            historyLoaded = true
+            val expired = t is SessionExpiredException
+            val error = if (expired) R.string.yt_session_expired else errorRes(t)
+            historyErrorRes = error
+            _state.update { current ->
+                current.copy(
+                    sessionExpired = current.sessionExpired || expired,
+                    recent = if (current.recent is LoadState.Data) {
+                        current.recent
+                    } else {
+                        LoadState.Error(error)
+                    },
+                )
+            }
+        }
     }
 
     private suspend fun fetchTrending() {
@@ -124,7 +205,27 @@ class HomeViewModel(private val app: MystApp) : ViewModel() {
     }
 
     private suspend fun fetchRecommended() {
-        val result = fetch { app.recommendations.recommendedForUser(requireUserId()) }
+        val userId = requireUserId()
+        val personalized = try {
+            app.recommendations.personalizedForUser(userId)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (t: Throwable) {
+            if (t is SessionExpiredException) {
+                _state.update { it.copy(sessionExpired = true) }
+            } else {
+                AppLog.w(
+                    AppLog.TAG_TUBE,
+                    "Home personalizada indisponível; usando algoritmo local: ${AppLog.describe(t)}",
+                )
+            }
+            emptyList()
+        }
+        if (personalized.isNotEmpty()) {
+            _state.update { it.copy(recommended = LoadState.Data(personalized)) }
+            return
+        }
+        val result = fetch { app.recommendations.recommendedForUser(userId) }
         _state.update { it.copy(recommended = result) }
     }
 
@@ -143,11 +244,15 @@ class HomeViewModel(private val app: MystApp) : ViewModel() {
             throw cancelled
         } catch (t: Throwable) {
             AppLog.failure(AppLog.TAG_TUBE, "Falha carregando seção da home", t)
+            if (t is SessionExpiredException) {
+                _state.update { it.copy(sessionExpired = true) }
+            }
             LoadState.Error(errorRes(t))
         }
     }
 
     private fun errorRes(t: Throwable): Int = when {
+        t is SessionExpiredException -> R.string.yt_session_expired
         t is MusicException -> R.string.error_youtube
         t is IOException -> R.string.error_network
         else -> R.string.error_generic

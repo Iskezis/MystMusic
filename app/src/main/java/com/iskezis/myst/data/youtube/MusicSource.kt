@@ -23,7 +23,24 @@ data class StreamInfo(
     val headers: Map<String, String> = emptyMap(),
 )
 
+/** Resumo de uma playlist da biblioteca do YouTube Music. */
+data class YtPlaylist(
+    val id: String,
+    val title: String,
+    val thumbnailUrl: String? = null,
+    val trackCount: Int = 0,
+    val liked: Boolean = false,
+)
+
 open class MusicException(message: String, cause: Throwable? = null) : Exception(message, cause)
+
+/**
+ * A sessão do YouTube Music existe no aparelho, mas a conta recusou a
+ * requisição (cookies expirados, revogados ou 401/403). A UI mostra o aviso
+ * para entrar de novo; nada é apagado e o usuário não é deslogado sozinho.
+ */
+class SessionExpiredException(message: String, cause: Throwable? = null) :
+    MusicException(message, cause)
 
 /**
  * O YouTube recusou o player pedindo login/verificação. Acontece com sessões
@@ -37,6 +54,10 @@ interface MusicSource {
     suspend fun trending(limit: Int = 30): List<Track>
     suspend fun related(videoId: String, limit: Int = 20): List<Track>
     suspend fun homeFeed(limit: Int = 30): List<Track>
+    suspend fun libraryPlaylists(limit: Int = 300): List<YtPlaylist>
+    suspend fun accountHistory(limit: Int = 50): List<Track>
+    suspend fun personalizedHome(limit: Int = 40): List<Track>
+    suspend fun playlistTracks(playlistId: String, limit: Int = 500): List<Track>
     suspend fun streamUrl(videoId: String): String
     suspend fun streamInfo(videoId: String): StreamInfo = StreamInfo(streamUrl(videoId))
     fun streamUrlBlocking(videoId: String): String
