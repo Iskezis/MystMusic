@@ -30,6 +30,9 @@ interface UserDao {
     @Query("UPDATE users SET youtubeAccountId = :accountId, youtubeDisplayName = :name WHERE id = :id")
     suspend fun updateYouTubeLink(id: Long, accountId: String?, name: String?)
 
+    @Query("UPDATE users SET salt = :salt, passwordHash = :hash WHERE id = :id")
+    suspend fun updatePassword(id: Long, salt: String?, hash: String?)
+
     @Query("SELECT * FROM users WHERE youtubeAccountId = :accountId LIMIT 1")
     suspend fun findByYouTubeAccountId(accountId: String): UserEntity?
 }
@@ -108,6 +111,10 @@ interface HistoryDao {
 
     @Query("SELECT * FROM history WHERE userId = :userId ORDER BY playedAt DESC LIMIT :limit")
     suspend fun recent(userId: Long, limit: Int): List<HistoryEntity>
+
+    /** Chaves `videoId|playedAt` para importar um backup sem duplicar reproduções. */
+    @Query("SELECT videoId || '|' || playedAt FROM history WHERE userId = :userId")
+    suspend fun keys(userId: Long): List<String>
 
     @Query("SELECT DISTINCT videoId FROM history WHERE userId = :userId AND playedAt > :since")
     suspend fun playedSince(userId: Long, since: Long): List<String>

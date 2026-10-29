@@ -1,6 +1,7 @@
 package com.iskezis.myst.ui.auth
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -8,6 +9,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
+import com.iskezis.myst.data.account.AccountFileException
 import com.iskezis.myst.data.account.AccountRepository
 import com.iskezis.myst.data.account.InvalidCredentialsException
 import com.iskezis.myst.data.account.UsernameTakenException
@@ -42,6 +44,9 @@ data class AuthState(
     val migrationNotice: Boolean = false,
     val navigate: Boolean = false,
     val localAccounts: List<LocalAccountUi> = emptyList(),
+    val pendingAccountFileUserId: Long? = null,
+    val pendingAccountFileUsername: String = "",
+    val messageRes: Int? = null,
 )
 
 class AuthViewModel(private val accounts: AccountRepository) : ViewModel() {
@@ -85,12 +90,67 @@ class AuthViewModel(private val accounts: AccountRepository) : ViewModel() {
             AppLog.i(AppLog.TAG_AUTH, "Cadastro Myst solicitado para usuário $username")
             _state.value = _state.value.copy(loading = true, errorRes = null)
             try {
-                accounts.register(username, password, avatarPath)
+                val result = accounts.register(username, password, avatarPath)
                 AppLog.i(AppLog.TAG_AUTH, "Cadastro Myst concluído")
-                refreshState()
+                refreshState(
+                    pendingAccountFileUserId = result.userId,
+                    pendingAccountFileUsername = username.trim().lowercase(),
+                )
             } catch (t: Throwable) {
                 AppLog.w(AppLog.TAG_AUTH, "Cadastro Myst falhou: ${AppLog.describe(t)}")
                 _state.value = _state.value.copy(loading = false, errorRes = mapError(t))
+            }
+        }
+    }
+
+    /**
+     * Login pelo Mystaccount.json. O arquivo é lido no repositório (IO), a
+     * conta é restaurada/mesclada e a sessão Myst é aberta. O YouTube é pedido
+     * em seguida, porque a sessão dele não viaja no arquivo.
+     */
+    fun importAccount(uri: Uri) {
+        if (_state.value.loading) return
+        viewModelScope.launch {
+            AppLog.i(AppLog.TAG_AUTH, "Restauração por Mystaccount.json solicitada")
+            _state.value = _state.value.copy(loading = true, errorRes = null, messageRes = null)
+            try {
+                accounts.importAccount(uri)
+                AppLog.i(AppLog.TAG_AUTH, "Restauração por Mystaccount.json concluída")
+                refreshState(messageRes = R.string.account_file_restored)
+            } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_AUTH, "Falha restaurando Mystaccount.json", t)
+                _state.value = _state.value.copy(loading = false, errorRes = mapError(t))
+            }
+        }
+    }
+
+    /**
+     * Chamado depois que a pessoa escolhe (ou cancela) onde salvar o arquivo
+     * criado no cadastro. Libera a navegação em qualquer um dos casos; a cópia
+     * interna continua sendo atualizada e pode ser salva depois nas
+     * Configurações.
+     */
+    fun completeAccountFileExport(uri: Uri?) {
+        val userId = _state.value.pendingAccountFileUserId ?: return
+        if (_state.value.loading) return
+        viewModelScope.launch {
+            if (uri == null) {
+                refreshState(messageRes = R.string.account_file_later_hint)
+                return@launch
+            }
+            _state.value = _state.value.copy(loading = true, errorRes = null, messageRes = null)
+            try {
+                val result = accounts.saveAccountFile(userId, uri)
+                refreshState(
+                    messageRes = if (result.autoSync) {
+                        R.string.account_file_saved
+                    } else {
+                        R.string.account_file_saved_no_auto
+                    },
+                )
+            } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_AUTH, "Falha salvando Mystaccount.json", t)
+                refreshState(messageRes = R.string.account_file_error)
             }
         }
     }
@@ -223,8 +283,28 @@ class AuthViewModel(private val accounts: AccountRepository) : ViewModel() {
         }
     }
 
-    private suspend fun refreshState(errorRes: Int? = null) {
-        val snapshot = accounts.snapshot()
+    fun consumeMessage() {
+        if (_state.value.messageRes != null) {
+            _state.value = _state.value.copy(messageRes = null)
+        }
+    }
+
+    private suspend fun refreshState(
+        errorRes: Int? = null,
+        pendingAccountFileUserId: Long? = null,
+        pendingAccountFileUsername: String = "",
+        messageRes: Int? = null,
+    ) {
+        val snapshot = try {
+            accounts.snapshot()
+        } catch (t: Throwable) {
+            AppLog.failure(AppLog.TAG_AUTH, "Falha lendo o estado das contas", t)
+            _state.value = _state.value.copy(
+                loading = false,
+                errorRes = errorRes ?: R.string.auth_error_generic,
+            )
+            return
+        }
         val localAccounts = runCatching { accounts.localAccounts() }
             .onFailure { AppLog.failure(AppLog.TAG_AUTH, "Falha listando contas locais", it) }
             .getOrDefault(emptyList())
@@ -237,7 +317,8 @@ class AuthViewModel(private val accounts: AccountRepository) : ViewModel() {
         val navigate = snapshot.mystReady &&
             snapshot.youtubeReady &&
             !snapshot.youtubeConflict &&
-            !snapshot.needsLegacyTransfer
+            !snapshot.needsLegacyTransfer &&
+            pendingAccountFileUserId == null
         val conflict = if (snapshot.youtubeConflict) {
             YouTubeConflictUi(
                 linkedName = snapshot.linkedYouTubeName.ifBlank {
@@ -261,12 +342,21 @@ class AuthViewModel(private val accounts: AccountRepository) : ViewModel() {
             migrationNotice = snapshot.mystReady xor snapshot.youtubeReady,
             navigate = navigate,
             localAccounts = localAccounts,
+            pendingAccountFileUserId = pendingAccountFileUserId,
+            pendingAccountFileUsername = pendingAccountFileUsername,
+            messageRes = messageRes,
         )
     }
 
     private fun mapError(t: Throwable): Int = when (t) {
         is UsernameTakenException -> R.string.auth_error_exists
         is InvalidCredentialsException -> R.string.auth_error_invalid
+        is AccountFileException -> when (t.reason) {
+            AccountFileException.Reason.INVALID -> R.string.account_file_invalid
+            AccountFileException.Reason.CORRUPT -> R.string.account_file_corrupt
+            AccountFileException.Reason.TOO_LARGE -> R.string.account_file_too_large
+            AccountFileException.Reason.READ_FAILED -> R.string.account_file_read_error
+        }
         else -> R.string.auth_error_generic
     }
 

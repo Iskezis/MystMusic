@@ -1,6 +1,7 @@
 package com.iskezis.myst.data.account
 
 import android.content.Context
+import android.net.Uri
 import android.webkit.CookieManager
 import androidx.room.withTransaction
 import com.iskezis.myst.data.db.AppDatabase
@@ -48,6 +49,7 @@ class AccountRepository(
     private val database: AppDatabase,
     private val session: SessionManager,
     private val youTube: InnerTubeClient,
+    private val accountFiles: MystAccountFileRepository,
 ) {
 
     private var pendingYouTube: PendingYouTube? = null
@@ -79,6 +81,7 @@ class AccountRepository(
         }
         AvatarStore.cleanupTemp(context, avatarPath)
         session.saveMyst(id, displayName)
+        accountFiles.requestSync()
         AppLog.i(AppLog.TAG_AUTH, "Conta Myst criada: id=$id avatar=${savedAvatar != null}")
         completeMystAuth(
             database.userDao().findById(id) ?: throw IllegalStateException("Conta Myst não encontrada"),
@@ -100,8 +103,36 @@ class AccountRepository(
                 throw InvalidCredentialsException()
             }
             session.saveMyst(user.id, user.displayName.ifBlank { user.username })
+            accountFiles.requestSync()
             AppLog.i(AppLog.TAG_AUTH, "Login Myst: sessão salva para id=${user.id}")
             completeMystAuth(user)
+        }
+
+    /**
+     * Restaura a conta a partir do Mystaccount.json e já abre a sessão Myst.
+     * O login do YouTube não está no arquivo (é uma sessão, não um dado da
+     * conta); se ele ainda não estiver ativo, a tela de entrada o pede em
+     * seguida. Se a conta já existir neste aparelho, os dados são mesclados
+     * sem apagar playlists ou histórico locais.
+     */
+    suspend fun importAccount(uri: Uri): MystAuthResult = withContext(Dispatchers.IO) {
+        val restored = accountFiles.import(uri)
+        val user = restored.user
+        val name = user.displayName.ifBlank { user.username }
+        session.saveMyst(user.id, name)
+        accountFiles.requestSync()
+        AppLog.i(
+            AppLog.TAG_AUTH,
+            "Conta Myst restaurada do arquivo: id=${user.id} novo=${restored.created} " +
+                "playlists=${restored.playlists} faixas=${restored.tracks} " +
+                "histórico=${restored.history}",
+        )
+        completeMystAuth(user)
+    }
+
+    suspend fun saveAccountFile(userId: Long, uri: Uri): AccountFileSaveResult =
+        withContext(Dispatchers.IO) {
+            accountFiles.saveToUri(userId, uri)
         }
 
     /**
@@ -144,6 +175,7 @@ class AccountRepository(
         commitYouTube(pending)
         if (user != null) {
             database.userDao().updateYouTubeLink(user.id, accountId, name)
+            accountFiles.requestSync()
         }
         AppLog.i(
             AppLog.TAG_AUTH,
@@ -178,6 +210,7 @@ class AccountRepository(
         val mystId = session.mystUserId
         if (mystId > 0L) {
             database.userDao().updateYouTubeLink(mystId, pending.accountId, pending.name)
+            accountFiles.requestSync()
         }
         pendingYouTube = null
         AppLog.i(AppLog.TAG_AUTH, "Vínculo do YouTube trocado: ${pending.accountId}")
@@ -200,6 +233,7 @@ class AccountRepository(
                 accountId,
                 session.youtubeDisplayName.ifBlank { "YouTube" },
             )
+            accountFiles.requestSync()
         }
         session.youtubeConflict = false
         AppLog.i(AppLog.TAG_AUTH, "Conflito de YouTube resolvido mantendo a conta atual")
@@ -307,6 +341,7 @@ class AccountRepository(
                 val saved = AvatarStore.save(context, userId, sourcePath)
                 if (saved != null) {
                     database.userDao().updateAvatar(userId, saved)
+                    accountFiles.requestSync()
                     AppLog.i(AppLog.TAG_UI, "Avatar da conta atualizado: $saved")
                 }
                 saved
@@ -336,6 +371,7 @@ class AccountRepository(
             }
             session.clearLegacyDataUserId()
             AppLog.i(AppLog.TAG_DB, "Dados da versão anterior transferidos: $from -> $to")
+            accountFiles.requestSync()
             true
         }.getOrElse { t ->
             AppLog.failure(AppLog.TAG_DB, "Falha transferindo dados da versão anterior", t)
@@ -398,6 +434,7 @@ class AccountRepository(
                             accountId,
                             session.youtubeDisplayName.ifBlank { "YouTube" },
                         )
+                        accountFiles.requestSync()
                     }.onFailure {
                         AppLog.failure(AppLog.TAG_AUTH, "Falha gravando vínculo do YouTube", it)
                     }

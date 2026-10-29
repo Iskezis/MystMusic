@@ -9,6 +9,10 @@
 <full-backup-content>
     <exclude domain="sharedpref" path="myst_session.xml" />
     <exclude domain="sharedpref" path="myst_session_private.xml" />
+    <!-- A URI externa do Mystaccount.json não vale em outro aparelho. -->
+    <exclude domain="sharedpref" path="myst_account_file.xml" />
+    <!-- A cópia interna é regenerada a partir do banco; não precisa viajar. -->
+    <exclude domain="file" path="account/" />
     <exclude domain="file" path="logs/" />
     <exclude domain="file" path="myst_last_crash.txt" />
 </full-backup-content>

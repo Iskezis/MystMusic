@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import com.iskezis.myst.data.account.AccountRepository
+import com.iskezis.myst.data.account.MystAccountFileRepository
 import com.iskezis.myst.data.account.SessionManager
 import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.PlaylistRepository
@@ -52,7 +53,10 @@ class MystApp : Application(), ImageLoaderFactory {
     val appearance: AppearancePreferences by lazy { AppearancePreferences(this) }
     val innerTube: InnerTubeClient by lazy { InnerTubeClient(this, session) }
     val youtube: YouTubeRepository by lazy { YouTubeRepository(innerTube) }
-    val accounts: AccountRepository by lazy { AccountRepository(this, database, session, innerTube) }
+    val accountFiles: MystAccountFileRepository by lazy { MystAccountFileRepository(this, database) }
+    val accounts: AccountRepository by lazy {
+        AccountRepository(this, database, session, innerTube, accountFiles)
+    }
     val playlists: PlaylistRepository by lazy { PlaylistRepository(database) }
     val ytLibrary: YouTubeLibraryRepository by lazy {
         YouTubeLibraryRepository(database, youtube, playlists, session)
@@ -74,6 +78,10 @@ class MystApp : Application(), ImageLoaderFactory {
         AppCompatDelegate.setDefaultNightMode(appearance.nightMode)
         AppLog.attach(this)
         installCrashLogger()
+        // Mantém o Mystaccount.json interno e a cópia externa (quando o
+        // provedor permite escrita persistente) atualizados a cada mudança no
+        // Room. A sincronização é debounced e nunca roda na thread principal.
+        accountFiles.start(session)
         AppLog.i(
             AppLog.TAG,
             "MystMusic iniciado (${BuildConfig.VERSION_NAME}, ${BuildConfig.FLAVOR}, " +

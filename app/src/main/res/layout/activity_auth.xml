@@ -404,6 +404,27 @@
                     app:chipSpacingVertical="@dimen/space_xs"
                     app:singleLine="false" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/authImportFile"
+                    style="@style/Widget.MystMusic.Button.Secondary"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="@dimen/space_m"
+                    android:text="@string/account_file_login"
+                    app:icon="@drawable/ic_link"
+                    app:iconGravity="textStart"
+                    app:iconPadding="@dimen/space_s" />
+
+                <TextView
+                    android:id="@+id/authImportHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_s"
+                    android:gravity="center"
+                    android:text="@string/account_file_login_hint"
+                    android:textColor="?attr/mystOnSurfaceDim"
+                    android:textSize="@dimen/text_small" />
+
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/usernameLayout"
                     style="@style/Widget.MystMusic.TextInput"

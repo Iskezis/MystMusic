@@ -8,12 +8,16 @@
     <cloud-backup>
         <exclude domain="sharedpref" path="myst_session.xml" />
         <exclude domain="sharedpref" path="myst_session_private.xml" />
+        <exclude domain="sharedpref" path="myst_account_file.xml" />
+        <exclude domain="file" path="account/" />
         <exclude domain="file" path="logs/" />
         <exclude domain="file" path="myst_last_crash.txt" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="myst_session.xml" />
         <exclude domain="sharedpref" path="myst_session_private.xml" />
+        <exclude domain="sharedpref" path="myst_account_file.xml" />
+        <exclude domain="file" path="account/" />
         <exclude domain="file" path="logs/" />
         <exclude domain="file" path="myst_last_crash.txt" />
     </device-transfer>

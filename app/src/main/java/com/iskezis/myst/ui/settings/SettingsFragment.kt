@@ -21,6 +21,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.R
 import com.iskezis.myst.data.account.AvatarStore
+import com.iskezis.myst.data.account.MystAccountFileRepository
 import com.iskezis.myst.data.discord.DiscordConnection
 import com.iskezis.myst.data.discord.DiscordState
 import com.iskezis.myst.databinding.FragmentSettingsBinding
@@ -78,6 +79,12 @@ class SettingsFragment : Fragment() {
         viewModel.changeAvatar(path)
     }
 
+    private val accountFileCreator = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri != null) viewModel.saveAccountFile(uri)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         applyFadeThrough()
@@ -98,6 +105,11 @@ class SettingsFragment : Fragment() {
         binding.settingsVersion.text = getString(R.string.settings_version, BuildConfig.VERSION_NAME)
 
         binding.settingsLogout.setOnClickListener { showLogoutDialog() }
+        binding.settingsAccountFileAction.setOnClickListener { saveAccountFile() }
+        binding.settingsAccountFileAction.pressScale()
+        // A TV recebe a conta pelo pareamento e não tem um seletor de arquivos
+        // confortável no controle remoto.
+        binding.settingsAccountFileSection.isVisible = BuildConfig.FLAVOR != "tv"
         if (BuildConfig.FLAVOR != "tv") {
             binding.settingsAvatarFrame.setOnClickListener { pickAvatar() }
             binding.settingsAvatarFrame.pressScale()
@@ -156,6 +168,7 @@ class SettingsFragment : Fragment() {
                         }
                         binding.settingsInitial.text = state.initial
                         renderAvatar(state)
+                        renderAccountFile(state)
                     }
                 }
                 launch {
@@ -167,6 +180,18 @@ class SettingsFragment : Fragment() {
                                 Toast.LENGTH_LONG,
                             ).show()
                             viewModel.consumeError()
+                        }
+                    }
+                }
+                launch {
+                    viewModel.message.collect { messageRes ->
+                        if (messageRes != null) {
+                            Toast.makeText(
+                                requireContext(),
+                                messageRes,
+                                Toast.LENGTH_LONG,
+                            ).show()
+                            viewModel.consumeMessage()
                         }
                     }
                 }
@@ -211,6 +236,44 @@ class SettingsFragment : Fragment() {
             Toast.makeText(requireContext(), R.string.settings_avatar_error, Toast.LENGTH_LONG)
                 .show()
         }
+    }
+
+    private fun saveAccountFile() {
+        if (viewModel.state.value.accountFileSaving) return
+        runCatching {
+            accountFileCreator.launch(MystAccountFileRepository.DEFAULT_FILE_NAME)
+        }.onFailure { t ->
+            AppLog.failure(AppLog.TAG_AUTH, "Seletor de arquivos indisponível", t)
+            Toast.makeText(requireContext(), R.string.account_file_error, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun renderAccountFile(state: SettingsState) {
+        val status = state.accountFileStatus
+        val statusRes = when {
+            state.accountFileSaving -> R.string.settings_account_file_working
+            status.error -> R.string.settings_account_file_status_error
+            status.externalSaved && status.externalAutoSync ->
+                R.string.settings_account_file_status_synced
+            status.externalSaved -> R.string.settings_account_file_status_manual
+            status.lastSyncAt > 0L -> R.string.settings_account_file_status_internal
+            else -> R.string.settings_account_file_status_missing
+        }
+        binding.settingsAccountFileStatus.setText(statusRes)
+        binding.settingsAccountFileStatus.setTextColor(
+            MystTheme.color(
+                requireContext(),
+                if (status.error) R.attr.mystError else R.attr.mystOnSurfaceDim,
+            ),
+        )
+        binding.settingsAccountFileAction.isEnabled = !state.accountFileSaving
+        binding.settingsAccountFileAction.setText(
+            if (state.accountFileSaving) {
+                R.string.settings_account_file_saving
+            } else {
+                R.string.settings_account_file_save
+            },
+        )
     }
 
     private fun renderAvatar(state: SettingsState) {

@@ -1,6 +1,7 @@
 package com.iskezis.myst.ui.auth
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -25,6 +26,7 @@ import com.google.android.material.transition.MaterialSharedAxis
 import com.iskezis.myst.MainActivity
 import com.iskezis.myst.R
 import com.iskezis.myst.data.account.AvatarStore
+import com.iskezis.myst.data.account.MystAccountFileRepository
 import com.iskezis.myst.databinding.ActivityAuthBinding
 import com.iskezis.myst.ui.common.BaseActivity
 import com.iskezis.myst.util.AppLog
@@ -47,6 +49,21 @@ class AuthActivity : BaseActivity() {
     private var conflictDialogShowing = false
     private var legacyDialogShowing = false
     private var accountHintApplied = false
+    private var accountFilePromptShown = false
+    private var accountFilePickerLaunched = false
+
+    private val accountFileCreator = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        accountFilePickerLaunched = false
+        viewModel.completeAccountFileExport(uri)
+    }
+
+    private val accountFileImporter = registerForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) confirmAccountFileImport(uri)
+    }
 
     private val youtubeLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -98,6 +115,7 @@ class AuthActivity : BaseActivity() {
         registerMode = savedInstanceState?.getBoolean(STATE_REGISTER) ?: false
         autoYouTubeLaunched = savedInstanceState?.getBoolean(STATE_YT_LAUNCHED) ?: false
         autoMystShown = savedInstanceState?.getBoolean(STATE_MYST_SHOWN) ?: false
+        accountFilePickerLaunched = savedInstanceState?.getBoolean(STATE_FILE_PICKER) ?: false
         WindowCompat.setDecorFitsSystemWindows(window, false)
         MystTheme.applySystemBars(this)
         ViewCompat.setOnApplyWindowInsetsListener(binding.authRoot) { view, insets ->
@@ -142,6 +160,24 @@ class AuthActivity : BaseActivity() {
                 }
             }
         }
+        binding.authImportFile.setOnClickListener {
+            if (!viewModel.state.value.loading) {
+                // Se o usuário já tentou entrar pelo YouTube antes de escolher
+                // o arquivo, o fluxo automático precisa poder rodar de novo
+                // depois de restaurar a conta.
+                autoYouTubeLaunched = false
+                autoMystShown = false
+                runCatching { accountFileImporter.launch(arrayOf("*/*")) }
+                    .onFailure { t ->
+                        AppLog.failure(AppLog.TAG_AUTH, "Seletor de arquivos indisponível", t)
+                        Toast.makeText(
+                            this,
+                            R.string.account_file_read_error,
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+            }
+        }
 
         binding.mystStepCard.pressScale()
         binding.youtubeStepCard.pressScale()
@@ -150,6 +186,7 @@ class AuthActivity : BaseActivity() {
         binding.authSwitch.pressScale()
         binding.authContinue.pressScale()
         binding.authAvatarPicker.pressScale()
+        binding.authImportFile.pressScale()
         binding.authConfirmInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 submit()
@@ -219,6 +256,7 @@ class AuthActivity : BaseActivity() {
                     binding.authLoading.isVisible = state.loading
                     binding.authSubmit.isEnabled = !state.loading
                     binding.authSwitch.isEnabled = !state.loading
+                    binding.authImportFile.isEnabled = !state.loading
                     binding.mystStepCard.isEnabled = !state.loading
                     binding.youtubeStepCard.isEnabled = !state.loading
                     binding.authContinue.isEnabled = state.mystReady &&
@@ -228,6 +266,8 @@ class AuthActivity : BaseActivity() {
                     renderSteps(state)
                     renderError(state)
                     renderAccounts(state)
+                    renderMessage(state)
+                    renderAccountFilePrompt(state)
 
                     if (state.mystReady && binding.mystPanel.isVisible) {
                         showMystPanel(false)
@@ -237,7 +277,8 @@ class AuthActivity : BaseActivity() {
                         showMystPanel(true)
                     }
                     if (state.mystReady && !state.youtubeReady &&
-                        !autoYouTubeLaunched && !state.loading
+                        !autoYouTubeLaunched && !state.loading &&
+                        state.pendingAccountFileUserId == null
                     ) {
                         autoYouTubeLaunched = true
                         launchYouTubeLogin()
@@ -262,7 +303,8 @@ class AuthActivity : BaseActivity() {
                     }
 
                     if (state.navigate && !navigated &&
-                        state.youtubeConflict == null && !state.needsLegacyTransfer
+                        state.youtubeConflict == null && !state.needsLegacyTransfer &&
+                        state.pendingAccountFileUserId == null
                     ) {
                         navigated = true
                         binding.authRoot.postDelayed({
@@ -366,6 +408,8 @@ class AuthActivity : BaseActivity() {
         binding.confirmLayout.visibility = if (register) View.VISIBLE else View.GONE
         binding.authAvatarPicker.isVisible = register
         binding.authAvatarHint.isVisible = register
+        binding.authImportFile.isVisible = !register
+        binding.authImportHint.isVisible = !register
         if (!register) binding.authConfirmInput.text?.clear()
         renderAccounts(viewModel.state.value)
         renderAvatar()
@@ -438,6 +482,69 @@ class AuthActivity : BaseActivity() {
         } else {
             binding.authAvatarImage.isVisible = false
             binding.authAvatarInitial.isVisible = true
+        }
+    }
+
+    private fun renderMessage(state: AuthState) {
+        val message = state.messageRes ?: return
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        viewModel.consumeMessage()
+    }
+
+    /**
+     * Depois do cadastro, oferece salvar o Mystaccount.json. A navegação fica
+     * bloqueada enquanto o arquivo é gerado, para a pessoa não perder o aviso e
+     * o arquivo não ser criado depois de o app já ter trocado de tela.
+     */
+    private fun renderAccountFilePrompt(state: AuthState) {
+        if (state.pendingAccountFileUserId == null) {
+            accountFilePromptShown = false
+            return
+        }
+        if (state.loading || accountFilePromptShown || accountFilePickerLaunched) return
+        accountFilePromptShown = true
+        val name = state.pendingAccountFileUsername.ifBlank {
+            state.mystName.ifBlank { getString(R.string.auth_myst) }
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.account_file_title)
+            .setMessage(getString(R.string.account_file_message, name))
+            .setCancelable(false)
+            .setPositiveButton(R.string.account_file_save) { _, _ ->
+                launchAccountFileCreator()
+            }
+            .setNegativeButton(R.string.account_file_later) { _, _ ->
+                viewModel.completeAccountFileExport(null)
+            }
+            .show()
+    }
+
+    /**
+     * A escolha do arquivo é o primeiro passo; a confirmação evita restaurar
+     * uma conta por engano e deixa claro que o YouTube será pedido depois.
+     */
+    private fun confirmAccountFileImport(uri: Uri) {
+        autoYouTubeLaunched = false
+        autoMystShown = false
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.account_file_confirm_title)
+            .setMessage(R.string.account_file_confirm_message)
+            .setNegativeButton(R.string.common_cancel, null)
+            .setPositiveButton(R.string.account_file_confirm_action) { _, _ ->
+                viewModel.importAccount(uri)
+            }
+            .show()
+    }
+
+    private fun launchAccountFileCreator() {
+        accountFilePickerLaunched = true
+        runCatching {
+            accountFileCreator.launch(MystAccountFileRepository.DEFAULT_FILE_NAME)
+        }.onFailure { t ->
+            accountFilePickerLaunched = false
+            AppLog.failure(AppLog.TAG_AUTH, "Seletor de arquivos indisponível", t)
+            Toast.makeText(this, R.string.account_file_error, Toast.LENGTH_LONG).show()
+            viewModel.completeAccountFileExport(null)
         }
     }
 
@@ -546,6 +653,7 @@ class AuthActivity : BaseActivity() {
         outState.putBoolean(STATE_REGISTER, registerMode)
         outState.putBoolean(STATE_YT_LAUNCHED, autoYouTubeLaunched)
         outState.putBoolean(STATE_MYST_SHOWN, autoMystShown)
+        outState.putBoolean(STATE_FILE_PICKER, accountFilePickerLaunched)
     }
 
     override fun onDestroy() {
@@ -564,5 +672,6 @@ class AuthActivity : BaseActivity() {
         private const val STATE_REGISTER = "state_register"
         private const val STATE_YT_LAUNCHED = "state_youtube_launched"
         private const val STATE_MYST_SHOWN = "state_myst_shown"
+        private const val STATE_FILE_PICKER = "state_file_picker"
     }
 }

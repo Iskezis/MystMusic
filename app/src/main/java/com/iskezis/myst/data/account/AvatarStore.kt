@@ -35,6 +35,9 @@ object AvatarStore {
     suspend fun saveBase64(context: Context, userId: Long, encoded: String): String? =
         withContext(Dispatchers.IO) {
             try {
+                // Evita decodificar uma string gigante vinda de um backup
+                // adulterado antes de descobrir que ela passa do limite.
+                if (encoded.length > MAX_BYTES * 2) return@withContext null
                 val bytes = Base64.decode(encoded, Base64.DEFAULT)
                 if (bytes.isEmpty() || bytes.size > MAX_BYTES) return@withContext null
                 val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)

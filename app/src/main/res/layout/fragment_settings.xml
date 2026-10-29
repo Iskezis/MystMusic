@@ -114,6 +114,48 @@
                     </LinearLayout>
                 </LinearLayout>
 
+                <LinearLayout
+                    android:id="@+id/settingsAccountFileSection"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_m"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="?attr/mystStroke" />
+
+                    <TextView
+                        android:id="@+id/settingsAccountFileStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_m"
+                        android:text="@string/settings_account_file_status_missing"
+                        android:textColor="?attr/mystOnSurfaceDim"
+                        android:textSize="@dimen/text_small" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/settingsAccountFileAction"
+                        style="@style/Widget.MystMusic.Button.Secondary"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:layout_marginTop="@dimen/space_s"
+                        android:text="@string/settings_account_file_save"
+                        app:icon="@drawable/ic_share"
+                        app:iconGravity="textStart"
+                        app:iconPadding="@dimen/space_s" />
+
+                    <TextView
+                        android:id="@+id/settingsAccountFileHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_s"
+                        android:text="@string/settings_account_file_hint"
+                        android:textColor="?attr/mystOnSurfaceDim"
+                        android:textSize="@dimen/text_small" />
+                </LinearLayout>
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/settingsLogout"
                     style="@style/Widget.MystMusic.Button.Secondary"

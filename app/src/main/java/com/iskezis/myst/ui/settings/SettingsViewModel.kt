@@ -1,6 +1,7 @@
 package com.iskezis.myst.ui.settings
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -8,6 +9,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
+import com.iskezis.myst.data.account.AccountFileStatus
 import com.iskezis.myst.data.discord.DiscordState
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +23,8 @@ data class SettingsState(
     val avatarPath: String? = null,
     val youtubeConnected: Boolean = false,
     val youtubeName: String = "",
+    val accountFileStatus: AccountFileStatus = AccountFileStatus(),
+    val accountFileSaving: Boolean = false,
 )
 
 class SettingsViewModel(private val app: MystApp) : ViewModel() {
@@ -34,10 +38,20 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
     private val _error = MutableStateFlow<Int?>(null)
     val error: StateFlow<Int?> = _error.asStateFlow()
 
+    private val _message = MutableStateFlow<Int?>(null)
+    val message: StateFlow<Int?> = _message.asStateFlow()
+
     val discord: StateFlow<DiscordState> = app.discord.state
 
     init {
         viewModelScope.launch { refresh() }
+        viewModelScope.launch {
+            app.accountFiles.status.collect { status ->
+                _state.value = _state.value.copy(
+                    accountFileStatus = statusForCurrentUser(status),
+                )
+            }
+        }
     }
 
     fun connectDiscord(token: String) {
@@ -61,7 +75,12 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
                 _error.value = R.string.settings_avatar_error
                 return@launch
             }
-            val saved = app.accounts.updateAvatar(userId, sourcePath)
+            val saved = try {
+                app.accounts.updateAvatar(userId, sourcePath)
+            } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_UI, "Falha atualizando avatar nas Configurações", t)
+                null
+            }
             if (saved == null) {
                 _error.value = R.string.settings_avatar_error
                 return@launch
@@ -69,6 +88,37 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
             // A chave do Coil inclui tamanho e data do arquivo: o avatar novo
             // usa outra chave, então a foto anterior não reaparece na tela.
             refresh()
+        }
+    }
+
+    /**
+     * Salva uma nova cópia do Mystaccount.json no local escolhido. Se o
+     * provedor conceder permissão persistente, a cópia passa a ser atualizada
+     * junto com a cópia interna a cada mudança da conta.
+     */
+    fun saveAccountFile(uri: Uri) {
+        if (_state.value.accountFileSaving) return
+        val userId = app.session.mystUserId
+        if (userId <= 0L) {
+            _error.value = R.string.account_file_error
+            return
+        }
+        viewModelScope.launch {
+            _state.value = _state.value.copy(accountFileSaving = true)
+            try {
+                val result = app.accounts.saveAccountFile(userId, uri)
+                _message.value = if (result.autoSync) {
+                    R.string.account_file_saved
+                } else {
+                    R.string.account_file_saved_no_auto
+                }
+                refresh()
+            } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_AUTH, "Falha salvando Mystaccount.json nas Configurações", t)
+                _error.value = R.string.account_file_error
+            } finally {
+                _state.value = _state.value.copy(accountFileSaving = false)
+            }
         }
     }
 
@@ -80,6 +130,10 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
 
     fun consumeError() {
         _error.value = null
+    }
+
+    fun consumeMessage() {
+        _message.value = null
     }
 
     private fun logout(action: suspend () -> Unit) {
@@ -112,8 +166,17 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
             avatarPath = snapshot.mystAvatarPath,
             youtubeConnected = snapshot.youtubeReady,
             youtubeName = snapshot.youtubeName,
+            accountFileStatus = statusForCurrentUser(app.accountFiles.status.value),
+            accountFileSaving = _state.value.accountFileSaving,
         )
     }
+
+    private fun statusForCurrentUser(status: AccountFileStatus): AccountFileStatus =
+        if (status.userId == app.session.mystUserId) {
+            status
+        } else {
+            AccountFileStatus(userId = app.session.mystUserId)
+        }
 
     companion object {
         fun factory(app: Application): ViewModelProvider.Factory = viewModelFactory {
