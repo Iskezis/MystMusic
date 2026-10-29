@@ -114,8 +114,22 @@ class PairedTvServer(private val app: MystApp) : Closeable {
 
         val userId = session.mystUserId
         if (userId <= 0L) return unauthorized()
-        PairingSync.mergeSnapshot(app, userId, request.snapshot)
-        val response = PairSyncResponse(snapshot = PairingSync.exportSnapshot(app, userId))
+        // O banco da TV é em memória e pode ter sido recriado depois de o
+        // processo reiniciar. Recria a identidade mínima antes do merge.
+        val effectiveUserId = runCatching { app.accounts.ensureTvSessionUser() }
+            .getOrElse { error ->
+                AppLog.failure(
+                    AppLog.TAG_PAIRING,
+                    "Falha preparando usuário temporário da TV para o sync",
+                    error,
+                )
+                userId
+            }
+        if (effectiveUserId <= 0L) return unauthorized()
+        PairingSync.mergeSnapshot(app, effectiveUserId, request.snapshot)
+        val response = PairSyncResponse(
+            snapshot = PairingSync.exportSnapshot(app, effectiveUserId),
+        )
         val encrypted = PairingCrypto.encryptSecret(
             secret,
             PairingSync.json.encodeToString(PairSyncResponse.serializer(), response),

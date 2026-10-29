@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.MystApp
+import com.iskezis.myst.data.account.TvEphemeralData
 import com.iskezis.myst.player.PlaybackService
 import com.iskezis.myst.ui.pairing.TvPairingActivity
 import com.iskezis.myst.util.AppLog
@@ -129,6 +130,15 @@ class PairedSyncManager(private val app: MystApp) {
             .onFailure { AppLog.failure(AppLog.TAG_PLAYER, "Falha parando o player na desconexão", it) }
         runCatching { app.stopService(Intent(app, PlaybackService::class.java)) }
             .onFailure { AppLog.failure(AppLog.TAG_PLAYER, "Falha parando o serviço de reprodução", it) }
+        // A TV não mantém a biblioteca depois da desconexão. O banco é em
+        // memória, mas limpamos também os arquivos temporários e tabelas para
+        // a tela de código não herdar nenhum dado do celular.
+        scope.launch {
+            runCatching { app.database.clearAllTables() }.onFailure {
+                AppLog.failure(AppLog.TAG_PAIRING, "Falha limpando tabelas temporárias da TV", it)
+            }
+            TvEphemeralData.purge(app)
+        }
         handler.post {
             val intent = Intent(app, TvPairingActivity::class.java).addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK,

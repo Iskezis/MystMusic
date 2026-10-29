@@ -79,6 +79,8 @@ class MystAccountFileRepository(
     private val requests = Channel<Unit>(Channel.CONFLATED)
     private val writeMutex = Mutex()
     private val _status = MutableStateFlow(AccountFileStatus())
+    private val isTv = BuildConfig.FLAVOR == "tv"
+    private val autoBackup = if (isTv) null else AutoAccountBackup(context)
     private var started = false
     private var observer: InvalidationTracker.Observer? = null
 
@@ -86,6 +88,15 @@ class MystAccountFileRepository(
 
     /** Liga a atualização automática da cópia interna e da cópia externa. */
     fun start(session: SessionManager) {
+        if (isTv) {
+            // A TV é um terminal temporário: não grava a conta nem playlists
+            // em arquivo. O Room dela também é em memória (ver AppDatabase).
+            AppLog.i(
+                AppLog.TAG_AUTH,
+                "TV: cópia local do Mystaccount.json desativada (dados só em memória)",
+            )
+            return
+        }
         if (started) return
         started = true
         scope.launch {
@@ -285,9 +296,16 @@ class MystAccountFileRepository(
     /** Salva uma cópia escolhida pelo usuário e passa a mantê-la atualizada, se possível. */
     suspend fun saveToUri(userId: Long, uri: Uri): AccountFileSaveResult =
         withContext(Dispatchers.IO) {
+            if (isTv) {
+                // Não cria cópia externa na TV, mesmo que alguma tela antiga
+                // ainda tente salvar. A conta chega pelo pareamento.
+                AppLog.w(AppLog.TAG_AUTH, "TV: pedido de salvar Mystaccount.json ignorado")
+                return@withContext AccountFileSaveResult(autoSync = false)
+            }
             val text = buildJson(userId)
             writeInternal(userId, text)
             writeUri(uri, text)
+            val auto = autoBackup?.write(text)
 
             val persistent = takePersistablePermission(uri)
             val previous = externalUri(userId)
@@ -307,14 +325,40 @@ class MystAccountFileRepository(
                 lastSyncAt = now,
                 externalSaved = true,
                 externalAutoSync = persistent,
-                error = false,
+                error = auto != null && !auto.saved,
                 syncing = false,
+                autoSaved = auto?.saved == true,
+                autoPath = auto?.path.orEmpty(),
+                autoExact = auto?.exact == true,
+                autoError = auto != null && !auto.saved,
             )
             AppLog.i(
                 AppLog.TAG_AUTH,
-                "Mystaccount.json salvo: usuário=$userId persistente=$persistent",
+                "Mystaccount.json salvo: usuário=$userId persistente=$persistent " +
+                    "automático=${auto?.path ?: "<indisponível>"}",
             )
             AccountFileSaveResult(autoSync = persistent)
+        }
+
+    /**
+     * Grava imediatamente antes de um logout. A cópia automática é a que
+     * sobrevive a uma reinstalação; falhas não impedem o logout, porque a
+     * sincronização contínua normalmente já gravou o estado mais recente.
+     */
+    suspend fun flushNow(userId: Long, reason: String = "manual"): Boolean =
+        withContext(Dispatchers.IO) {
+            if (isTv || userId <= 0L) return@withContext false
+            runCatching {
+                syncUser(userId, reason)
+                true
+            }.getOrElse { t ->
+                AppLog.failure(
+                    AppLog.TAG_AUTH,
+                    "Falha gravando Mystaccount.json antes de $reason",
+                    t,
+                )
+                false
+            }
         }
 
     /**
@@ -667,6 +711,11 @@ class MystAccountFileRepository(
     private suspend fun syncCurrent(session: SessionManager) {
         val userId = session.mystUserId
         if (userId <= 0L) return
+        syncUser(userId, "sincronização automática")
+    }
+
+    private suspend fun syncUser(userId: Long, reason: String) {
+        if (isTv || userId <= 0L) return
         _status.value = _status.value.copy(userId = userId, syncing = true)
         val text = try {
             buildJson(userId)
@@ -691,14 +740,31 @@ class MystAccountFileRepository(
             externalSaved = result.isSuccess || manualSaved
             externalError = result.isFailure
         }
+        val auto = autoBackup?.write(text)
+        val autoSaved = auto?.saved == true
         _status.value = AccountFileStatus(
             userId = userId,
-            lastSyncAt = if (internalOk) System.currentTimeMillis() else _status.value.lastSyncAt,
+            lastSyncAt = if (internalOk || autoSaved) {
+                System.currentTimeMillis()
+            } else {
+                _status.value.lastSyncAt
+            },
             externalSaved = externalSaved,
             externalAutoSync = uriText != null,
-            error = !internalOk || externalError,
+            error = !internalOk || externalError || (auto != null && !autoSaved),
             syncing = false,
+            autoSaved = autoSaved,
+            autoPath = auto?.path.orEmpty(),
+            autoExact = auto?.exact == true,
+            autoError = auto != null && !autoSaved,
         )
+        if (auto != null && !autoSaved) {
+            AppLog.failure(
+                AppLog.TAG_AUTH,
+                "Falha gravando a cópia automática do Mystaccount.json ($reason)",
+                auto.error ?: IOException("Armazenamento indisponível"),
+            )
+        }
     }
 
     private fun readCover(coverUri: String?): Pair<String, Int>? {
@@ -917,6 +983,12 @@ data class AccountFileStatus(
     val externalAutoSync: Boolean = false,
     val error: Boolean = false,
     val syncing: Boolean = false,
+    /** Cópia automática no armazenamento compartilhado do celular. */
+    val autoSaved: Boolean = false,
+    val autoPath: String = "",
+    /** true quando a cópia está em /sdcard/MystMusic (sem fallback). */
+    val autoExact: Boolean = false,
+    val autoError: Boolean = false,
 )
 
 data class AccountFileSaveResult(val autoSync: Boolean)

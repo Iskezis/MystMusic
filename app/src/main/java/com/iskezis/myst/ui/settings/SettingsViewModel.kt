@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.data.account.AccountFileStatus
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class SettingsState(
     val name: String = "",
@@ -160,6 +162,11 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
         }
     }
 
+    /** Reexecuta a cópia automática, por exemplo ao voltar da tela de permissão. */
+    fun refreshAccountFile() {
+        app.accountFiles.requestSync()
+    }
+
     fun logoutMyst() = logout { app.accounts.logoutMyst() }
 
     fun logoutYouTube() = logout { app.accounts.logoutYouTube() }
@@ -181,6 +188,22 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
                 .onFailure {
                     AppLog.failure(AppLog.TAG_UI, "Falha desconectando Discord no logout", it)
                 }
+            // Antes de apagar o segredo local, avisa a TV para ela limpar os
+            // dados temporários. Se a TV estiver desligada/fora da rede, o
+            // logout continua; nesse caso o pareamento local é removido e a
+            // TV apaga tudo quando o processo dela terminar ou no próximo
+            // logout/desconexão.
+            if (BuildConfig.FLAVOR != "tv" && app.session.hasTvPairing) {
+                val disconnected = withTimeoutOrNull(3_000) {
+                    runCatching { app.pairedSync.disconnect() }.isSuccess
+                } ?: false
+                if (!disconnected) {
+                    AppLog.w(
+                        AppLog.TAG_PAIRING,
+                        "TV não respondeu antes do logout; pareamento local removido",
+                    )
+                }
+            }
             try {
                 action()
                 _loggedOut.value = true

@@ -90,11 +90,13 @@ class AuthViewModel(private val accounts: AccountRepository) : ViewModel() {
             AppLog.i(AppLog.TAG_AUTH, "Cadastro Myst solicitado para usuário $username")
             _state.value = _state.value.copy(loading = true, errorRes = null)
             try {
-                val result = accounts.register(username, password, avatarPath)
+                accounts.register(username, password, avatarPath)
                 AppLog.i(AppLog.TAG_AUTH, "Cadastro Myst concluído")
+                // A cópia automática é criada pelo MystAccountFileRepository
+                // (em /sdcard/MystMusic no celular). Não bloqueia o cadastro
+                // com um seletor de arquivo manual.
                 refreshState(
-                    pendingAccountFileUserId = result.userId,
-                    pendingAccountFileUsername = username.trim().lowercase(),
+                    messageRes = R.string.account_file_auto_saved_hint,
                 )
             } catch (t: Throwable) {
                 AppLog.w(AppLog.TAG_AUTH, "Cadastro Myst falhou: ${AppLog.describe(t)}")

@@ -5,11 +5,14 @@ import android.net.Uri
 import android.webkit.CookieManager
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.room.withTransaction
+import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.UserEntity
 import com.iskezis.myst.data.youtube.InnerTubeClient
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 class UsernameTakenException : Exception("username_taken")
@@ -54,6 +57,7 @@ class AccountRepository(
 ) {
 
     private var pendingYouTube: PendingYouTube? = null
+    private val tvUserMutex = Mutex()
 
     suspend fun register(
         username: String,
@@ -293,6 +297,57 @@ class AccountRepository(
         if (id <= 0L) null else database.userDao().findById(id)
     }
 
+    /**
+     * Na TV o banco é em memória. Depois de o processo ser encerrado, a
+     * sessão do pareamento continua guardada, mas a linha do usuário some
+     * junto com as playlists temporárias. Recria só a identidade mínima para
+     * o canal continuar aceitando a sincronização do celular; os dados
+     * visíveis voltam no próximo sync, não de um banco local.
+     */
+    suspend fun ensureTvSessionUser(): Long = withContext(Dispatchers.IO) {
+        if (BuildConfig.FLAVOR != "tv" || !session.hasTvPairing) return@withContext 0L
+        val userId = session.mystUserId
+        if (userId <= 0L) return@withContext 0L
+        tvUserMutex.withLock {
+            val dao = database.userDao()
+            val existing = dao.findById(userId)
+            if (existing != null) {
+                existing.id
+            } else {
+                val displayName = session.mystDisplayName.ifBlank { "MystMusic TV" }
+                val username = "tv_session_$userId"
+                val byName = dao.findByUsername(username)
+                if (byName != null) {
+                    session.saveMyst(byName.id, byName.displayName.ifBlank { displayName })
+                    byName.id
+                } else {
+                    runCatching {
+                        dao.insert(
+                            UserEntity(
+                                id = userId,
+                                username = username,
+                                displayName = displayName,
+                                accountType = SessionManager.TYPE_MYST,
+                                youtubeAccountId = session.youtubeAccountId,
+                                youtubeDisplayName = session.youtubeDisplayName,
+                            ),
+                        )
+                    }.getOrElse { error ->
+                        // Outra coroutine pode ter criado a linha enquanto
+                        // esperávamos o lock; nesse caso ela já está pronta.
+                        dao.findById(userId)?.id ?: throw error
+                    }
+                    AppLog.i(
+                        AppLog.TAG_AUTH,
+                        "TV: identidade temporária recriada em memória para o pareamento " +
+                            "(id=$userId)",
+                    )
+                    userId
+                }
+            }
+        }
+    }
+
     /** Contas Myst salvas no aparelho, usadas para reencontrar o perfil após restaurar um backup. */
     suspend fun localAccounts(): List<UserEntity> = withContext(Dispatchers.IO) {
         database.userDao().localAccounts()
@@ -308,6 +363,12 @@ class AccountRepository(
     suspend fun reconcileMystSession(): Boolean = withContext(Dispatchers.IO) {
         val id = session.mystUserId
         if (id <= 0L) return@withContext false
+        val isTv = BuildConfig.FLAVOR == "tv"
+        if (isTv) {
+            runCatching { ensureTvSessionUser() }.onFailure {
+                AppLog.failure(AppLog.TAG_AUTH, "Falha recriando a identidade temporária da TV", it)
+            }
+        }
         val user = try {
             database.userDao().findById(id)
         } catch (t: Throwable) {
@@ -315,6 +376,16 @@ class AccountRepository(
             return@withContext true
         }
         if (user == null) {
+            if (isTv) {
+                // O banco em memória pode ter sido recriado; não apaga o
+                // pareamento por causa de um instante sem a linha. O próximo
+                // sync do celular repovoa os dados temporários.
+                AppLog.w(
+                    AppLog.TAG_AUTH,
+                    "TV sem usuário em memória (id=$id); mantendo sessão e pareamento",
+                )
+                return@withContext true
+            }
             AppLog.w(
                 AppLog.TAG_AUTH,
                 "Sessão Myst órfã (id=$id); limpando a identidade para permitir novo login",
@@ -331,17 +402,29 @@ class AccountRepository(
     }
 
     suspend fun snapshot(): AccountSnapshot = withContext(Dispatchers.IO) {
+        if (BuildConfig.FLAVOR == "tv" && session.hasTvPairing) {
+            runCatching { ensureTvSessionUser() }.onFailure {
+                AppLog.failure(AppLog.TAG_AUTH, "Falha preparando a sessão temporária da TV", it)
+            }
+        }
         val savedId = session.mystUserId
         val user = savedId
             .takeIf { it > 0L }
             ?.let { database.userDao().findById(it) }
         if (savedId > 0L && user == null) {
-            AppLog.w(
-                AppLog.TAG_AUTH,
-                "Sessão Myst aponta para a conta $savedId, que não existe; limpando",
-            )
-            session.clearMyst()
-            session.clearTvPairing()
+            if (BuildConfig.FLAVOR == "tv") {
+                AppLog.w(
+                    AppLog.TAG_AUTH,
+                    "TV: banco em memória ainda sem o usuário $savedId; aguardando sync",
+                )
+            } else {
+                AppLog.w(
+                    AppLog.TAG_AUTH,
+                    "Sessão Myst aponta para a conta $savedId, que não existe; limpando",
+                )
+                session.clearMyst()
+                session.clearTvPairing()
+            }
         }
         val name = user?.displayName?.ifBlank { user.username }
             ?: session.mystDisplayName
@@ -410,21 +493,44 @@ class AccountRepository(
 
     suspend fun logoutMyst() = withContext(Dispatchers.IO) {
         AppLog.i(AppLog.TAG_AUTH, "Logout da conta Myst")
+        val userId = session.mystUserId
+        accountFiles.flushNow(userId, "logout Myst")
         session.clearMyst()
         session.clearTvPairing()
+        clearTvTemporaryData()
     }
 
     suspend fun logoutYouTube() = withContext(Dispatchers.IO) {
         AppLog.i(AppLog.TAG_AUTH, "Logout da conta YouTube")
+        val userId = session.mystUserId
+        accountFiles.flushNow(userId, "logout YouTube")
         session.clearYouTube()
         session.clearTvPairing()
         clearWebViewCookies()
+        clearTvTemporaryData()
     }
 
     suspend fun logoutAll() = withContext(Dispatchers.IO) {
         AppLog.i(AppLog.TAG_AUTH, "Logout das duas contas")
+        val userId = session.mystUserId
+        accountFiles.flushNow(userId, "logout total")
         session.clearSession()
         clearWebViewCookies()
+        clearTvTemporaryData()
+    }
+
+    /**
+     * A TV não pode continuar mostrando a biblioteca do celular depois de um
+     * logout ou de o pareamento ser desfeito. O banco é em memória, mas a
+     * limpeza explícita evita que a tela seguinte herde dados da sessão
+     * anterior enquanto o processo ainda está vivo.
+     */
+    private suspend fun clearTvTemporaryData() {
+        if (BuildConfig.FLAVOR != "tv") return
+        runCatching { database.clearAllTables() }.onFailure {
+            AppLog.failure(AppLog.TAG_AUTH, "Falha limpando o banco temporário da TV", it)
+        }
+        TvEphemeralData.purge(context)
     }
 
     /** Mantido para chamadas antigas; desloga as duas contas. */

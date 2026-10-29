@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import com.iskezis.myst.ui.common.BaseActivity
@@ -22,6 +23,7 @@ import androidx.navigation.NavOptions
 import androidx.navigation.fragment.NavHostFragment
 import coil.load
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.iskezis.myst.data.account.AutoAccountBackup
 import com.iskezis.myst.databinding.ActivityMainBinding
 import com.iskezis.myst.player.PlayerState
 import com.iskezis.myst.ui.auth.AuthActivity
@@ -48,7 +50,19 @@ class MainActivity : BaseActivity() {
 
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { /* Negar não impede o uso do app. */ }
+    ) {
+        // A negação não impede o uso do app. Depois da decisão, segue para o
+        // aviso da pasta automática, sem abrir dois diálogos ao mesmo tempo.
+        requestAccountBackupPermissionIfNeeded()
+    }
+
+    private val storagePermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            (application as MystApp).accountFiles.requestSync()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -153,7 +167,9 @@ class MainActivity : BaseActivity() {
 
         validateMystSession()
         observePlayer()
-        requestNotificationPermissionIfNeeded()
+        requestNotificationPermissionIfNeeded {
+            requestAccountBackupPermissionIfNeeded()
+        }
     }
 
     /**
@@ -362,7 +378,13 @@ class MainActivity : BaseActivity() {
 
     override fun onStart() {
         super.onStart()
-        (application as MystApp).pairedSync.onMainStart()
+        val app = application as MystApp
+        app.pairedSync.onMainStart()
+        if (BuildConfig.FLAVOR != "tv") {
+            // Atualiza a cópia automática também ao voltar da tela de
+            // permissão de armazenamento ou de outra Activity.
+            app.accountFiles.requestSync()
+        }
     }
 
     override fun onStop() {
@@ -370,22 +392,80 @@ class MainActivity : BaseActivity() {
         super.onStop()
     }
 
-    private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    private fun requestNotificationPermissionIfNeeded(after: () -> Unit) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            after()
+            return
+        }
         val granted = ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.POST_NOTIFICATIONS,
         ) == PackageManager.PERMISSION_GRANTED
-        if (granted) return
+        if (granted) {
+            after()
+            return
+        }
         val prefs = getSharedPreferences("myst_ui", MODE_PRIVATE)
-        if (prefs.getBoolean("notification_asked", false)) return
+        if (prefs.getBoolean("notification_asked", false)) {
+            after()
+            return
+        }
         prefs.edit().putBoolean("notification_asked", true).apply()
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.notifications_title)
             .setMessage(R.string.notifications_message)
-            .setNegativeButton(R.string.notifications_later, null)
+            .setNegativeButton(R.string.notifications_later) { _, _ -> after() }
             .setPositiveButton(R.string.notifications_allow) { _, _ ->
                 notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            .setOnCancelListener { after() }
+            .show()
+    }
+
+    /**
+     * Pede uma única vez o acesso necessário para gravar em
+     * /sdcard/MystMusic. Se a pessoa recusar, a cópia automática continua
+     * funcionando em Download/MystMusic; as Configurações mostram o caminho
+     * e permitem conceder depois.
+     */
+    private fun requestAccountBackupPermissionIfNeeded() {
+        if (BuildConfig.FLAVOR == "tv" || isFinishing || isDestroyed) return
+        if (AutoAccountBackup.hasExactAccess(this)) return
+        val prefs = getSharedPreferences("myst_ui", MODE_PRIVATE)
+        if (prefs.getBoolean("account_backup_access_asked", false)) return
+        prefs.edit().putBoolean("account_backup_access_asked", true).apply()
+
+        val runtimePermission = AutoAccountBackup.runtimePermission()
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.account_backup_permission_title)
+            .setMessage(R.string.account_backup_permission_message)
+            .setNegativeButton(R.string.account_backup_permission_later, null)
+            .setPositiveButton(R.string.account_backup_permission_allow) { _, _ ->
+                if (runtimePermission != null) {
+                    storagePermission.launch(runtimePermission)
+                } else {
+                    val intent = AutoAccountBackup.allFilesSettingsIntent(this)
+                    if (intent == null) {
+                        Toast.makeText(
+                            this,
+                            R.string.account_backup_permission_unavailable,
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    } else {
+                        runCatching { startActivity(intent) }.onFailure { t ->
+                            AppLog.failure(
+                                AppLog.TAG_AUTH,
+                                "Tela de acesso a todos os arquivos indisponível",
+                                t,
+                            )
+                            Toast.makeText(
+                                this,
+                                R.string.account_backup_permission_unavailable,
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        }
+                    }
+                }
             }
             .show()
     }

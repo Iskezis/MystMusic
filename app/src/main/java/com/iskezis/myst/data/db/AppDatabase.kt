@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.iskezis.myst.BuildConfig
 
 @Database(
     entities = [
@@ -37,15 +38,30 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun get(context: Context): AppDatabase {
             return instance ?: synchronized(this) {
-                instance ?: Room.databaseBuilder(
-                    context.applicationContext,
-                    AppDatabase::class.java,
-                    "mystmusic.db",
-                )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
-                    .build()
-                    .also { instance = it }
+                instance ?: build(context.applicationContext).also { instance = it }
             }
+        }
+
+        private fun build(context: Context): AppDatabase {
+            if (BuildConfig.FLAVOR == "tv") {
+                // A TV não guarda playlists nem biblioteca em disco. O banco
+                // em memória existe só enquanto o processo está vivo; ao
+                // fechar o app ele é descartado e o próximo sync do celular
+                // repovoa a tela. O arquivo antigo, se existir, é removido
+                // para não deixar dados de versões anteriores.
+                runCatching { context.deleteDatabase("mystmusic.db") }
+                return Room.inMemoryDatabaseBuilder(
+                    context,
+                    AppDatabase::class.java,
+                ).build()
+            }
+            return Room.databaseBuilder(
+                context,
+                AppDatabase::class.java,
+                "mystmusic.db",
+            )
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .build()
         }
 
         /**

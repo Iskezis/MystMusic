@@ -1,7 +1,9 @@
 package com.iskezis.myst.ui.settings
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -20,6 +22,7 @@ import coil.load
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.R
+import com.iskezis.myst.data.account.AutoAccountBackup
 import com.iskezis.myst.data.account.AvatarStore
 import com.iskezis.myst.data.account.MystAccountFileRepository
 import com.iskezis.myst.data.discord.DiscordConnection
@@ -83,6 +86,18 @@ class SettingsFragment : Fragment() {
         ActivityResultContracts.CreateDocument("application/json"),
     ) { uri ->
         if (uri != null) viewModel.saveAccountFile(uri)
+    }
+
+    private val storagePermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) viewModel.refreshAccountFile()
+    }
+
+    private val allFilesAccess = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        viewModel.refreshAccountFile()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -229,6 +244,7 @@ class SettingsFragment : Fragment() {
         // Ao voltar do pareamento (ou de outra Activity) o ViewModel pode ter
         // sido criado antes de o segredo ser salvo.
         viewModel.refreshPairing()
+        viewModel.refreshAccountFile()
     }
 
     override fun onDestroyView() {
@@ -261,16 +277,24 @@ class SettingsFragment : Fragment() {
 
     private fun renderAccountFile(state: SettingsState) {
         val status = state.accountFileStatus
-        val statusRes = when {
-            state.accountFileSaving -> R.string.settings_account_file_working
-            status.error -> R.string.settings_account_file_status_error
+        val statusText: CharSequence = when {
+            state.accountFileSaving -> getString(R.string.settings_account_file_working)
+            status.error -> getString(R.string.settings_account_file_status_error)
+            status.autoSaved && status.autoExact -> getString(
+                R.string.settings_account_file_status_auto,
+                status.autoPath,
+            )
+            status.autoSaved -> getString(
+                R.string.settings_account_file_status_auto_fallback,
+                status.autoPath,
+            )
             status.externalSaved && status.externalAutoSync ->
-                R.string.settings_account_file_status_synced
-            status.externalSaved -> R.string.settings_account_file_status_manual
-            status.lastSyncAt > 0L -> R.string.settings_account_file_status_internal
-            else -> R.string.settings_account_file_status_missing
+                getString(R.string.settings_account_file_status_synced)
+            status.externalSaved -> getString(R.string.settings_account_file_status_manual)
+            status.lastSyncAt > 0L -> getString(R.string.settings_account_file_status_internal)
+            else -> getString(R.string.settings_account_file_status_missing)
         }
-        binding.settingsAccountFileStatus.setText(statusRes)
+        binding.settingsAccountFileStatus.text = statusText
         binding.settingsAccountFileStatus.setTextColor(
             MystTheme.color(
                 requireContext(),
@@ -285,6 +309,64 @@ class SettingsFragment : Fragment() {
                 R.string.settings_account_file_save
             },
         )
+
+        val needsAccess = BuildConfig.FLAVOR != "tv" &&
+            !AutoAccountBackup.hasExactAccess(requireContext())
+        val requestAccess = View.OnClickListener { requestAutoBackupAccess() }
+        binding.settingsAccountFileStatus.setOnClickListener(
+            if (needsAccess) requestAccess else null,
+        )
+        binding.settingsAccountFileStatus.isClickable = needsAccess
+        binding.settingsAccountFileStatus.isFocusable = needsAccess
+        binding.settingsAccountFileHint.text = if (needsAccess) {
+            getString(R.string.settings_account_file_hint_fallback)
+        } else {
+            getString(R.string.settings_account_file_hint)
+        }
+        binding.settingsAccountFileHint.setOnClickListener(
+            if (needsAccess) requestAccess else null,
+        )
+        binding.settingsAccountFileHint.isClickable = needsAccess
+        binding.settingsAccountFileHint.isFocusable = needsAccess
+    }
+
+    /**
+     * Concede o acesso à pasta raiz para o backup automático em
+     * /sdcard/MystMusic. No Android 11+ é uma tela de configurações; no
+     * Android 6–10 é a permissão de armazenamento tradicional.
+     */
+    private fun requestAutoBackupAccess() {
+        if (BuildConfig.FLAVOR == "tv") return
+        if (AutoAccountBackup.hasExactAccess(requireContext())) return
+        val runtimePermission = AutoAccountBackup.runtimePermission()
+        if (runtimePermission != null) {
+            runCatching { storagePermission.launch(runtimePermission) }.onFailure { t ->
+                AppLog.failure(AppLog.TAG_AUTH, "Falha pedindo permissão de armazenamento", t)
+                Toast.makeText(
+                    requireContext(),
+                    R.string.account_backup_permission_unavailable,
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+            return
+        }
+        val intent = AutoAccountBackup.allFilesSettingsIntent(requireContext())
+        if (intent == null) {
+            Toast.makeText(
+                requireContext(),
+                R.string.account_backup_permission_unavailable,
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
+        runCatching { allFilesAccess.launch(intent) }.onFailure { t ->
+            AppLog.failure(AppLog.TAG_AUTH, "Tela de acesso a todos os arquivos indisponível", t)
+            Toast.makeText(
+                requireContext(),
+                R.string.account_backup_permission_unavailable,
+                Toast.LENGTH_LONG,
+            ).show()
+        }
     }
 
     private fun renderTv(state: SettingsState) {

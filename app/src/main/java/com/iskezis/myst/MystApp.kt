@@ -1,12 +1,14 @@
 package com.iskezis.myst
 
 import android.app.Application
+import android.content.ComponentCallbacks2
 import androidx.appcompat.app.AppCompatDelegate
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import com.iskezis.myst.data.account.AccountRepository
 import com.iskezis.myst.data.account.MystAccountFileRepository
 import com.iskezis.myst.data.account.SessionManager
+import com.iskezis.myst.data.account.TvEphemeralData
 import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.PlaylistRepository
 import com.iskezis.myst.data.discord.DiscordPresenceManager
@@ -82,9 +84,15 @@ class MystApp : Application(), ImageLoaderFactory {
         AppCompatDelegate.setDefaultNightMode(appearance.nightMode)
         AppLog.attach(this)
         installCrashLogger()
+        if (BuildConfig.FLAVOR == "tv") {
+            // TV = terminal temporário. Remove resíduos de versões antigas
+            // antes de qualquer tela; o banco novo será em memória.
+            TvEphemeralData.purge(this)
+        }
         // Mantém o Mystaccount.json interno e a cópia externa (quando o
         // provedor permite escrita persistente) atualizados a cada mudança no
         // Room. A sincronização é debounced e nunca roda na thread principal.
+        // Na TV o repositório ignora a chamada de propósito.
         accountFiles.start(session)
         AppLog.i(
             AppLog.TAG,
@@ -117,6 +125,19 @@ class MystApp : Application(), ImageLoaderFactory {
         // Abre TLS e renova o visitorData antes do primeiro toque em uma faixa.
         warmUpScope.launch { innerTube.warmUp() }
         observePlayerForDiscord()
+        if (BuildConfig.FLAVOR == "tv" && session.hasTvPairing) {
+            // O banco é em memória; recria a linha mínima do usuário para o
+            // servidor de pareamento continuar aceitando o celular.
+            warmUpScope.launch {
+                runCatching { accounts.ensureTvSessionUser() }.onFailure {
+                    AppLog.failure(
+                        AppLog.TAG_AUTH,
+                        "Falha preparando a identidade temporária da TV",
+                        it,
+                    )
+                }
+            }
+        }
         // Na TV, mantém o canal de sincronização/desconexão vivo enquanto o
         // processo existir; no celular a sincronização é disparada pela tela.
         pairedSync.onAppCreated()
@@ -141,6 +162,19 @@ class MystApp : Application(), ImageLoaderFactory {
                     )
                 }
             }
+        }
+    }
+
+    /**
+     * O Android pode encerrar o processo depois que a interface some. Dispara
+     * uma última gravação da conta no celular; a cópia automática também é
+     * atualizada a cada mudança, então isso é uma proteção extra.
+     */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (BuildConfig.FLAVOR == "tv") return
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+            accountFiles.requestSync()
         }
     }
 
