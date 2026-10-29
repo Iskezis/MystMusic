@@ -105,7 +105,9 @@ class PairedSyncManager(private val app: MystApp) {
      */
     suspend fun disconnect() {
         if (isTv) throw IOException("A TV não desconecta a si mesma")
-        client.disconnect(app)
+        syncMutex.withLock {
+            client.disconnect(app)
+        }
         phoneLoop?.cancel()
         phoneLoop = null
     }

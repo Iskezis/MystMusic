@@ -297,7 +297,7 @@ class AccountRepository(
                 "Sessão Myst órfã (id=$id); limpando a identidade para permitir novo login",
             )
             session.clearMyst()
-            session.tvPaired = false
+            session.clearTvPairing()
             return@withContext false
         }
         val name = user.displayName.ifBlank { user.username }
@@ -318,7 +318,7 @@ class AccountRepository(
                 "Sessão Myst aponta para a conta $savedId, que não existe; limpando",
             )
             session.clearMyst()
-            session.tvPaired = false
+            session.clearTvPairing()
         }
         val name = user?.displayName?.ifBlank { user.username }
             ?: session.mystDisplayName
@@ -388,13 +388,13 @@ class AccountRepository(
     suspend fun logoutMyst() = withContext(Dispatchers.IO) {
         AppLog.i(AppLog.TAG_AUTH, "Logout da conta Myst")
         session.clearMyst()
-        session.tvPaired = false
+        session.clearTvPairing()
     }
 
     suspend fun logoutYouTube() = withContext(Dispatchers.IO) {
         AppLog.i(AppLog.TAG_AUTH, "Logout da conta YouTube")
         session.clearYouTube()
-        session.tvPaired = false
+        session.clearTvPairing()
         clearWebViewCookies()
     }
 

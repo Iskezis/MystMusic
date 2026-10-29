@@ -164,6 +164,16 @@ object PairingSync {
         if (cookies.isNullOrBlank()) {
             throw IllegalArgumentException("Payload sem a conta do YouTube")
         }
+        val pairId = bundle.pairId?.takeIf { it.isNotBlank() }
+        val secret = bundle.pairSecret?.takeIf { it.isNotBlank() }
+        if (pairId == null || secret == null) {
+            // Sem o segredo não há como o celular desconectar ou sincronizar
+            // depois. Falhar aqui evita uma TV "pareada" que volta para a tela
+            // do código em loop.
+            throw IllegalArgumentException(
+                "Atualize o MystMusic no celular e pareie a TV novamente",
+            )
+        }
         // Compatibilidade com o celular da 0.1.0: o id da conta não vinha no
         // payload, mas pode ser derivado dos cookies.
         val youtubeAccountId = account.youtubeAccountId
@@ -214,29 +224,19 @@ object PairingSync {
             ),
         )
 
-        val pairId = bundle.pairId?.takeIf { it.isNotBlank() }
-        val secret = bundle.pairSecret?.takeIf { it.isNotBlank() }
-        if (pairId != null && secret != null) {
-            app.session.saveTvPairing(
-                pairId = pairId,
-                secret = secret,
-                name = bundle.phoneName.ifBlank { "Celular" },
-            )
-        } else {
-            // Pareamento antigo (dev.5 ou anterior): continua entrando na
-            // conta, mas sem canal para sincronizar/desconectar até parear de novo.
-            app.session.tvPaired = true
-        }
+        app.session.saveTvPairing(
+            pairId = pairId,
+            secret = secret,
+            name = bundle.phoneName.ifBlank { "Celular" },
+        )
         AppLog.i(
             AppLog.TAG_PAIRING,
             "Pareamento aplicado: usuário=$userId " +
                 "youtube=${!youtubeAccountId.isNullOrBlank()} " +
                 "avatar=${!account.avatarBase64.isNullOrBlank()} " +
-                "playlists=${bundle.playlists.size} canal=${pairId != null}",
+                "playlists=${bundle.playlists.size} canal=true",
         )
-        if (pairId != null && secret != null) {
-            app.pairedSync.onTvPaired()
-        }
+        app.pairedSync.onTvPaired()
     }
 
     /**
