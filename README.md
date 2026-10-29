@@ -4,7 +4,7 @@ Android music app (Kotlin + XML) featuring YouTube Music (via InnerTube), Spotif
 
 - **App Name:** MystMusic
 - **Package:** `com.iskezis.myst`
-- **Current Version:** 0.1.0 Alpha (versionCode 9)
+- **Current Version:** 0.1.0 Alpha (versionCode 9) · **Development:** 0.2.0-dev.1 (versionCode 10)
 - **Status:** Alpha testing phase; includes unofficial integrations for YouTube Music and Discord.
 - **Theme Color:** Sky blue (simple gradients, minimalist and modern aesthetic).
 - **UI Language:** Portuguese (Brazil).

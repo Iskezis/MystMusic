@@ -16,11 +16,11 @@ Atualize após cada etapa. Marque [x] só quando o build do GitHub estiver verde
 ## Fases 0.2.0
 Marque cada subitem só com build verde + verificação. Versão durante o desenvolvimento: `0.2.0-dev.N` (versionCode crescente a partir de 10); a final será `0.2.0 Alpha`.
 
-- [ ] 11. Tema do sistema + Aparência
-  - [ ] Segue o tema do sistema (claro/escuro) em todas as telas, celular e TV
-  - [ ] Configurações → Aparência: Escuro / Claro / Sistema (padrão Sistema), persistido
-  - [ ] Interruptor "Preto AMOLED" só aparece quando o tema efetivo é escuro; fundo #000000
-  - [ ] Sem cores fixas nos layouts (tudo por atributos de tema), sem piscar ao trocar
+- [x] 11. Tema do sistema + Aparência
+  - [x] Segue o tema do sistema (claro/escuro) em todas as telas, celular e TV
+  - [x] Configurações → Aparência: Escuro / Claro / Sistema (padrão Sistema), persistido
+  - [x] Interruptor "Preto AMOLED" só aparece quando o tema efetivo é escuro; fundo #000000
+  - [x] Sem cores fixas nos layouts (tudo por atributos de tema), sem piscar ao trocar
 - [ ] 12. Login obrigatório duplo + foto de perfil
   - [ ] Navegação só abre com YouTube **e** Myst logados
   - [ ] Criar conta Myst com foto de perfil (galeria + recorte circular, 512 px)
@@ -62,6 +62,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - API de atualização do GitHub só funciona sem token se o repositório for público.
 
 ## Release
+- **0.2.0-dev.1** (`versionCode 10`, `versionName "0.2.0-dev.1"`): build de desenvolvimento da fase 11 (tema Sistema/Claro/Escuro + Preto AMOLED + tela Aparência), run `40930983204`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.1.0 Alpha** (`versionCode 9`, `versionName "0.1.0 Alpha"`): primeira alpha pública para celular e Android TV. A numeração anterior (1.0.x) era de desenvolvimento; o `versionCode` continua crescendo (9) para permitir atualização sobre a v1.0.7.
 - APKs: `apks/app.apk` (mobile) e `apks/app-tv.apk` (TV, armeabi-v7a), assinados com a chave de debug do build.
 - Notas: `CHANGELOG.md` e `README.md` (instalação e limitações).
@@ -90,6 +91,8 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 | 40899680539 | 208d4b3 | verde | Capa do Discord via media proxy (`mp:`) e card somente com ação/música/artista (v1.0.6) | `apks/app.apk`, `apks/app-tv.apk` |
 | 40903108724 | 80d2f3b | verde | Capa pelo aplicativo público do BitChord, sem criação de app (captcha) e barra de progresso restaurada (v1.0.7) | `apks/app.apk`, `apks/app-tv.apk` |
 | 40905793966 | 918715c | verde | Preparação da 0.1.0 Alpha: versionCode 9, README/CHANGELOG e APKs da release | `apks/app.apk`, `apks/app-tv.apk` |
+| 40930501819 | 33e6d20 | falha | `this` dentro de `lifecycleScope.launch` era o `CoroutineScope`, não a Activity, em `MystTheme.color(...)` no pareamento | — |
+| 40930983204 | a893a44 | verde | Fase 11: tema Sistema/Claro/Escuro, Preto AMOLED, tela Aparência e tokens de tema em todas as telas; correção do contexto de Activity no pareamento (0.2.0-dev.1) | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
 - Player: `ResolvingDataSource` resolve `myst://track/<id>` na hora de abrir. A extração foi refeita seguindo o caminho que o BitChord usa via InnerTube (`InnerTubeXResolver`/`PlaybackClientCatalog`): o primeiro cliente é o **VISIONOS 0.1** no endpoint `music.youtube.com/youtubei/v1/player`, com `visitorData` novo, `clientId` 101, `X-Goog-Api-Format-Version: 1`, sem cookies e sem `playbackContext`. Ele devolve URL direta, que é validada com Range de 2 bytes antes de chegar ao ExoPlayer.
@@ -113,6 +116,14 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - Capas: o parser escolhe a maior miniatura disponível, eleva URLs do YouTube para `maxresdefault`/1080 e a UI aplica essa melhoria também a faixas antigas salvas no banco. Capas de playlist escolhidas pelo usuário são salvas em 1024 px (JPEG 92).
 - Spotify: a Web API é tentada primeiro; sem chaves, o embed é lido priorizando a entidade cujo `uri`/`id` corresponde ao link colado. A ordem original é preservada por índice, mesmo com mapeamento paralelo. O mapeamento exige título, artista e duração (diferença máxima de 8 s), rejeitando karaokê, cover, remix, live, sped up etc. quando não fazem parte do título original.
 - A capa importada do Spotify usa a maior imagem disponível e é gravada em até 1024 px.
+- Tema (fase 11): as cores de UI vivem em atributos `myst*` (`attrs.xml`) definidos em `values/themes.xml` (claro) e `values-night/themes.xml` (escuro). Nenhum layout usa cor fixa para fundo/texto; seletores de cor (`nav_text_color`, `appearance_card_stroke` etc.) também usam `?attr/...`.
+- Aparência: `AppearancePreferences` guarda `theme_mode` e `amoled` em `SharedPreferences` no nível do aparelho (não da conta Myst). `MystApp.onCreate` aplica `AppCompatDelegate.setDefaultNightMode` de forma síncrona, antes de qualquer Activity, para não piscar o tema errado.
+- AMOLED: `BaseActivity` aplica `ThemeOverlay.MystMusic.Amoled` antes de `super.onCreate`/`setContentView`; o overlay só é ativo quando o tema efetivo é escuro e a flag está ligada. Ao alternar o switch, a Activity é recriada (mesmo destino), sem reiniciar o processo. A flag é preservada ao voltar para o tema claro, mas fica inativa.
+- Barras do sistema: `MystTheme.applySystemBars` centraliza ícones claros/escuros e é chamado no `BaseActivity` e novamente depois de `setDecorFitsSystemWindows` nas telas que usam edge-to-edge.
+- A tela Aparência usa cards + `RadioGroup` com seleção controlada em código (os cards são os alvos de toque; os radios são apenas indicadores). A linha AMOLED entra/sai com `AutoTransition` (fade + altura). O estado é relido em `refresh()` porque o ViewModel sobrevive à recriação por mudança de configuração.
+- Miniaturas claro/escuro da tela Aparência usam cores fixas de propósito: elas representam os temas, não superfícies da UI atual.
+- Documentação: o dono do repositório traduziu o README para inglês e apagou o `PROGRESS.md` no remoto durante a fase 11. O README em inglês foi preservado; o `PROGRESS.md` foi restaurado porque o `AGENTS.md` exige o registro de fases/builds. A referência a "Roadmap no README" foi ajustada para apontar ao `PROGRESS.md`.
+- Versão de desenvolvimento da fase 11: `0.2.0-dev.1`, `versionCode 10`.
 
 ## Problemas em aberto
 - Validação funcional em aparelho físico confirmada pelo usuário em 29/10/2026: login YouTube, reprodução, navegação, Discord RPC com capa/progresso e pareamento TV. Nenhum bloqueador conhecido para a 0.1.0 Alpha.
