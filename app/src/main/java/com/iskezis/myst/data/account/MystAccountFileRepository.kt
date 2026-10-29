@@ -319,6 +319,7 @@ class MystAccountFileRepository(
             val playlistDao = database.playlistDao()
             val existingByName = playlistDao.playlists(userId)
                 .associateBy { it.name.trim().lowercase() }
+                .toMutableMap()
             playlists.forEach { backup ->
                 val name = backup.name.trim().take(40).ifBlank { "Playlist restaurada" }
                 val existingPlaylist = existingByName[name.lowercase()]
