@@ -25,13 +25,14 @@ android {
         applicationId = "com.iskezis.myst"
         minSdk = 21
         targetSdk = 34
-        versionCode = 6
-        versionName = "1.0.5"
+        versionCode = 7
+        versionName = "1.0.6"
         multiDexEnabled = true
         vectorDrawables.useSupportLibrary = true
 
         buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"${secret("SPOTIFY_CLIENT_ID")}\"")
         buildConfigField("String", "SPOTIFY_CLIENT_SECRET", "\"${secret("SPOTIFY_CLIENT_SECRET")}\"")
+        buildConfigField("String", "DISCORD_APP_ID", "\"${secret("DISCORD_APP_ID")}\"")
     }
 
     flavorDimensions += "device"

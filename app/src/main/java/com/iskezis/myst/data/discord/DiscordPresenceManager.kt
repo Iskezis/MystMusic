@@ -3,6 +3,8 @@ package com.iskezis.myst.data.discord
 import android.content.Context
 import android.os.Build
 import android.os.SystemClock
+import android.util.LruCache
+import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.data.account.SessionManager
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.player.PlayerState
@@ -31,6 +33,8 @@ import kotlinx.serialization.json.put
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import java.io.IOException
@@ -72,6 +76,15 @@ class DiscordPresenceManager(
         .retryOnConnectionFailure(true)
         .build()
 
+    /**
+     * O cliente do gateway usa `readTimeout=0` porque o WebSocket fica aberto.
+     * As chamadas REST (validar token, criar aplicativo, registrar capa) precisam
+     * de timeout para nunca prender uma coroutine do player.
+     */
+    private val restClient = client.newBuilder()
+        .readTimeout(20, TimeUnit.SECONDS)
+        .build()
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val _state = MutableStateFlow(
         DiscordState(
@@ -109,6 +122,27 @@ class DiscordPresenceManager(
     private var presenceTrackId: String? = null
     private var presenceStart = 0L
     private var lastPlaying = false
+
+    /** Evita reenviar a mesma presença e descartar uma publicação antiga. */
+    private var presenceJob: Job? = null
+
+    /**
+     * O gateway só aceita `large_image` como asset do aplicativo ou como
+     * caminho `mp:` emitido por `/applications/{id}/external-assets`. A URL
+     * crua faz o card ficar sem imagem. Usamos o aplicativo configurado em
+     * `local.properties`/Secrets ou criamos um "MystMusic" uma única vez com
+     * o próprio token, guardando o id na sessão criptografada.
+     */
+    @Volatile
+    private var appId: String? = cleanAppId(session.discordAppId)
+
+    @Volatile
+    private var appRegistrationFailed = false
+
+    @Volatile
+    private var configuredAppRejected = false
+
+    private val artworkCache = object : LruCache<String, String>(64) {}
 
     init {
         // Versões antigas salvavam o token com as aspas do localStorage do
@@ -162,6 +196,12 @@ class DiscordPresenceManager(
         presenceActive = false
         presenceTrackId = null
         lastPlaying = false
+        presenceJob?.cancel()
+        presenceJob = null
+        appId = null
+        appRegistrationFailed = false
+        configuredAppRejected = false
+        artworkCache.evictAll()
         session.clearDiscord()
         runCatching {
             socket?.close(1000, "Desconectado")
@@ -232,16 +272,7 @@ class DiscordPresenceManager(
         presenceTrackId = track.videoId
         presenceStart = expectedStart
         presenceActive = true
-        val presence = presencePayload(
-            buildActivity(track, expectedStart, state.durationMs),
-        )
-        if (ready) {
-            AppLog.d(
-                AppLog.TAG_DISCORD,
-                "Presença do Discord atualizada: ${track.title} | capa=${!track.artworkUrl().isNullOrBlank()}",
-            )
-            sendPresence(presence)
-        }
+        if (ready) publishPresence(track)
     }
 
     private fun startConnection(validateToken: Boolean) {
@@ -260,6 +291,10 @@ class DiscordPresenceManager(
         sessionId = null
         resumeUrl = null
         awaitingAck = false
+        presenceJob?.cancel()
+        presenceJob = null
+        appRegistrationFailed = false
+        configuredAppRejected = false
         connectJob?.cancel()
         socket?.cancel()
         socket = null
@@ -303,7 +338,7 @@ class DiscordPresenceManager(
             .header("X-Super-Properties", DiscordSuperProperties.base64)
             .header("Accept", "application/json")
             .build()
-        client.newCall(request).execute().use { response ->
+        restClient.newCall(request).execute().use { response ->
             val text = response.body?.string().orEmpty()
             if (response.code == 401 || response.code == 403) {
                 AppLog.w(
@@ -340,6 +375,11 @@ class DiscordPresenceManager(
         readyTimeoutJob = null
         ready = false
         session.clearDiscord()
+        presenceJob?.cancel()
+        presenceJob = null
+        appId = null
+        appRegistrationFailed = false
+        configuredAppRejected = false
         runCatching { socket?.cancel() }
         socket = null
         _state.value = DiscordState(DiscordConnection.ERROR, null)
@@ -437,6 +477,8 @@ class DiscordPresenceManager(
         failure: Throwable?,
     ) {
         ready = false
+        presenceJob?.cancel()
+        presenceJob = null
         heartbeatJob?.cancel()
         heartbeatJob = null
         helloTimeoutJob?.cancel()
@@ -595,12 +637,7 @@ class DiscordPresenceManager(
             presenceTrackId = track.videoId
             presenceStart = start
             lastPlaying = true
-            val presence = presencePayload(buildActivity(track, start, current.durationMs))
-            AppLog.d(
-                AppLog.TAG_DISCORD,
-                "Presença do Discord reenviada: ${track.title} | capa=${!track.artworkUrl().isNullOrBlank()}",
-            )
-            sendPresence(presence)
+            publishPresence(track)
         } else {
             // Pausado, parado ou sem faixa: o card não deve voltar no reconnect.
             presenceActive = false
@@ -740,36 +777,166 @@ class DiscordPresenceManager(
         }
     }
 
-    private fun buildActivity(
-        track: Track,
-        startMs: Long,
-        durationMs: Long,
-    ): JsonObject = buildJsonObject {
+    private fun publishPresence(track: Track) {
+        if (!ready) return
+        val currentToken = token ?: return
+        presenceJob?.cancel()
+        presenceJob = scope.launch {
+            val artwork = withContext(Dispatchers.IO) {
+                try {
+                    resolveArtwork(track, currentToken)
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (t: Throwable) {
+                    AppLog.failure(AppLog.TAG_DISCORD, "Falha registrando capa no Discord", t)
+                    null
+                }
+            }
+            if (!isActive || !ready || manualStop || currentToken != token) return@launch
+            val latest = latestPlayerState
+            if (latest?.isPlaying != true || latest.track?.videoId != track.videoId) return@launch
+            AppLog.d(
+                AppLog.TAG_DISCORD,
+                "Presença do Discord atualizada: ${track.title} | capa=${artwork != null}",
+            )
+            sendPresence(presencePayload(buildActivity(track, artwork)))
+        }
+    }
+
+    /**
+     * Registra a capa no media proxy do Discord. O gateway não resolve uma
+     * URL HTTPS crua em `large_image`: ele deixa o espaço em branco. É preciso
+     * trocar a URL por um caminho `mp:` emitido por este endpoint.
+     */
+    private fun resolveArtwork(track: Track, currentToken: String): String? {
+        val url = discordArtwork(track) ?: return null
+        artworkCache.get(url)?.let { return it }
+        val applicationId = ensureApplicationId(currentToken) ?: return null
+        val body = buildJsonObject {
+            put("urls", buildJsonArray { add(JsonPrimitive(url)) })
+        }.toString().toRequestBody(JSON_MEDIA_TYPE)
+        val request = Request.Builder()
+            .url("https://discord.com/api/v9/applications/$applicationId/external-assets")
+            .header("Authorization", currentToken)
+            .header("User-Agent", DiscordSuperProperties.userAgent)
+            .header("X-Super-Properties", DiscordSuperProperties.base64)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .post(body)
+            .build()
+        restClient.newCall(request).execute().use { response ->
+            val text = response.body?.string().orEmpty()
+            if (response.code == 401 || response.code == 403) {
+                AppLog.w(
+                    AppLog.TAG_DISCORD,
+                    "Discord recusou o aplicativo de capas: HTTP ${response.code} ${text.take(120)}",
+                )
+                val configured = cleanAppId(BuildConfig.DISCORD_APP_ID)
+                appId = null
+                session.discordAppId = null
+                artworkCache.evictAll()
+                if (configured != null && applicationId == configured) {
+                    configuredAppRejected = true
+                }
+                appRegistrationFailed = true
+                return null
+            }
+            if (!response.isSuccessful) {
+                AppLog.w(
+                    AppLog.TAG_DISCORD,
+                    "Falha registrando capa no Discord: HTTP ${response.code} ${text.take(120)}",
+                )
+                return null
+            }
+            val list = json.parseToJsonElement(text) as? JsonArray
+            val path = ((list?.firstOrNull() as? JsonObject)
+                ?.get("external_asset_path") as? JsonPrimitive)
+                ?.contentOrNull
+            if (path.isNullOrBlank()) {
+                AppLog.w(AppLog.TAG_DISCORD, "Discord não devolveu caminho para a capa")
+                return null
+            }
+            val asset = "mp:$path"
+            artworkCache.put(url, asset)
+            AppLog.d(AppLog.TAG_DISCORD, "Capa registrada no media proxy do Discord")
+            return asset
+        }
+    }
+
+    /**
+     * App ID usado para registrar as capas. Se não vier de
+     * `local.properties`/Secrets, cria um aplicativo "MystMusic" uma vez com o
+     * próprio token e guarda o id na sessão criptografada. O nome do card
+     * continua sendo o `name` da atividade; o aplicativo só serve de namespace
+     * para o media proxy.
+     */
+    private fun ensureApplicationId(currentToken: String): String? {
+        if (!configuredAppRejected) {
+            cleanAppId(BuildConfig.DISCORD_APP_ID)?.let {
+                appId = it
+                return it
+            }
+        }
+        appId?.let { return it }
+        cleanAppId(session.discordAppId)?.let {
+            appId = it
+            return it
+        }
+        if (appRegistrationFailed) return null
+        AppLog.i(AppLog.TAG_DISCORD, "Criando aplicativo de capas no Discord (uma vez)")
+        val body = buildJsonObject {
+            put("name", "MystMusic")
+            put("description", "Rich Presence do MystMusic")
+        }.toString().toRequestBody(JSON_MEDIA_TYPE)
+        val request = Request.Builder()
+            .url("https://discord.com/api/v9/applications")
+            .header("Authorization", currentToken)
+            .header("User-Agent", DiscordSuperProperties.userAgent)
+            .header("X-Super-Properties", DiscordSuperProperties.base64)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .post(body)
+            .build()
+        restClient.newCall(request).execute().use { response ->
+            val text = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                appRegistrationFailed = true
+                AppLog.w(
+                    AppLog.TAG_DISCORD,
+                    "Não foi possível preparar o aplicativo de capas: HTTP ${response.code} ${text.take(120)}",
+                )
+                return null
+            }
+            val root = json.parseToJsonElement(text) as? JsonObject
+            val id = (root?.get("id") as? JsonPrimitive)?.contentOrNull
+            if (id.isNullOrBlank()) {
+                appRegistrationFailed = true
+                AppLog.w(AppLog.TAG_DISCORD, "Discord não devolveu o id do aplicativo de capas")
+                return null
+            }
+            appId = id
+            session.discordAppId = id
+            AppLog.i(AppLog.TAG_DISCORD, "Aplicativo de capas do Discord pronto (id=$id)")
+            return id
+        }
+    }
+
+    private fun buildActivity(track: Track, artwork: String?): JsonObject = buildJsonObject {
+        // O card deve mostrar apenas: "Ouvindo MystMusic", música e artista.
+        // Sem timestamps (barra de progresso), sem status_display_type e sem
+        // large_text (texto extra no hover).
         put("name", "MystMusic")
         put("type", 2)
         put("details", track.title.ifBlank { "MystMusic" }.take(128))
         put("state", track.artist.ifBlank { "MystMusic" }.take(128))
-        put("status_display_type", 1)
-        val artwork = discordArtwork(track)
         if (artwork != null) {
-            // O Discord aceita uma URL externa completa em large_image e a
-            // resolve pelo media proxy dele; não é preciso application_id nem
-            // cadastrar o asset previamente.
             put(
                 "assets",
                 buildJsonObject {
                     put("large_image", artwork)
-                    put("large_text", track.title.ifBlank { "MystMusic" }.take(128))
                 },
             )
         }
-        put(
-            "timestamps",
-            buildJsonObject {
-                put("start", startMs)
-                if (durationMs > 0) put("end", startMs + durationMs)
-            },
-        )
     }
 
     /**
@@ -815,6 +982,8 @@ class DiscordPresenceManager(
     }
 
     private fun clearPresence() {
+        presenceJob?.cancel()
+        presenceJob = null
         val presence = presencePayload(null)
         if (ready) {
             AppLog.i(AppLog.TAG_DISCORD, "Presença do Discord removida (pausa/parada)")
@@ -845,6 +1014,11 @@ class DiscordPresenceManager(
             }
             return value.takeIf { it.isNotBlank() }
         }
+
+        private fun cleanAppId(raw: String?): String? =
+            raw?.trim()?.takeIf { value -> value.isNotEmpty() && value.all { it.isDigit() } }
+
+        private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
         private const val GATEWAY_URL = "wss://gateway.discord.gg/?v=9&encoding=json"
         private const val OP_DISPATCH = 0
