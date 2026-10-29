@@ -27,11 +27,11 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
   - [x] Avatar/nome da Myst no cabeçalho e nas Configurações (nunca o do YouTube)
   - [x] Migração de sessões da 0.1.0 com só uma conta
   - [x] Pareamento da TV leva as duas contas + foto
-- [ ] 13. Dados do YouTube Music da conta
-  - [ ] Playlists do YTM na aba Playlists (seção "YouTube Music")
-  - [ ] Histórico do YTM em Recentes (mesclado, sem duplicatas)
-  - [ ] Recomendados/Em Alta baseados na conta do YTM
-  - [ ] Cache + pull-to-refresh + estados de erro
+- [x] 13. Dados do YouTube Music da conta
+  - [x] Playlists do YTM na aba Playlists (seção "YouTube Music")
+  - [x] Histórico do YTM em Recentes (mesclado, sem duplicatas)
+  - [x] Recomendados/Em Alta baseados na conta do YTM
+  - [x] Cache + pull-to-refresh + estados de erro
 - [ ] 14. Conta Myst: dados persistentes + Estatísticas
   - [ ] Dados isolados por conta Myst (recentes, gostos, playlists, histórico, preferências)
   - [ ] Migrações Room não destrutivas; teste: atualizar → relogar → dados intactos
@@ -62,6 +62,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - API de atualização do GitHub só funciona sem token se o repositório for público.
 
 ## Release
+- **0.2.0-dev.3** (`versionCode 12`, `versionName "0.2.0-dev.3"`): build de desenvolvimento da fase 13 (biblioteca, histórico e recomendações do YouTube Music, cache Room com atualização por gesto e aviso de sessão expirada), run `40944696111`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.2** (`versionCode 11`, `versionName "0.2.0-dev.2"`): build de desenvolvimento da fase 12 (login duplo obrigatório, foto de perfil da conta Myst, migração da sessão 0.1.0 e pareamento TV com as duas contas + avatar), run `40939083129`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.1** (`versionCode 10`, `versionName "0.2.0-dev.1"`): build de desenvolvimento da fase 11 (tema Sistema/Claro/Escuro + Preto AMOLED + tela Aparência), run `40930983204`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.1.0 Alpha** (`versionCode 9`, `versionName "0.1.0 Alpha"`): primeira alpha pública para celular e Android TV. A numeração anterior (1.0.x) era de desenvolvimento; o `versionCode` continua crescendo (9) para permitir atualização sobre a v1.0.7.
@@ -96,8 +97,15 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 | 40930983204 | a893a44 | verde | Fase 11: tema Sistema/Claro/Escuro, Preto AMOLED, tela Aparência e tokens de tema em todas as telas; correção do contexto de Activity no pareamento (0.2.0-dev.1) | `apks/app.apk`, `apks/app-tv.apk` |
 | 40938511745 | bf4f36d | falha | Fase 12: `completeMystAuth` chamava DAO suspenso fora de coroutine e a limpeza do cache do Coil usava `String` em vez de `MemoryCache.Key` | — |
 | 40939083129 | c38599c | verde | Fase 12: login duplo obrigatório, foto de perfil com recorte 512 px, migração 0.1.0 e pareamento TV com as duas contas + avatar (0.2.0-dev.2) | `apks/app.apk`, `apks/app-tv.apk` |
+| 40944696111 | 2436592 | verde | Fase 13: playlists/histórico/recomendações do YouTube Music, cache Room (TTL 15 min), pull-to-refresh, cópia para Myst e banner de sessão expirada (0.2.0-dev.3) | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
+- YouTube Music (fase 13): a biblioteca da conta é **somente leitura**. O cache fica em tabelas próprias do Room (`yt_playlists`, `yt_playlist_tracks`, `yt_history`, `yt_sync_state`), com validade de 15 minutos e estratégia *stale-while-revalidate*: a tela mostra o cache na hora e atualiza em segundo plano. O botão/gesto de atualizar força a rede. Nenhuma escrita é enviada ao YouTube.
+- Cache do YouTube: a migração Room 2→3 apenas cria as tabelas novas; `fallbackToDestructiveMigration` continua proibido. Se a sessão expirar (HTTP 401/403 ou cookies ausentes), a UI mostra o banner **"Sessão do YouTube expirou"** com "Entrar de novo"; o app não desloga nem apaga dados locais. O cache antigo continua visível.
+- Histórico mesclado: o YouTube Music informa apenas o dia, não o horário. As faixas recebem timestamps relativos espaçados em 60 s para preservar a ordem, e a mesclagem com o histórico local usa `videoId` como chave (sem duplicatas); a metadata local tem prioridade.
+- Recomendados/Em Alta (fase 13): Recomendados usa a home personalizada autenticada (`FEmusic_home`) e cai para o algoritmo local quando ela está vazia ou falha. Em Alta combina as paradas públicas com a afinidade de artistas do histórico local e do histórico do YouTube Music.
+- Playlists do YouTube são abertas em uma tela de detalhe **somente leitura** (sem arrastar, renomear, remover ou trocar capa). O botão "Copiar para Myst" cria uma playlist local editável com as faixas e a capa, sem alterar a playlist original.
+- A aba Playlists é uma grade única com cabeçalhos de largura total: "Minhas playlists (Myst)" e "YouTube Music". Cada seção tem carregamento, vazio e erro próprios; a falha do YouTube não esconde as playlists locais.
 - Player: `ResolvingDataSource` resolve `myst://track/<id>` na hora de abrir. A extração foi refeita seguindo o caminho que o BitChord usa via InnerTube (`InnerTubeXResolver`/`PlaybackClientCatalog`): o primeiro cliente é o **VISIONOS 0.1** no endpoint `music.youtube.com/youtubei/v1/player`, com `visitorData` novo, `clientId` 101, `X-Goog-Api-Format-Version: 1`, sem cookies e sem `playbackContext`. Ele devolve URL direta, que é validada com Range de 2 bytes antes de chegar ao ExoPlayer.
 - O `visitorData` é preservado entre buscas e, quando não existe (primeiro play ou conta recém-vinculada), é obtido da home do YouTube Music com o mesmo User-Agent do VISIONOS. Foi validado nesta rede: `playabilityStatus=OK`, cinco formatos de áudio e `HTTP 206 audio/mp4` em Range de 1 MiB.
 - Fallback: `ANDROID_VR` (também no endpoint de música), `IOS`, `WEB_REMIX`, `WEB_EMBEDDED_PLAYER` e, com cookies, `TVHTML5`. Formatos `signatureCipher` com `s` cifrado são ignorados; a URL direta do VISIONOS não precisa de decifrador, então não há QuickJS/AAR no app.
