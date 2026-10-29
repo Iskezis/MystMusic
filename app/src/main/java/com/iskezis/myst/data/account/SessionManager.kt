@@ -115,6 +115,79 @@ class SessionManager(context: Context) {
         get() = prefs.getBoolean(KEY_TV_PAIRED, false)
         set(value) = prefs.edit().putBoolean(KEY_TV_PAIRED, value).apply()
 
+    /**
+     * Canal persistente entre o celular e a TV. O código de 5 dígitos só serve
+     * para o primeiro pareamento; depois dele as duas pontas guardam um
+     * identificador e um segredo aleatório para sincronizar dados e desfazer o
+     * pareamento sem pedir o código de novo.
+     */
+    val tvPairId: String?
+        get() = prefs.getString(KEY_TV_PAIR_ID, null)?.takeIf { it.isNotBlank() }
+
+    val tvPairSecret: String?
+        get() = prefs.getString(KEY_TV_PAIR_SECRET, null)?.takeIf { it.isNotBlank() }
+
+    val tvName: String
+        get() = prefs.getString(KEY_TV_NAME, "").orEmpty()
+
+    var tvHost: String?
+        get() = prefs.getString(KEY_TV_HOST, null)?.takeIf { it.isNotBlank() }
+        set(value) = prefs.edit().putString(KEY_TV_HOST, value).apply()
+
+    var tvPort: Int
+        get() = prefs.getInt(KEY_TV_PORT, 0)
+        set(value) = prefs.edit().putInt(KEY_TV_PORT, value).apply()
+
+    val tvPairedAt: Long
+        get() = prefs.getLong(KEY_TV_PAIRED_AT, 0L)
+
+    var tvLastSyncAt: Long
+        get() = prefs.getLong(KEY_TV_LAST_SYNC, 0L)
+        set(value) = prefs.edit().putLong(KEY_TV_LAST_SYNC, value).apply()
+
+    /** Pareamento novo, com segredo. TVs pareadas antes do dev.6 precisam parear de novo. */
+    val hasTvPairing: Boolean
+        get() = tvPaired && !tvPairId.isNullOrBlank() && !tvPairSecret.isNullOrBlank()
+
+    fun saveTvPairing(
+        pairId: String,
+        secret: String,
+        name: String,
+        host: String? = null,
+        port: Int = 0,
+    ) {
+        prefs.edit()
+            .putString(KEY_TV_PAIR_ID, pairId)
+            .putString(KEY_TV_PAIR_SECRET, secret)
+            .putString(KEY_TV_NAME, name)
+            .putString(KEY_TV_HOST, host)
+            .putInt(KEY_TV_PORT, port)
+            .putLong(KEY_TV_PAIRED_AT, System.currentTimeMillis())
+            .putLong(KEY_TV_LAST_SYNC, 0L)
+            .putBoolean(KEY_TV_PAIRED, true)
+            .apply()
+    }
+
+    fun updateTvEndpoint(host: String?, port: Int) {
+        prefs.edit()
+            .putString(KEY_TV_HOST, host)
+            .putInt(KEY_TV_PORT, port)
+            .apply()
+    }
+
+    fun clearTvPairing() {
+        prefs.edit()
+            .remove(KEY_TV_PAIR_ID)
+            .remove(KEY_TV_PAIR_SECRET)
+            .remove(KEY_TV_NAME)
+            .remove(KEY_TV_HOST)
+            .remove(KEY_TV_PORT)
+            .remove(KEY_TV_PAIRED_AT)
+            .remove(KEY_TV_LAST_SYNC)
+            .putBoolean(KEY_TV_PAIRED, false)
+            .apply()
+    }
+
     fun saveMyst(userId: Long, name: String) {
         prefs.edit()
             .putLong(KEY_MYST_ID, userId)
@@ -191,7 +264,14 @@ class SessionManager(context: Context) {
             .remove(KEY_YT_ACCOUNT_ID)
             .remove(KEY_YT_NAME)
             .putBoolean(KEY_YT_CONFLICT, false)
-            .putBoolean(KEY_TV_PAIRED, false)
+            .remove(KEY_TV_PAIRED)
+            .remove(KEY_TV_PAIR_ID)
+            .remove(KEY_TV_PAIR_SECRET)
+            .remove(KEY_TV_NAME)
+            .remove(KEY_TV_HOST)
+            .remove(KEY_TV_PORT)
+            .remove(KEY_TV_PAIRED_AT)
+            .remove(KEY_TV_LAST_SYNC)
             .apply()
     }
 
@@ -325,5 +405,12 @@ class SessionManager(context: Context) {
         private const val KEY_DISCORD_TOKEN = "discord_token"
         private const val KEY_DISCORD_NAME = "discord_name"
         private const val KEY_TV_PAIRED = "tv_paired"
+        private const val KEY_TV_PAIR_ID = "tv_pair_id"
+        private const val KEY_TV_PAIR_SECRET = "tv_pair_secret"
+        private const val KEY_TV_NAME = "tv_name"
+        private const val KEY_TV_HOST = "tv_host"
+        private const val KEY_TV_PORT = "tv_port"
+        private const val KEY_TV_PAIRED_AT = "tv_paired_at"
+        private const val KEY_TV_LAST_SYNC = "tv_last_sync"
     }
 }

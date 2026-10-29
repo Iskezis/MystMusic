@@ -156,6 +156,21 @@ interface AffinityDao {
 }
 
 @Dao
+interface PairTombstoneDao {
+    @Query("SELECT * FROM pair_tombstones WHERE userId = :userId ORDER BY deletedAt DESC")
+    suspend fun all(userId: Long): List<PairTombstoneEntity>
+
+    @Query("SELECT * FROM pair_tombstones WHERE userId = :userId AND key = :key LIMIT 1")
+    suspend fun get(userId: Long, key: String): PairTombstoneEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(tombstone: PairTombstoneEntity)
+
+    @Query("DELETE FROM pair_tombstones WHERE userId = :userId")
+    suspend fun clear(userId: Long)
+}
+
+@Dao
 interface YouTubeLibraryDao {
     @Query(
         """

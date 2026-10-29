@@ -352,6 +352,24 @@
                         android:text="@string/settings_tv_subtitle"
                         android:textColor="?attr/mystOnSurfaceDim"
                         android:textSize="@dimen/text_small" />
+
+                    <TextView
+                        android:id="@+id/settingsTvStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_xs"
+                        android:textColor="?attr/mystAccentText"
+                        android:textSize="@dimen/text_small"
+                        android:visibility="gone" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/settingsTvDisconnect"
+                        style="@style/Widget.MystMusic.Button.Secondary"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="@dimen/space_m"
+                        android:text="@string/settings_tv_disconnect"
+                        android:visibility="gone" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

@@ -10,6 +10,7 @@ import com.iskezis.myst.data.account.SessionManager
 import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.PlaylistRepository
 import com.iskezis.myst.data.discord.DiscordPresenceManager
+import com.iskezis.myst.data.pairing.PairedSyncManager
 import com.iskezis.myst.data.settings.AppearancePreferences
 import com.iskezis.myst.data.recommendations.RecommendationRepository
 import com.iskezis.myst.data.spotify.SpotifyImporter
@@ -65,6 +66,7 @@ class MystApp : Application(), ImageLoaderFactory {
     val spotify: SpotifyImporter by lazy { SpotifyImporter(this, youtube, playlists) }
     val playerController: PlayerController by lazy { PlayerController(this) }
     val discord: DiscordPresenceManager by lazy { DiscordPresenceManager(this, session) }
+    val pairedSync: PairedSyncManager by lazy { PairedSyncManager(this) }
 
     private val warmUpScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val discordScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -113,6 +115,9 @@ class MystApp : Application(), ImageLoaderFactory {
         // Abre TLS e renova o visitorData antes do primeiro toque em uma faixa.
         warmUpScope.launch { innerTube.warmUp() }
         observePlayerForDiscord()
+        // Na TV, mantém o canal de sincronização/desconexão vivo enquanto o
+        // processo existir; no celular a sincronização é disparada pela tela.
+        pairedSync.onAppCreated()
     }
 
     /**

@@ -54,7 +54,7 @@ class MainActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         AppLog.i(AppLog.TAG_UI, "MainActivity.onCreate savedInstanceState=${savedInstanceState != null}")
         val app = application as MystApp
-        if (BuildConfig.FLAVOR == "tv" && (!app.session.tvPaired || !app.session.isLoggedIn)) {
+        if (BuildConfig.FLAVOR == "tv" && (!app.session.hasTvPairing || !app.session.isLoggedIn)) {
             // Na TV não há teclado físico confortável: conta e playlists chegam
             // sempre pelo pareamento com o celular. Isso também cobre o caso de
             // sessão apagada com a flag de pareamento ainda ligada.
@@ -359,6 +359,16 @@ class MainActivity : BaseActivity() {
     }
 
     private fun dp(value: Float): Float = value * resources.displayMetrics.density
+
+    override fun onStart() {
+        super.onStart()
+        (application as MystApp).pairedSync.onMainStart()
+    }
+
+    override fun onStop() {
+        (application as MystApp).pairedSync.onMainStop()
+        super.onStop()
+    }
 
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return

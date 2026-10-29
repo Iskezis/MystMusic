@@ -76,11 +76,11 @@ class PhonePairingActivity : BaseActivity() {
     }
 
     private fun startServer(): Boolean {
-        val pairingServer = LocalPairingServer { path, body, _ ->
+        val pairingServer = LocalPairingServer { path, body, remoteHost ->
             if (path != "/confirm") {
                 LocalPairingServer.HttpResult(404, json.encodeToString(PairAck.serializer(), PairAck(false, "not_found")))
             } else {
-                handleConfirm(body)
+                handleConfirm(body, remoteHost)
             }
         }
         return runCatching {
@@ -97,7 +97,7 @@ class PhonePairingActivity : BaseActivity() {
         }
     }
 
-    private suspend fun handleConfirm(body: String): LocalPairingServer.HttpResult {
+    private suspend fun handleConfirm(body: String, remoteHost: String): LocalPairingServer.HttpResult {
         val activeCode = code
         if (activeCode == null || paired || expired) {
             return LocalPairingServer.HttpResult(
@@ -118,7 +118,18 @@ class PhonePairingActivity : BaseActivity() {
                 json.encodeToString(PairAck.serializer(), PairAck(false, "invalid_code")),
             )
         }
-        val bundle = runCatching { PairingSync.export(app) }.getOrElse { throwable ->
+        // A senha de 5 dígitos só autoriza o primeiro contato. O canal que fica
+        // ativo depois usa este identificador/segredo, guardado nos dois lados.
+        val pairId = java.util.UUID.randomUUID().toString()
+        val pairSecret = PairingCrypto.newSecret()
+        val bundle = runCatching {
+            PairingSync.export(
+                app = app,
+                pairId = pairId,
+                pairSecret = pairSecret,
+                phoneName = Build.MODEL.orEmpty().ifBlank { "Celular" },
+            )
+        }.getOrElse { throwable ->
             AppLog.failure(AppLog.TAG_PAIRING, "Falha preparando payload", throwable)
             return LocalPairingServer.HttpResult(
                 500,
@@ -130,7 +141,18 @@ class PhonePairingActivity : BaseActivity() {
             bundle,
         )
         val encrypted = PairingCrypto.encrypt(activeCode, plaintext)
+        // Guarda o canal persistente antes de liberar a resposta; se a conexão
+        // cair depois, a TV ainda consegue parear e a próxima sincronização
+        // encontra o servidor dela na rede.
+        app.session.saveTvPairing(
+            pairId = pairId,
+            secret = pairSecret,
+            name = selected?.name ?: "MystMusic TV",
+            host = remoteHost,
+            port = 0,
+        )
         paired = true
+        app.pairedSync.requestSync()
         lifecycleScope.launch {
             if (isFinishing || isDestroyed) return@launch
             binding.phonePairProgress.isVisible = false

@@ -18,8 +18,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         YtPlaylistTrackEntity::class,
         YtHistoryEntity::class,
         YtSyncEntity::class,
+        PairTombstoneEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -28,6 +29,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun historyDao(): HistoryDao
     abstract fun affinityDao(): AffinityDao
     abstract fun youTubeLibraryDao(): YouTubeLibraryDao
+    abstract fun pairTombstoneDao(): PairTombstoneDao
 
     companion object {
         @Volatile
@@ -40,7 +42,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "mystmusic.db",
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                     .also { instance = it }
             }
@@ -144,6 +146,31 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS `index_yt_sync_state_userId` " +
                         "ON `yt_sync_state` (`userId`)",
+                )
+            }
+        }
+
+        /**
+         * 0.2.0-dev.6: lápides de playlists para a sincronização bidirecional
+         * celular↔TV. Só cria uma tabela nova; nenhum dado existente muda.
+         */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `pair_tombstones` (
+                        `userId` INTEGER NOT NULL,
+                        `key` TEXT NOT NULL,
+                        `deletedAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`userId`, `key`),
+                        FOREIGN KEY(`userId`) REFERENCES `users`(`id`)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_pair_tombstones_userId` " +
+                        "ON `pair_tombstones` (`userId`)",
                 )
             }
         }

@@ -25,6 +25,9 @@ data class SettingsState(
     val youtubeName: String = "",
     val accountFileStatus: AccountFileStatus = AccountFileStatus(),
     val accountFileSaving: Boolean = false,
+    val pairedTv: Boolean = false,
+    val pairedTvName: String = "",
+    val tvDisconnecting: Boolean = false,
 )
 
 class SettingsViewModel(private val app: MystApp) : ViewModel() {
@@ -56,6 +59,41 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
 
     fun connectDiscord(token: String) {
         app.discord.connect(token)
+    }
+
+    /** Atualiza o status da TV ao voltar do pareamento ou de outra tela. */
+    fun refreshPairing() {
+        _state.value = _state.value.copy(
+            pairedTv = app.session.hasTvPairing,
+            pairedTvName = app.session.tvName,
+        )
+    }
+
+    /**
+     * Pede para a TV encerrar o pareamento. O botão fica desabilitado durante
+     * a descoberta na rede; se a TV não responder, o erro sobe e o pareamento
+     * local permanece para uma nova tentativa.
+     */
+    fun disconnectTv() {
+        if (_state.value.tvDisconnecting) return
+        if (!app.session.hasTvPairing) {
+            refreshPairing()
+            return
+        }
+        viewModelScope.launch {
+            _state.value = _state.value.copy(tvDisconnecting = true)
+            try {
+                app.pairedSync.disconnect()
+                _message.value = R.string.settings_tv_disconnect_success
+                AppLog.i(AppLog.TAG_PAIRING, "TV desconectada pelo botão das Configurações")
+            } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_PAIRING, "Falha desconectando a TV", t)
+                _error.value = R.string.settings_tv_disconnect_error
+            } finally {
+                _state.value = _state.value.copy(tvDisconnecting = false)
+                refreshPairing()
+            }
+        }
     }
 
     fun retryDiscord() {
@@ -168,6 +206,9 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
             youtubeName = snapshot.youtubeName,
             accountFileStatus = statusForCurrentUser(app.accountFiles.status.value),
             accountFileSaving = _state.value.accountFileSaving,
+            pairedTv = app.session.hasTvPairing,
+            pairedTvName = app.session.tvName,
+            tvDisconnecting = _state.value.tvDisconnecting,
         )
     }
 

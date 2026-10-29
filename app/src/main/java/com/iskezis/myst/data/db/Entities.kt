@@ -96,6 +96,30 @@ data class ArtistAffinityEntity(
 )
 
 /**
+ * Lápide de playlist apagada ou renomeada. A sincronização celular↔TV usa o
+ * nome normalizado para não ressuscitar uma playlist que o usuário removeu em
+ * um dos aparelhos.
+ */
+@Entity(
+    tableName = "pair_tombstones",
+    primaryKeys = ["userId", "key"],
+    foreignKeys = [
+        ForeignKey(
+            entity = UserEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["userId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("userId")],
+)
+data class PairTombstoneEntity(
+    val userId: Long,
+    val key: String,
+    val deletedAt: Long,
+)
+
+/**
  * Playlist da biblioteca do YouTube Music. O cache é somente leitura: o app
  * nunca escreve na conta do YouTube. `ytId` guarda o browseId devolvido pela
  * biblioteca (por exemplo, `VLPL...`) e `VLLM` identifica "Músicas curtidas".

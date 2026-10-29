@@ -178,6 +178,14 @@
     <string name="settings_discord_on">Rich Presence ativo</string>
     <string name="settings_tv">Conectar à TV</string>
     <string name="settings_tv_subtitle">Pareie pelo código de 5 dígitos na mesma rede Wi-Fi</string>
+    <string name="settings_tv_default_name">MystMusic TV</string>
+    <string name="settings_tv_connected">Conectado a %1$s. Playlists e histórico são sincronizados automaticamente.</string>
+    <string name="settings_tv_disconnect">Desconectar TV</string>
+    <string name="settings_tv_disconnecting">Desconectando…</string>
+    <string name="settings_tv_disconnect_confirm_title">Desconectar desta TV?</string>
+    <string name="settings_tv_disconnect_confirm_message">A TV vai parar a reprodução e voltar para a tela do código de 5 dígitos. Suas playlists continuam salvas nos dois aparelhos.</string>
+    <string name="settings_tv_disconnect_success">TV desconectada. Ela voltou para a tela do código.</string>
+    <string name="settings_tv_disconnect_error">Não foi possível desconectar a TV. Verifique se ela está ligada e na mesma rede Wi-Fi.</string>
     <string name="settings_logs">Logs e diagnóstico</string>
     <string name="settings_logs_subtitle">Ver, copiar e compartilhar os logs do app</string>
     <string name="logs_title">Logs e diagnóstico</string>

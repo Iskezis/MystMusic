@@ -25,6 +25,7 @@ import java.net.SocketException
  * contém payload cifrado/conta). Ele é encerrado assim que a tela fecha.
  */
 class LocalPairingServer(
+    private val maxBodyBytes: Int = MAX_BODY_BYTES,
     private val handler: suspend (path: String, body: String, remoteHost: String) -> HttpResult,
 ) : Closeable {
 
@@ -108,7 +109,7 @@ class LocalPairingServer(
                         line.substring(index + 1).trim()
                 }.toMap()
                 val length = headers["content-length"]?.toIntOrNull() ?: 0
-                if (length < 0 || length > MAX_BODY_BYTES) {
+                if (length < 0 || length > maxBodyBytes) {
                     writeResponse(socket, 413, """{"ok":false,"error":"too_large"}""")
                     return@use
                 }

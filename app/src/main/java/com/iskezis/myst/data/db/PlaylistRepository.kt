@@ -46,7 +46,12 @@ class PlaylistRepository(private val database: AppDatabase) {
         }
 
     suspend fun rename(playlistId: Long, name: String) = withContext(Dispatchers.IO) {
-        dao.rename(playlistId, name.trim().take(40))
+        val newName = name.trim().take(40)
+        val playlist = dao.findById(playlistId)
+        if (playlist != null && !playlist.name.equals(newName, ignoreCase = true)) {
+            recordTombstone(playlist.userId, playlist.name)
+        }
+        dao.rename(playlistId, newName)
     }
 
     suspend fun setCover(playlistId: Long, coverUri: String?) = withContext(Dispatchers.IO) {
@@ -54,7 +59,27 @@ class PlaylistRepository(private val database: AppDatabase) {
     }
 
     suspend fun delete(playlistId: Long) = withContext(Dispatchers.IO) {
+        val playlist = dao.findById(playlistId)
+        if (playlist != null) {
+            recordTombstone(playlist.userId, playlist.name)
+        }
         dao.delete(playlistId)
+    }
+
+    suspend fun tombstones(userId: Long): List<PairTombstoneEntity> =
+        withContext(Dispatchers.IO) { database.pairTombstoneDao().all(userId) }
+
+    suspend fun recordTombstone(userId: Long, name: String, at: Long = System.currentTimeMillis()) {
+        val key = normalizePlaylistName(name)
+        if (userId <= 0L || key.isBlank()) return
+        val previous = database.pairTombstoneDao().get(userId, key)
+        database.pairTombstoneDao().upsert(
+            PairTombstoneEntity(
+                userId = userId,
+                key = key,
+                deletedAt = maxOf(previous?.deletedAt ?: 0L, at),
+            ),
+        )
     }
 
     suspend fun addTrack(playlistId: Long, track: Track): Boolean = withContext(Dispatchers.IO) {
@@ -145,6 +170,10 @@ class PlaylistRepository(private val database: AppDatabase) {
         thumbnailUrl = entity.thumbnailUrl,
         durationMs = entity.durationMs,
     )
+
+    companion object {
+        fun normalizePlaylistName(name: String): String = name.trim().lowercase()
+    }
 
     private fun Track.toEntity(playlistId: Long, position: Int): PlaylistTrackEntity =
         PlaylistTrackEntity(

@@ -131,12 +131,15 @@ class SettingsFragment : Fragment() {
         binding.settingsAppearanceCard.pressScale()
         binding.settingsTvCard.isVisible = BuildConfig.FLAVOR != "tv"
         binding.settingsTvCard.setOnClickListener {
+            if (viewModel.state.value.pairedTv) return@setOnClickListener
             runCatching {
                 startActivity(Intent(requireContext(), PhonePairingActivity::class.java))
             }.onFailure {
                 AppLog.failure(AppLog.TAG_PAIRING, "Falha abrindo pareamento", it)
             }
         }
+        binding.settingsTvDisconnect.setOnClickListener { showTvDisconnectDialog() }
+        binding.settingsTvDisconnect.pressScale()
         binding.settingsLogout.pressScale()
         binding.settingsDiscordAction.pressScale()
         binding.settingsLogsCard.setOnClickListener {
@@ -169,6 +172,7 @@ class SettingsFragment : Fragment() {
                         binding.settingsInitial.text = state.initial
                         renderAvatar(state)
                         renderAccountFile(state)
+                        renderTv(state)
                     }
                 }
                 launch {
@@ -218,6 +222,13 @@ class SettingsFragment : Fragment() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Ao voltar do pareamento (ou de outra Activity) o ViewModel pode ter
+        // sido criado antes de o segredo ser salvo.
+        viewModel.refreshPairing()
     }
 
     override fun onDestroyView() {
@@ -274,6 +285,40 @@ class SettingsFragment : Fragment() {
                 R.string.settings_account_file_save
             },
         )
+    }
+
+    private fun renderTv(state: SettingsState) {
+        val connected = state.pairedTv && BuildConfig.FLAVOR != "tv"
+        binding.settingsTvStatus.isVisible = connected
+        binding.settingsTvDisconnect.isVisible = connected
+        binding.settingsTvCard.isClickable = !connected
+        binding.settingsTvCard.isFocusable = !connected
+        if (connected) {
+            binding.settingsTvStatus.text = getString(
+                R.string.settings_tv_connected,
+                state.pairedTvName.ifBlank { getString(R.string.settings_tv_default_name) },
+            )
+            binding.settingsTvDisconnect.isEnabled = !state.tvDisconnecting
+            binding.settingsTvDisconnect.setText(
+                if (state.tvDisconnecting) {
+                    R.string.settings_tv_disconnecting
+                } else {
+                    R.string.settings_tv_disconnect
+                },
+            )
+        }
+    }
+
+    private fun showTvDisconnectDialog() {
+        if (viewModel.state.value.tvDisconnecting) return
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.settings_tv_disconnect_confirm_title)
+            .setMessage(R.string.settings_tv_disconnect_confirm_message)
+            .setNegativeButton(R.string.common_cancel, null)
+            .setPositiveButton(R.string.settings_tv_disconnect) { _, _ ->
+                viewModel.disconnectTv()
+            }
+            .show()
     }
 
     private fun renderAvatar(state: SettingsState) {
