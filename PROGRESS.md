@@ -13,6 +13,12 @@ Atualize após cada etapa. Marque [x] só quando o build do GitHub estiver verde
 - [x] 9. Flavor TV + pareamento 5 dígitos
 - [x] 10. Revisão final + APKs em apks/
 
+## Release
+- **0.1.0 Alpha** (`versionCode 9`, `versionName "0.1.0 Alpha"`): primeira alpha pública para celular e Android TV. A numeração anterior (1.0.x) era de desenvolvimento; o `versionCode` continua crescendo (9) para permitir atualização sobre a v1.0.7.
+- APKs: `apks/app.apk` (mobile) e `apks/app-tv.apk` (TV, armeabi-v7a), assinados com a chave de debug do build.
+- Notas: `CHANGELOG.md` e `README.md` (instalação e limitações).
+- Tag prevista: `v0.1.0-alpha`.
+
 ## Builds
 | Run # | Commit | Resultado | Erro/Correção | APK movido |
 |-------|--------|-----------|---------------|------------|
@@ -60,11 +66,11 @@ Atualize após cada etapa. Marque [x] só quando o build do GitHub estiver verde
 - A capa importada do Spotify usa a maior imagem disponível e é gravada em até 1024 px.
 
 ## Problemas em aberto
-- Teste em aparelho físico do run 40903108724 (`80d2f3b`, v1.0.7): confirmar que a capa aparece no card (log `MystDiscord` deve mostrar `Usando aplicativo público de capas (BitChord)`, `Capa registrada no media proxy` e `capa=true`, sem HTTP 401/403), que a barra de progresso aparece e que o card fica com “Ouvindo MystMusic”, música e artista. Revalidar também a navegação com música tocando, a reprodução e o pareamento TV. Relatar com os logs de **Configurações → Logs e diagnóstico**.
+- Validação funcional em aparelho físico confirmada pelo usuário em 29/10/2026: login YouTube, reprodução, navegação, Discord RPC com capa/progresso e pareamento TV. Nenhum bloqueador conhecido para a 0.1.0 Alpha.
 - Discord: se o aplicativo público de capas for recusado, o log mostra `Discord recusou o aplicativo de capas: HTTP ...`; nesse caso, criar um aplicativo no Discord Developer Portal e definir `DISCORD_APP_ID` em `local.properties`/GitHub Secrets. Sem isso, o app continua funcionando e a presença aparece sem capa.
 - Crash corrigido: o log de 28/10 mostrou `IllegalArgumentException: Software rendering doesn't support hardware bitmaps` em `TransitionUtils.createViewBitmap` ao sair da Busca com capas carregadas. A causa era o bitmap de hardware padrão do Coil; `MystApp.newImageLoader()` usa `allowHardware(false)` e o build 40795596184 inclui a correção.
 - Logcat Reader: qualquer leitor externo precisa receber `android.permission.READ_LOGS` por ADB/root; sem isso o Android só mostra ao leitor os próprios logs. Exemplo (troque pelo pacote do leitor): `adb shell pm grant com.dp.logcatapp android.permission.READ_LOGS`. Os logs internos e o botão Compartilhar funcionam sem ADB.
 - Crash: as lambdas de animação de lista em Busca/Playlists usavam `binding` depois de `onDestroyView`; agora são canceladas com o `viewLifecycleOwner`. O handler persistente grava a pilha em `myst_last_crash.txt`, carrega no diagnóstico após reiniciar e agora também grava a pilha completa no arquivo de log de forma síncrona.
 - Discord: a causa do 401 era o token salvo com as aspas do `localStorage` (74 caracteres em vez de 72). A v1.0.4 remove as aspas no login, sanitiza tokens antigos no `DiscordPresenceManager` e valida pela REST v9. Se ainda falhar, a tela de logs mostra `MystDiscord` com o HTTP/close code exato; o token nunca aparece.
 - Áudio: o APK não contém bibliotecas nativas próprias; a compatibilidade de codecs AAC/Opus depende do decodificador do aparelho/TV, por isso a ordem prioriza AAC.
-- Fase 10: checklist estrutural concluída (pacote/nome, flavors, telas com estados, APKs); falta apenas a validação funcional em aparelho físico com os logs acima.
+- Fase 10: checklist estrutural concluída (pacote/nome, flavors, telas com estados, APKs) e validação funcional confirmada em aparelho físico; versão renomeada para 0.1.0 Alpha.
