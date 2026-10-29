@@ -87,9 +87,13 @@ object UiAnimations {
     }
 
     fun RecyclerView.staggerVisibleChildren() {
-        if (!UiAnimations.enabled(context)) return
-        for (index in 0 until childCount) {
-            getChildAt(index).staggerIn(index)
+        if (!isAttachedToWindow || !UiAnimations.enabled(context)) return
+        val count = childCount
+        for (index in 0 until count) {
+            // RecyclerView pode devolver null para um índice durante o layout
+            // (principalmente se a tela foi trocada no meio da animação).
+            val child: View? = getChildAt(index)
+            child?.staggerIn(index)
         }
     }
 

@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.iskezis.myst.util.AppLog
+import java.io.File
 
 /**
  * Sessão do app com duas contas obrigatórias: Myst (perfil e dados locais) e
@@ -250,20 +252,54 @@ class SessionManager(context: Context) {
     }
 
     private fun createPrefs(context: Context): SharedPreferences {
-        return try {
-            val masterKey = MasterKey.Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
-            EncryptedSharedPreferences.create(
-                context,
-                FILE_NAME,
-                masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-            )
-        } catch (t: Throwable) {
-            context.getSharedPreferences(FALLBACK_FILE, Context.MODE_PRIVATE)
+        createEncryptedPrefs(context)?.let { return it }
+
+        // O arquivo criptografado pode ter sido restaurado por um backup sem a
+        // chave do Keystore (que nunca sai do aparelho). Nesse caso ele jamais
+        // abrirá de novo; apagar e recriar evita repetir o erro em toda abertura
+        // e faz a sessão voltar a ser gravada no cofre.
+        val sharedPrefsDir = File(context.applicationContext.filesDir.parentFile, "shared_prefs")
+        val encryptedFile = File(sharedPrefsDir, "$FILE_NAME.xml")
+        if (encryptedFile.exists()) {
+            val deleted = runCatching { encryptedFile.delete() }
+                .onFailure {
+                    AppLog.w(
+                        AppLog.TAG_AUTH,
+                        "Não foi possível remover o cofre de sessão ilegível",
+                        it,
+                    )
+                }
+                .getOrDefault(false)
+            if (deleted) {
+                AppLog.w(
+                    AppLog.TAG_AUTH,
+                    "Cofre de sessão restaurado sem a chave do aparelho; recriando",
+                )
+            }
         }
+        createEncryptedPrefs(context)?.let { return it }
+
+        AppLog.w(
+            AppLog.TAG_AUTH,
+            "Cofre de sessão indisponível; usando arquivo privado sem criptografia",
+        )
+        return context.getSharedPreferences(FALLBACK_FILE, Context.MODE_PRIVATE)
+    }
+
+    private fun createEncryptedPrefs(context: Context): SharedPreferences? = try {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        EncryptedSharedPreferences.create(
+            context,
+            FILE_NAME,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
+    } catch (t: Throwable) {
+        AppLog.w(AppLog.TAG_AUTH, "Cofre de sessão indisponível", t)
+        null
     }
 
     companion object {

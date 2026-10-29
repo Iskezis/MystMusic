@@ -19,10 +19,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.transition.TransitionManager
 import coil.load
+import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.transition.MaterialSharedAxis
 import com.iskezis.myst.MainActivity
-import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.data.account.AvatarStore
 import com.iskezis.myst.databinding.ActivityAuthBinding
@@ -46,6 +46,7 @@ class AuthActivity : BaseActivity() {
     private var pendingAvatarPath: String? = null
     private var conflictDialogShowing = false
     private var legacyDialogShowing = false
+    private var accountHintApplied = false
 
     private val youtubeLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -88,13 +89,9 @@ class AuthActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AppLog.i(AppLog.TAG_AUTH, "AuthActivity.onCreate")
-        if ((application as MystApp).session.isLoggedIn &&
-            !(application as MystApp).session.hasLegacyData
-        ) {
-            AppLog.i(AppLog.TAG_AUTH, "Sessão dupla já existente; indo para MainActivity")
-            goToMain()
-            return
-        }
+        // O AuthViewModel confere se a conta Myst ainda existe antes de
+        // navegar. Não há atalho só pela sessão: uma sessão órfã (backup
+        // restaurado sem o banco) precisa mostrar o login para o usuário.
         binding = ActivityAuthBinding.inflate(layoutInflater)
         setContentView(binding.root)
         pendingAvatarPath = savedInstanceState?.getString(STATE_AVATAR)
@@ -230,6 +227,7 @@ class AuthActivity : BaseActivity() {
                         state.youtubeConflict == null
                     renderSteps(state)
                     renderError(state)
+                    renderAccounts(state)
 
                     if (state.mystReady && binding.mystPanel.isVisible) {
                         showMystPanel(false)
@@ -369,7 +367,57 @@ class AuthActivity : BaseActivity() {
         binding.authAvatarPicker.isVisible = register
         binding.authAvatarHint.isVisible = register
         if (!register) binding.authConfirmInput.text?.clear()
+        renderAccounts(viewModel.state.value)
         renderAvatar()
+    }
+
+    /**
+     * Mostra as contas Myst que já existem neste aparelho. Isso é essencial
+     * depois de uma restauração de backup: o banco volta, mas a sessão (por
+     * segurança) não, e o usuário precisa saber qual usuário usar.
+     */
+    private fun renderAccounts(state: AuthState) {
+        val accounts = if (registerMode) emptyList() else state.localAccounts
+        val show = accounts.isNotEmpty()
+        binding.authAccountsTitle.isVisible = show
+        binding.authAccounts.isVisible = show
+        if (!show) {
+            binding.authAccounts.removeAllViews()
+            binding.authAccounts.tag = null
+            return
+        }
+
+        val signature = accounts.joinToString("|") { it.username }
+        if (binding.authAccounts.tag != signature) {
+            binding.authAccounts.tag = signature
+            binding.authAccounts.removeAllViews()
+            accounts.forEach { account ->
+                val chip = Chip(this).apply {
+                    text = account.displayName.ifBlank { account.username }
+                    isCheckable = false
+                    contentDescription = getString(
+                        R.string.auth_account_fill,
+                        account.username,
+                    )
+                    setOnClickListener {
+                        binding.authUsernameInput.setText(account.username)
+                        binding.authUsernameInput.setSelection(account.username.length)
+                        binding.usernameLayout.error = null
+                        binding.authPasswordInput.requestFocus()
+                    }
+                }
+                binding.authAccounts.addView(chip)
+            }
+        }
+
+        if (!accountHintApplied && !registerMode && accounts.size == 1 &&
+            binding.authUsernameInput.text.isNullOrBlank()
+        ) {
+            accountHintApplied = true
+            val username = accounts.first().username
+            binding.authUsernameInput.setText(username)
+            binding.authUsernameInput.setSelection(username.length)
+        }
     }
 
     private fun renderAvatar() {

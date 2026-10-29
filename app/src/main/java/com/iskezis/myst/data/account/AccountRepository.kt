@@ -236,14 +236,60 @@ class AccountRepository(
         if (id <= 0L) null else database.userDao().findById(id)
     }
 
+    /** Contas Myst salvas no aparelho, usadas para reencontrar o perfil após restaurar um backup. */
+    suspend fun localAccounts(): List<UserEntity> = withContext(Dispatchers.IO) {
+        database.userDao().localAccounts()
+    }
+
+    /**
+     * Confere se a sessão ainda aponta para uma conta existente. Uma sessão
+     * órfã acontece quando o banco é restaurado sem a sessão (ou vice-versa);
+     * limpar só a identidade Myst permite entrar de novo sem apagar playlists.
+     * Em caso de falha temporária do banco, mantém a sessão para não deslogar
+     * o usuário por engano.
+     */
+    suspend fun reconcileMystSession(): Boolean = withContext(Dispatchers.IO) {
+        val id = session.mystUserId
+        if (id <= 0L) return@withContext false
+        val user = try {
+            database.userDao().findById(id)
+        } catch (t: Throwable) {
+            AppLog.failure(AppLog.TAG_AUTH, "Falha lendo a conta Myst da sessão", t)
+            return@withContext true
+        }
+        if (user == null) {
+            AppLog.w(
+                AppLog.TAG_AUTH,
+                "Sessão Myst órfã (id=$id); limpando a identidade para permitir novo login",
+            )
+            session.clearMyst()
+            session.tvPaired = false
+            return@withContext false
+        }
+        val name = user.displayName.ifBlank { user.username }
+        if (name != session.mystDisplayName) {
+            session.saveMyst(user.id, name)
+        }
+        true
+    }
+
     suspend fun snapshot(): AccountSnapshot = withContext(Dispatchers.IO) {
-        val user = session.mystUserId
+        val savedId = session.mystUserId
+        val user = savedId
             .takeIf { it > 0L }
             ?.let { database.userDao().findById(it) }
+        if (savedId > 0L && user == null) {
+            AppLog.w(
+                AppLog.TAG_AUTH,
+                "Sessão Myst aponta para a conta $savedId, que não existe; limpando",
+            )
+            session.clearMyst()
+            session.tvPaired = false
+        }
         val name = user?.displayName?.ifBlank { user.username }
             ?: session.mystDisplayName
         AccountSnapshot(
-            mystReady = session.hasMyst,
+            mystReady = session.hasMyst && user != null,
             mystName = name,
             mystAvatarPath = user?.avatarPath,
             youtubeReady = session.hasYouTube,

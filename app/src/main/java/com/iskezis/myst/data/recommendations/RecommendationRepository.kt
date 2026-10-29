@@ -77,12 +77,15 @@ class RecommendationRepository(
     suspend fun recommendedForUser(userId: Long): List<Track> = withContext(Dispatchers.IO) {
         AppLog.d(AppLog.TAG_DB, "Calculando Recomendados para usuário $userId")
         val recent = database.historyDao().recent(userId, 50)
-        if (recent.isEmpty()) {
+        val ytRecent = database.youTubeLibraryDao().history(userId, 50)
+        if (recent.isEmpty() && ytRecent.isEmpty()) {
             AppLog.d(AppLog.TAG_DB, "Sem histórico; usando Em Alta como recomendação")
             return@withContext youtube.trending(30)
         }
 
-        val seeds = recent.map { it.videoId }.distinct().take(3)
+        val seeds = (recent.map { it.videoId } + ytRecent.map { it.videoId })
+            .distinct()
+            .take(3)
         var firstError: Throwable? = null
         val related = mutableListOf<Track>()
         seeds.forEach { videoId ->
@@ -96,15 +99,25 @@ class RecommendationRepository(
                     if (firstError == null) firstError = it
                 }
         }
-        val artists = database.affinityDao().top(userId, 3)
+        val localArtists = database.affinityDao().top(userId, 3).map { it.artist }
+        val ytArtists = ytRecent
+            .map { normalizeText(it.artist) }
+            .filter { it.isNotBlank() }
+            .groupingBy { it }
+            .eachCount()
+            .entries
+            .sortedByDescending { it.value }
+            .map { it.key }
+            .take(3)
+        val artists = localArtists.ifEmpty { ytArtists }
         val fromArtists = mutableListOf<Track>()
-        artists.forEach { affinity ->
-            runCatching { youtube.search(affinity.artist, 10) }
+        artists.forEach { artist ->
+            runCatching { youtube.search(artist, 10) }
                 .onSuccess { fromArtists.addAll(it) }
                 .onFailure {
                     AppLog.w(
                         AppLog.TAG_TUBE,
-                        "Busca por artista ${affinity.artist} falhou: ${AppLog.describe(it)}",
+                        "Busca por artista $artist falhou: ${AppLog.describe(it)}",
                     )
                     if (firstError == null) firstError = it
                 }
@@ -117,7 +130,8 @@ class RecommendationRepository(
         }
 
         val since = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(14)
-        val recentlyPlayed = database.historyDao().playedSince(userId, since).toSet()
+        val recentlyPlayed = database.historyDao().playedSince(userId, since).toSet() +
+            ytRecent.map { it.videoId }
         val filtered = merged.filter { track ->
             track.videoId !in recentlyPlayed && track.videoId !in seeds
         }.ifEmpty { merged }

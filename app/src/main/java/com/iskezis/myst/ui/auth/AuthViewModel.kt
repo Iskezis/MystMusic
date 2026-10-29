@@ -23,6 +23,12 @@ data class YouTubeConflictUi(
     val newName: String,
 )
 
+/** Conta Myst encontrada no banco local, usada para preencher o login. */
+data class LocalAccountUi(
+    val username: String,
+    val displayName: String,
+)
+
 data class AuthState(
     val loading: Boolean = false,
     val errorRes: Int? = null,
@@ -35,6 +41,7 @@ data class AuthState(
     val needsLegacyTransfer: Boolean = false,
     val migrationNotice: Boolean = false,
     val navigate: Boolean = false,
+    val localAccounts: List<LocalAccountUi> = emptyList(),
 )
 
 class AuthViewModel(private val accounts: AccountRepository) : ViewModel() {
@@ -218,6 +225,15 @@ class AuthViewModel(private val accounts: AccountRepository) : ViewModel() {
 
     private suspend fun refreshState(errorRes: Int? = null) {
         val snapshot = accounts.snapshot()
+        val localAccounts = runCatching { accounts.localAccounts() }
+            .onFailure { AppLog.failure(AppLog.TAG_AUTH, "Falha listando contas locais", it) }
+            .getOrDefault(emptyList())
+            .map { user ->
+                LocalAccountUi(
+                    username = user.username,
+                    displayName = user.displayName.ifBlank { user.username },
+                )
+            }
         val navigate = snapshot.mystReady &&
             snapshot.youtubeReady &&
             !snapshot.youtubeConflict &&
@@ -244,6 +260,7 @@ class AuthViewModel(private val accounts: AccountRepository) : ViewModel() {
             needsLegacyTransfer = snapshot.needsLegacyTransfer,
             migrationNotice = snapshot.mystReady xor snapshot.youtubeReady,
             navigate = navigate,
+            localAccounts = localAccounts,
         )
     }
 

@@ -164,6 +164,7 @@ class PlaylistDetailFragment : Fragment() {
                     val list = binding.detailTracks
                     viewLifecycleOwner.lifecycleScope.launch {
                         kotlinx.coroutines.delay(120)
+                        if (!isAdded || view == null) return@launch
                         if (list.isAttachedToWindow) list.staggerVisibleChildren()
                     }
                 }

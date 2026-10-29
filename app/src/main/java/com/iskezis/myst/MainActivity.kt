@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import com.iskezis.myst.ui.common.BaseActivity
@@ -43,6 +44,7 @@ class MainActivity : BaseActivity() {
     private var lastLoggedVideoId: String? = null
     private var lastLoggedPlaying: Boolean? = null
     private var lastLoggedError: String? = null
+    private var lastNavigationAt = 0L
 
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -149,8 +151,36 @@ class MainActivity : BaseActivity() {
             }
         })
 
+        validateMystSession()
         observePlayer()
         requestNotificationPermissionIfNeeded()
+    }
+
+    /**
+     * A sessão pode apontar para uma conta Myst que não existe mais no banco
+     * (restauração parcial de backup, banco recriado ou instalação antiga).
+     * Nesse caso o app não pode fingir que está logado: volta ao login, onde
+     * as contas locais restauradas aparecem para o usuário entrar de novo.
+     */
+    private fun validateMystSession() {
+        val app = application as MystApp
+        lifecycleScope.launch {
+            val valid = try {
+                app.accounts.reconcileMystSession()
+            } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_AUTH, "Falha validando a conta Myst da sessão", t)
+                true
+            }
+            if (!valid && !isFinishing && !isDestroyed) {
+                AppLog.w(AppLog.TAG_AUTH, "Conta Myst da sessão não encontrada; abrindo login")
+                startActivity(
+                    Intent(this@MainActivity, AuthActivity::class.java).addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK,
+                    ),
+                )
+                finish()
+            }
+        }
     }
 
     private fun observePlayer() {
@@ -267,6 +297,12 @@ class MainActivity : BaseActivity() {
 
     private fun navigateTo(destinationId: Int) {
         if (navController.currentDestination?.id == destinationId) return
+        val now = SystemClock.elapsedRealtime()
+        if (lastNavigationAt != 0L && now - lastNavigationAt < 200L) {
+            AppLog.d(AppLog.TAG_UI, "Toque repetido ignorado ao navegar para $destinationId")
+            return
+        }
+        lastNavigationAt = now
         AppLog.d(AppLog.TAG_UI, "Navegando para destino $destinationId")
         val options = NavOptions.Builder()
             .setLaunchSingleTop(true)

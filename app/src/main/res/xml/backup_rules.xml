@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A conta Myst, as playlists e o histórico ficam no banco Room e são incluídos
+  no backup. A sessão criptografada NÃO é incluída: a chave do Android Keystore
+  não sai do aparelho, então restaurar esse arquivo só produziria um cofre
+  ilegível. Depois de restaurar, o usuário entra de novo e encontra a conta na
+  lista "Contas neste aparelho".
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="myst_session.xml" />
+    <exclude domain="sharedpref" path="myst_session_private.xml" />
+    <exclude domain="file" path="logs/" />
+    <exclude domain="file" path="myst_last_crash.txt" />
+</full-backup-content>

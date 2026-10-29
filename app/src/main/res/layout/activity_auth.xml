@@ -384,6 +384,26 @@
                     android:textColor="?attr/mystOnSurfaceDim"
                     android:textSize="@dimen/text_small" />
 
+                <TextView
+                    android:id="@+id/authAccountsTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_m"
+                    android:text="@string/auth_accounts_title"
+                    android:textColor="?attr/mystOnSurfaceDim"
+                    android:textSize="@dimen/text_small"
+                    android:visibility="gone" />
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/authAccounts"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_xs"
+                    android:visibility="gone"
+                    app:chipSpacingHorizontal="@dimen/space_s"
+                    app:chipSpacingVertical="@dimen/space_xs"
+                    app:singleLine="false" />
+
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/usernameLayout"
                     style="@style/Widget.MystMusic.TextInput"

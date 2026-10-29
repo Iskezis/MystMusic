@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+: mesmas regras do backup_rules.xml. O banco com a conta Myst e
+  as playlists é restaurado; a sessão criptografada fica de fora porque a
+  chave do Keystore não acompanha o backup/transferência.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="myst_session.xml" />
+        <exclude domain="sharedpref" path="myst_session_private.xml" />
+        <exclude domain="file" path="logs/" />
+        <exclude domain="file" path="myst_last_crash.txt" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="myst_session.xml" />
+        <exclude domain="sharedpref" path="myst_session_private.xml" />
+        <exclude domain="file" path="logs/" />
+        <exclude domain="file" path="myst_last_crash.txt" />
+    </device-transfer>
+</data-extraction-rules>

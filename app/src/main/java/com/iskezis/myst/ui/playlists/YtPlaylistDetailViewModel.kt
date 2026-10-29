@@ -88,8 +88,8 @@ class YtPlaylistDetailViewModel(
             _message.value = R.string.error_login_required
             return
         }
+        _state.update { it.copy(copying = true) }
         viewModelScope.launch {
-            _state.update { it.copy(copying = true) }
             try {
                 val playlistId = app.ytLibrary.copyToMyst(
                     userId = userId,

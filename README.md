@@ -4,7 +4,7 @@ Android music app (Kotlin + XML) featuring YouTube Music (via InnerTube), Spotif
 
 - **App Name:** MystMusic
 - **Package:** `com.iskezis.myst`
-- **Current Version:** 0.1.0 Alpha (versionCode 9) · **Development:** 0.2.0-dev.1 (versionCode 10)
+- **Current Version:** 0.2.0-dev.4 (versionCode 13) · **Public alpha:** 0.1.0 Alpha (versionCode 9)
 - **Status:** Alpha testing phase; includes unofficial integrations for YouTube Music and Discord.
 - **Theme Color:** Sky blue (simple gradients, minimalist and modern aesthetic).
 - **UI Language:** Portuguese (Brazil).
@@ -40,14 +40,20 @@ Android music app (Kotlin + XML) featuring YouTube Music (via InnerTube), Spotif
 ## Installation (alpha)
 1. Download `apks/app.apk` for mobile or `apks/app-tv.apk` for Android TV.
 2. Enable the installation of apps from unknown sources for the browser or file manager you are using.
-3. If a previous version was signed with a different key, uninstall it before installing this alpha version.
+3. If you have an APK older than `0.2.0-dev.4`, uninstall it **once** before installing (the development signing key changed). From `0.2.0-dev.4` onward, updates install over the previous version and keep the Myst account, playlists, history and statistics.
 4. On the TV, open the app and use the displayed 5-digit code to pair it with your mobile device (both must be on the same Wi-Fi network).
 
 ## Known limitations
 - YouTube Music is accessed via InnerTube (an unofficial API), and Discord RPC uses a user token. These integrations may change or stop working without notice; Discord RPC is an opt-in feature and includes a risk warning.
-- The APKs in this alpha release are signed with a debug key. They are not suitable for store publication, and a future update signed with a different key may require you to uninstall the previous version.
+- Development APKs use a stable signing key stored only in GitHub Secrets, so they are not suitable for store publication, but updates no longer require uninstalling. The Myst account is local: keep Android backup enabled to restore the database on a new device/install. The encrypted session is deliberately not backed up, so you sign in again after a restore; the login screen lists the accounts restored from the database.
 - Spotify imports map tracks based on title, artist, and duration; ambiguous tracks may be skipped, with an on-screen notification provided. - Pairing a mobile device with a TV requires both devices to be on the same Wi-Fi network.
 - Playback depends on the AAC/Opus codecs available on the device or the TV.
+
+## Build and signing
+- Builds run only on GitHub Actions (`.github/workflows/build.yml`). With the stable secrets present, the workflow produces signed **release** APKs; without them it falls back to debug APKs and prints a warning.
+- Repository secrets required: `MYST_KEYSTORE_B64` (base64 of the keystore), `MYST_KEYSTORE_PASSWORD`, `MYST_KEY_ALIAS` and `MYST_KEY_PASSWORD`.
+- Never commit the keystore or the passwords. Keep the same key for every future update; changing it forces users to uninstall and lose local data.
+- The first build after switching from the per-run debug key requires one uninstall. After that, `versionCode` must always increase for in-place updates.
 
 ## Changelog
 See [CHANGELOG.md](CHANGELOG.md) for the version 0.1.0 Alpha release notes.

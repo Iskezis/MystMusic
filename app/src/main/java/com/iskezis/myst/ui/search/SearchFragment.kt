@@ -124,6 +124,7 @@ class SearchFragment : Fragment() {
                     // lifecycleScope cancela a animação junto com a tela.
                     viewLifecycleOwner.lifecycleScope.launch {
                         kotlinx.coroutines.delay(120)
+                        if (!isAdded || view == null) return@launch
                         if (list.isAttachedToWindow) list.staggerVisibleChildren()
                     }
                 }

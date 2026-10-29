@@ -17,6 +17,17 @@ val localProps = Properties().apply {
 fun secret(name: String): String =
     (System.getenv(name) ?: localProps.getProperty(name) ?: "").replace("\"", "")
 
+val stableKeystoreFile = rootProject.file(
+    secret("MYST_KEYSTORE_PATH").ifBlank { "release.keystore" },
+)
+val stableKeystorePassword = secret("MYST_KEYSTORE_PASSWORD")
+val stableKeyAlias = secret("MYST_KEY_ALIAS")
+val stableKeyPassword = secret("MYST_KEY_PASSWORD")
+val hasStableKeystore = stableKeystoreFile.isFile &&
+    stableKeystorePassword.isNotBlank() &&
+    stableKeyAlias.isNotBlank() &&
+    stableKeyPassword.isNotBlank()
+
 android {
     namespace = "com.iskezis.myst"
     compileSdk = 34
@@ -25,8 +36,8 @@ android {
         applicationId = "com.iskezis.myst"
         minSdk = 21
         targetSdk = 34
-        versionCode = 12
-        versionName = "0.2.0-dev.3"
+        versionCode = 13
+        versionName = "0.2.0-dev.4"
         multiDexEnabled = true
         vectorDrawables.useSupportLibrary = true
 
@@ -47,10 +58,29 @@ android {
         }
     }
 
+    signingConfigs {
+        if (hasStableKeystore) {
+            create("stable") {
+                storeFile = stableKeystoreFile
+                storePassword = stableKeystorePassword
+                keyAlias = stableKeyAlias
+                keyPassword = stableKeyPassword
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            // Assinatura estável também nos builds de desenvolvimento: sem isso
+            // cada execução do GitHub Actions criava uma chave de debug nova e
+            // o usuário precisava desinstalar, perdendo a conta Myst e as
+            // playlists a cada atualização.
+            if (hasStableKeystore) signingConfig = signingConfigs.getByName("stable")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasStableKeystore) signingConfig = signingConfigs.getByName("stable")
         }
     }
 
