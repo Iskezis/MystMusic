@@ -17,6 +17,9 @@ data class UserEntity(
     val salt: String? = null,
     val passwordHash: String? = null,
     val avatarUrl: String? = null,
+    val avatarPath: String? = null,
+    val youtubeAccountId: String? = null,
+    val youtubeDisplayName: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
 )
 

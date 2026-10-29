@@ -44,6 +44,10 @@ data class PairAccount(
     val type: String,
     val username: String,
     val displayName: String,
+    /** JPEG 512x512 da conta Myst, em base64, dentro do payload cifrado. */
+    val avatarBase64: String? = null,
+    val youtubeAccountId: String? = null,
+    val youtubeDisplayName: String? = null,
 )
 
 @Serializable

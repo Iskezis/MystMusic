@@ -72,6 +72,10 @@
     <color name="surface_92">#EB111A2E</color>
     <color name="scrim">#B3000000</color>
 
+    <!-- Editor de recorte da foto de perfil: sempre escuro para destacar a foto -->
+    <color name="avatar_crop_bg">#000000</color>
+    <color name="avatar_crop_track">#33FFFFFF</color>
+
     <!-- Miniaturas da tela Aparência (cores fixas de prévia) -->
     <color name="preview_light_bg">#F6FAFE</color>
     <color name="preview_dark_bg">#0B1220</color>

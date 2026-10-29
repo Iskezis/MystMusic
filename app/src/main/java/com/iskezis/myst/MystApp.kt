@@ -83,8 +83,8 @@ class MystApp : Application(), ImageLoaderFactory {
         )
         AppLog.i(
             AppLog.TAG,
-            "Sessão: ${session.session?.type ?: "nenhuma"} | YouTube cookies: " +
-                if (session.youtubeCookies.isNullOrBlank()) "não" else "sim",
+            "Sessão: Myst=${session.hasMyst} YouTube=${session.hasYouTube} " +
+                "conflito=${session.youtubeConflict}",
         )
         // Se o processo anterior morreu por uma exceção não tratada, a pilha
         // fica no diagnóstico copiável da próxima execução. Isso permite

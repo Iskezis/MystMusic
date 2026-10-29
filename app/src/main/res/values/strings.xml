@@ -27,9 +27,30 @@
     <string name="state_offline">Verifique sua conexão e tente novamente.</string>
 
     <string name="auth_welcome">Sua música, do seu jeito</string>
-    <string name="auth_subtitle">Entre para ouvir, criar playlists e sincronizar com a TV.</string>
+    <string name="auth_subtitle">Entre com a conta Myst e o YouTube para ouvir, criar playlists e sincronizar com a TV.</string>
     <string name="auth_youtube">Entrar com YouTube</string>
+    <string name="auth_youtube_title">YouTube Music</string>
     <string name="auth_myst">Conta Myst</string>
+    <string name="auth_step_one">1</string>
+    <string name="auth_step_two">2</string>
+    <string name="auth_myst_missing">Criar ou entrar na sua conta Myst</string>
+    <string name="auth_youtube_missing">Entrar com a conta do YouTube Music</string>
+    <string name="auth_step_connected">Conectado como %1$s</string>
+    <string name="auth_dual_required">Agora o MystMusic precisa das duas contas: Myst e YouTube. Suas playlists e seu histórico continuam salvos.</string>
+    <string name="auth_dual_hint">A conta Myst guarda seu perfil, playlists e estatísticas. O YouTube libera o catálogo e a reprodução.</string>
+    <string name="auth_continue">Continuar</string>
+    <string name="auth_avatar_pick">Escolher foto de perfil</string>
+    <string name="auth_avatar_hint">Toque para escolher uma foto (opcional)</string>
+    <string name="auth_youtube_conflict_title">Outra conta do YouTube</string>
+    <string name="auth_youtube_conflict_message">Esta conta Myst está vinculada a %1$s, mas você entrou com %2$s. O que deseja fazer?</string>
+    <string name="auth_youtube_conflict_replace">Trocar vínculo</string>
+    <string name="auth_youtube_conflict_use">Usar a vinculada</string>
+    <string name="auth_youtube_conflict_cancelled">Entre com a conta do YouTube vinculada ao seu perfil Myst para continuar.</string>
+    <string name="auth_legacy_title">Trazer seus dados?</string>
+    <string name="auth_legacy_message">Encontramos playlists, histórico e recomendações da versão anterior. Deseja trazer esses dados para a conta Myst “%1$s”?</string>
+    <string name="auth_legacy_transfer">Trazer meus dados</string>
+    <string name="auth_legacy_skip">Agora não</string>
+    <string name="auth_legacy_error">Não foi possível trazer os dados. Tente novamente.</string>
     <string name="auth_disclaimer">O acesso ao YouTube Music usa cookies da sua conta no aparelho.</string>
     <string name="auth_login_title">Entrar na conta Myst</string>
     <string name="auth_register_title">Criar conta Myst</string>
@@ -88,7 +109,16 @@
     <string name="settings_account">Conta</string>
     <string name="settings_account_myst">Conta Myst</string>
     <string name="settings_account_youtube">Conta YouTube</string>
+    <string name="settings_youtube_connected">YouTube conectado · %1$s</string>
+    <string name="settings_youtube_disconnected">YouTube não conectado</string>
+    <string name="settings_avatar_change">Trocar foto de perfil</string>
+    <string name="settings_avatar_of">Foto de perfil de %1$s</string>
+    <string name="settings_avatar_error">Não foi possível atualizar a foto. Tente novamente.</string>
     <string name="settings_logout">Deslogar</string>
+    <string name="settings_logout_title">O que você quer desconectar?</string>
+    <string name="settings_logout_myst">Sair do Myst</string>
+    <string name="settings_logout_youtube">Sair do YouTube</string>
+    <string name="settings_logout_both">Sair das duas contas</string>
     <string name="settings_logout_confirm">Sair da conta %1$s? Suas playlists continuam neste aparelho.</string>
     <string name="settings_appearance">Aparência</string>
     <string name="settings_appearance_subtitle">Tema claro, escuro, sistema ou Preto AMOLED</string>
@@ -224,7 +254,8 @@
     <string name="pairing_tv_pin_title">Código do celular</string>
     <string name="pairing_choose_tv">Escolha a TV abaixo</string>
     <string name="pairing_connecting_tv">Conectando à %1$s…</string>
-    <string name="pairing_login_required">Entre em uma conta antes de parear a TV.</string>
+    <string name="pairing_login_required">Conecte as duas contas (Myst e YouTube) antes de parear a TV.</string>
+    <string name="pairing_tv_needs_update">Atualize o app no celular e conecte as duas contas antes de parear.</string>
     <string name="pairing_tv_service">TV MystMusic</string>
     <string name="pairing_tv_seconds">Código válido por 2 minutos</string>
     <string name="pairing_tv_backspace">Apagar</string>
@@ -234,6 +265,16 @@
     <string name="pairing_tv_request_received">Conexão de %1$s. Digite o código do celular.</string>
     <string name="pairing_tv_network_error">Não foi possível anunciar a TV na rede. Verifique o Wi-Fi.</string>
     <string name="common_back">Voltar</string>
+
+    <string name="home_greeting">Olá, %1$s</string>
+    <string name="home_greeting_fallback">Olá</string>
+    <string name="home_greeting_subtitle">Sua música, do seu jeito</string>
+
+    <string name="avatar_crop_title">Ajustar foto</string>
+    <string name="avatar_crop_save">Salvar</string>
+    <string name="avatar_crop_cancel">Cancelar</string>
+    <string name="avatar_crop_hint">Use dois dedos para ampliar e arraste para ajustar.</string>
+    <string name="avatar_crop_error">Não foi possível abrir esta foto. Tente novamente.</string>
 
     <string name="tv_nav_home">Início</string>
     <string name="tv_nav_playlists">Playlists</string>

@@ -22,6 +22,15 @@ interface UserDao {
 
     @Query("UPDATE users SET displayName = :name WHERE id = :id")
     suspend fun updateDisplayName(id: Long, name: String)
+
+    @Query("UPDATE users SET avatarPath = :path WHERE id = :id")
+    suspend fun updateAvatar(id: Long, path: String?)
+
+    @Query("UPDATE users SET youtubeAccountId = :accountId, youtubeDisplayName = :name WHERE id = :id")
+    suspend fun updateYouTubeLink(id: Long, accountId: String?, name: String?)
+
+    @Query("SELECT * FROM users WHERE youtubeAccountId = :accountId LIMIT 1")
+    suspend fun findByYouTubeAccountId(accountId: String): UserEntity?
 }
 
 @Dao
@@ -73,6 +82,9 @@ interface PlaylistDao {
 
     @Query("SELECT COALESCE(MAX(position), -1) FROM playlist_tracks WHERE playlistId = :playlistId")
     suspend fun maxPosition(playlistId: Long): Int
+
+    @Query("UPDATE playlists SET userId = :to WHERE userId = :from")
+    suspend fun reassignUser(from: Long, to: Long)
 }
 
 @Dao
@@ -101,6 +113,9 @@ interface HistoryDao {
 
     @Query("SELECT COUNT(*) FROM history WHERE userId = :userId")
     suspend fun totalPlays(userId: Long): Int
+
+    @Query("UPDATE history SET userId = :to WHERE userId = :from")
+    suspend fun reassignUser(from: Long, to: Long)
 }
 
 @Dao
@@ -119,4 +134,15 @@ interface AffinityDao {
 
     @Query("DELETE FROM artist_affinity WHERE userId = :userId")
     suspend fun clear(userId: Long)
+
+    @Query(
+        """
+        INSERT OR REPLACE INTO artist_affinity (userId, artist, score, updatedAt)
+        SELECT :to, artist, score, updatedAt FROM artist_affinity WHERE userId = :from
+        """,
+    )
+    suspend fun copyToUser(from: Long, to: Long)
+
+    @Query("DELETE FROM artist_affinity WHERE userId = :from")
+    suspend fun deleteUser(from: Long)
 }

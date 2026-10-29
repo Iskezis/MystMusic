@@ -1,7 +1,9 @@
 package com.iskezis.myst.data.pairing
 
 import com.iskezis.myst.MystApp
+import com.iskezis.myst.data.account.AvatarStore
 import com.iskezis.myst.data.account.SessionManager
+import com.iskezis.myst.data.account.YouTubeAccount
 import com.iskezis.myst.data.db.PlaylistExport
 import com.iskezis.myst.data.db.UserEntity
 import com.iskezis.myst.data.youtube.Track
@@ -12,9 +14,12 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
 /**
- * Serializa a conta e as playlists para o pareamento. O payload é cifrado pelo
- * PairingCrypto antes de sair do celular; a TV só consegue abrir com o código
- * exibido pelo celular.
+ * Serializa as duas contas, a foto de perfil e as playlists para o pareamento.
+ * O payload é cifrado pelo PairingCrypto antes de sair do celular; a TV só
+ * consegue abrir com o código exibido pelo celular.
+ *
+ * A TV não recebe senha: o perfil local chega pronto, com o vínculo do YouTube
+ * que já estava na conta Myst. Sem as duas contas o pareamento é recusado.
  */
 object PairingSync {
 
@@ -25,15 +30,22 @@ object PairingSync {
     }
 
     suspend fun export(app: MystApp): PairBundle = withContext(Dispatchers.IO) {
+        if (!app.session.isLoggedIn) {
+            throw IllegalStateException("Conecte as duas contas antes de parear a TV")
+        }
         val session = app.session.session
-            ?: throw IllegalStateException("Faça login antes de parear a TV")
+            ?: throw IllegalStateException("Conta Myst ausente")
         val user = app.accounts.currentUser()
+        val avatarBase64 = AvatarStore.readBase64(user?.avatarPath)
         val account = PairAccount(
             type = session.type,
             username = user?.username ?: "paired_${sha256Hex(session.displayName).take(12)}",
             displayName = session.displayName.ifBlank {
                 user?.displayName ?: user?.username ?: "MystMusic"
             },
+            avatarBase64 = avatarBase64,
+            youtubeAccountId = app.session.youtubeAccountId,
+            youtubeDisplayName = app.session.youtubeDisplayName,
         )
         val playlists = app.playlists.export(session.userId).map { export ->
             PairPlaylist(
@@ -52,7 +64,9 @@ object PairingSync {
         }
         AppLog.i(
             AppLog.TAG_PAIRING,
-            "Pareamento exportado: conta=${account.type} playlists=${playlists.size}",
+            "Pareamento exportado: conta=${account.type} " +
+                "youtube=${!account.youtubeAccountId.isNullOrBlank()} " +
+                "avatar=${avatarBase64 != null} playlists=${playlists.size}",
         )
         PairBundle(
             account = account,
@@ -66,7 +80,20 @@ object PairingSync {
 
     suspend fun apply(app: MystApp, bundle: PairBundle) = withContext(Dispatchers.IO) {
         val account = bundle.account
-            ?: throw IllegalArgumentException("Payload sem conta")
+            ?: throw IllegalArgumentException("Payload sem conta Myst")
+        val cookies = bundle.youtubeCookies
+        if (cookies.isNullOrBlank()) {
+            throw IllegalArgumentException("Payload sem a conta do YouTube")
+        }
+        // Compatibilidade com o celular da 0.1.0: o id da conta não vinha no
+        // payload, mas pode ser derivado dos cookies.
+        val youtubeAccountId = account.youtubeAccountId
+            ?.takeIf { it.isNotBlank() }
+            ?: YouTubeAccount.accountId(cookies)
+        val youtubeName = account.youtubeDisplayName
+            ?.takeIf { it.isNotBlank() }
+            ?: "YouTube"
+
         val dao = app.database.userDao()
         val username = account.username.trim().ifBlank {
             "paired_${sha256Hex(account.displayName).take(12)}"
@@ -76,18 +103,26 @@ object PairingSync {
             UserEntity(
                 username = username,
                 displayName = account.displayName.ifBlank { username },
-                accountType = account.type,
+                accountType = SessionManager.TYPE_MYST,
             ),
         )
-        app.session.session = SessionManager.Session(
-            type = account.type,
-            userId = userId,
-            displayName = account.displayName.ifBlank { username },
+        app.session.saveMyst(userId, account.displayName.ifBlank { username })
+        app.session.saveYouTube(
+            accountId = youtubeAccountId,
+            name = youtubeName,
+            cookies = cookies,
+            sapisid = bundle.youtubeSapisid,
         )
-        app.session.youtubeCookies = bundle.youtubeCookies
-        app.session.youtubeSapisid = bundle.youtubeSapisid
         app.session.youtubeVisitorData = bundle.youtubeVisitorData
         app.session.youtubeDataSyncId = bundle.youtubeDataSyncId
+
+        if (!account.avatarBase64.isNullOrBlank()) {
+            val avatarPath = AvatarStore.saveBase64(app, userId, account.avatarBase64)
+            if (avatarPath != null) {
+                dao.updateAvatar(userId, avatarPath)
+            }
+        }
+        dao.updateYouTubeLink(userId, youtubeAccountId, youtubeName)
 
         val exports = bundle.playlists.map { playlist ->
             PlaylistExport(
@@ -112,7 +147,9 @@ object PairingSync {
         app.session.tvPaired = true
         AppLog.i(
             AppLog.TAG_PAIRING,
-            "Pareamento aplicado: usuário=$userId playlists=${exports.size}",
+            "Pareamento aplicado: usuário=$userId " +
+                "youtube=${!youtubeAccountId.isNullOrBlank()} " +
+                "avatar=${!account.avatarBase64.isNullOrBlank()} playlists=${exports.size}",
         )
     }
 }

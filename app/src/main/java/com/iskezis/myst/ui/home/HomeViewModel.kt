@@ -26,6 +26,7 @@ import java.io.IOException
 
 data class HomeUiState(
     val accountName: String = "",
+    val avatarPath: String? = null,
     val recent: LoadState<List<Track>> = LoadState.Loading,
     val trending: LoadState<List<Track>> = LoadState.Loading,
     val recommended: LoadState<List<Track>> = LoadState.Loading,
@@ -42,20 +43,25 @@ class HomeViewModel(private val app: MystApp) : ViewModel() {
 
     init {
         AppLog.d(AppLog.TAG_TUBE, "HomeViewModel init")
-        viewModelScope.launch {
-            val user = runCatching { app.accounts.currentUser() }.getOrNull()
-            val session = app.session.session
-            val name = user?.displayName?.ifBlank { user.username }
-                ?: session?.displayName.orEmpty()
-            AppLog.d(AppLog.TAG_UI, "Home: usuário atual=$name")
-            _state.update { it.copy(accountName = name) }
-        }
+        refreshAccount()
         observeRecent()
         viewModelScope.launch {
             coroutineScope {
                 launch { fetchTrending() }
                 launch { fetchRecommended() }
             }
+        }
+    }
+
+    /** Relê nome/foto da conta Myst ao voltar das Configurações. */
+    fun refreshAccount() {
+        viewModelScope.launch {
+            val user = runCatching { app.accounts.currentUser() }.getOrNull()
+            val session = app.session.session
+            val name = user?.displayName?.ifBlank { user.username }
+                ?: session?.displayName.orEmpty()
+            AppLog.d(AppLog.TAG_UI, "Home: usuário atual=$name avatar=${user?.avatarPath != null}")
+            _state.update { it.copy(accountName = name, avatarPath = user?.avatarPath) }
         }
     }
 
@@ -82,6 +88,7 @@ class HomeViewModel(private val app: MystApp) : ViewModel() {
 
     fun refresh() {
         if (refreshJob?.isActive == true) return
+        refreshAccount()
         refreshJob = viewModelScope.launch {
             _state.update { it.copy(refreshing = true) }
             coroutineScope {

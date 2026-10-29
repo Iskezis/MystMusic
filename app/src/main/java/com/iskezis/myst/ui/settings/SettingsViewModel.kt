@@ -6,8 +6,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import coil.imageLoader
 import com.iskezis.myst.MystApp
-import com.iskezis.myst.data.account.SessionManager
+import com.iskezis.myst.R
+import com.iskezis.myst.data.account.AvatarStore
 import com.iskezis.myst.data.discord.DiscordState
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,8 +19,10 @@ import kotlinx.coroutines.launch
 
 data class SettingsState(
     val name: String = "",
-    val accountType: String = "",
     val initial: String = "",
+    val avatarPath: String? = null,
+    val youtubeConnected: Boolean = false,
+    val youtubeName: String = "",
 )
 
 class SettingsViewModel(private val app: MystApp) : ViewModel() {
@@ -29,7 +33,14 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
     private val _loggedOut = MutableStateFlow(false)
     val loggedOut: StateFlow<Boolean> = _loggedOut.asStateFlow()
 
+    private val _error = MutableStateFlow<Int?>(null)
+    val error: StateFlow<Int?> = _error.asStateFlow()
+
     val discord: StateFlow<DiscordState> = app.discord.state
+
+    init {
+        viewModelScope.launch { refresh() }
+    }
 
     fun connectDiscord(token: String) {
         app.discord.connect(token)
@@ -45,32 +56,69 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
 
     fun hasDiscordToken(): Boolean = !app.session.discordToken.isNullOrBlank()
 
-    init {
+    fun changeAvatar(sourcePath: String) {
         viewModelScope.launch {
-            val user = app.accounts.currentUser()
-            val session = app.session.session
-            val name = user?.displayName?.ifBlank { user.username } ?: session?.displayName.orEmpty()
-            val type = when (user?.accountType ?: session?.type) {
-                SessionManager.TYPE_YOUTUBE -> SessionManager.TYPE_YOUTUBE
-                else -> SessionManager.TYPE_MYST
+            val userId = app.session.mystUserId
+            if (userId <= 0L) {
+                _error.value = R.string.settings_avatar_error
+                return@launch
             }
-            AppLog.d(AppLog.TAG_UI, "Settings: conta=$type nome=$name")
-            _state.value = SettingsState(
-                name = name,
-                accountType = type,
-                initial = name.take(1).uppercase(),
-            )
+            val oldPath = _state.value.avatarPath
+            val saved = app.accounts.updateAvatar(userId, sourcePath)
+            if (saved == null) {
+                _error.value = R.string.settings_avatar_error
+                return@launch
+            }
+            // A chave do Coil inclui tamanho e data do arquivo; limpar a antiga
+            // evita que a foto anterior reapareça ao voltar para a tela.
+            AvatarStore.cacheKey(oldPath)?.let { key ->
+                runCatching { app.imageLoader.memoryCache?.remove(key) }
+            }
+            refresh()
         }
     }
 
-    fun logout() {
+    fun logoutMyst() = logout { app.accounts.logoutMyst() }
+
+    fun logoutYouTube() = logout { app.accounts.logoutYouTube() }
+
+    fun logoutAll() = logout { app.accounts.logoutAll() }
+
+    fun consumeError() {
+        _error.value = null
+    }
+
+    private fun logout(action: suspend () -> Unit) {
         viewModelScope.launch {
-            AppLog.i(AppLog.TAG_AUTH, "Logout pelo usuário")
+            AppLog.i(AppLog.TAG_AUTH, "Logout solicitado nas Configurações")
             runCatching { app.discord.disconnect() }
-                .onFailure { AppLog.failure(AppLog.TAG_UI, "Falha desconectando Discord no logout", it) }
-            app.accounts.logout()
-            _loggedOut.value = true
+                .onFailure {
+                    AppLog.failure(AppLog.TAG_UI, "Falha desconectando Discord no logout", it)
+                }
+            try {
+                action()
+                _loggedOut.value = true
+            } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_AUTH, "Falha no logout", t)
+                _error.value = R.string.error_generic
+            }
         }
+    }
+
+    private suspend fun refresh() {
+        val snapshot = app.accounts.snapshot()
+        val name = snapshot.mystName.ifBlank { app.session.mystDisplayName }
+        AppLog.d(
+            AppLog.TAG_UI,
+            "Settings: myst=${snapshot.mystReady} youtube=${snapshot.youtubeReady} nome=$name",
+        )
+        _state.value = SettingsState(
+            name = name,
+            initial = name.take(1).uppercase(),
+            avatarPath = snapshot.mystAvatarPath,
+            youtubeConnected = snapshot.youtubeReady,
+            youtubeName = snapshot.youtubeName,
+        )
     }
 
     companion object {

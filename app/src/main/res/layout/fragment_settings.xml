@@ -46,9 +46,21 @@
                     android:orientation="horizontal">
 
                     <FrameLayout
-                        android:layout_width="56dp"
-                        android:layout_height="56dp"
-                        android:background="@drawable/bg_avatar">
+                        android:id="@+id/settingsAvatarFrame"
+                        android:layout_width="72dp"
+                        android:layout_height="72dp"
+                        android:background="@drawable/bg_avatar"
+                        android:clickable="true"
+                        android:contentDescription="@string/settings_avatar_change"
+                        android:focusable="true">
+
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/settingsAvatarImage"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:visibility="gone"
+                            app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.Circle" />
 
                         <TextView
                             android:id="@+id/settingsInitial"
@@ -57,7 +69,22 @@
                             android:layout_gravity="center"
                             android:fontFamily="sans-serif-medium"
                             android:textColor="?attr/mystAccentText"
-                            android:textSize="24sp" />
+                            android:textSize="28sp" />
+
+                        <FrameLayout
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_gravity="bottom|end"
+                            android:background="@drawable/bg_avatar">
+
+                            <ImageView
+                                android:layout_width="13dp"
+                                android:layout_height="13dp"
+                                android:layout_gravity="center"
+                                android:contentDescription="@null"
+                                android:src="@drawable/ic_edit"
+                                app:tint="?attr/mystAccentText" />
+                        </FrameLayout>
                     </FrameLayout>
 
                     <LinearLayout

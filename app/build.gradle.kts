@@ -25,8 +25,8 @@ android {
         applicationId = "com.iskezis.myst"
         minSdk = 21
         targetSdk = 34
-        versionCode = 10
-        versionName = "0.2.0-dev.1"
+        versionCode = 11
+        versionName = "0.2.0-dev.2"
         multiDexEnabled = true
         vectorDrawables.useSupportLibrary = true
 
@@ -91,6 +91,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity.ktx)
+    implementation(libs.androidx.exifinterface)
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.recyclerview)

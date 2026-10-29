@@ -6,8 +6,9 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import com.iskezis.myst.util.MystTheme
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -15,22 +16,26 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import coil.load
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.R
-import com.iskezis.myst.data.account.SessionManager
+import com.iskezis.myst.data.account.AvatarStore
 import com.iskezis.myst.data.discord.DiscordConnection
 import com.iskezis.myst.data.discord.DiscordState
 import com.iskezis.myst.databinding.FragmentSettingsBinding
 import com.iskezis.myst.ui.auth.AuthActivity
+import com.iskezis.myst.ui.auth.AvatarCropActivity
 import com.iskezis.myst.ui.auth.DiscordLoginActivity
 import com.iskezis.myst.ui.logs.LogsActivity
 import com.iskezis.myst.ui.pairing.PhonePairingActivity
 import com.iskezis.myst.ui.pairing.TvPairingActivity
 import com.iskezis.myst.util.AppLog
+import com.iskezis.myst.util.MystTheme
 import com.iskezis.myst.util.UiAnimations.applyFadeThrough
 import com.iskezis.myst.util.UiAnimations.pressScale
 import kotlinx.coroutines.launch
+import java.io.File
 
 class SettingsFragment : Fragment() {
 
@@ -49,6 +54,28 @@ class SettingsFragment : Fragment() {
                 .orEmpty()
             if (token.isNotBlank()) viewModel.connectDiscord(token)
         }
+    }
+
+    private val avatarPicker = registerForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        avatarCropLauncher.launch(
+            Intent(requireContext(), AvatarCropActivity::class.java)
+                .putExtra(AvatarCropActivity.EXTRA_SOURCE_URI, uri.toString()),
+        )
+    }
+
+    private val avatarCropLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@registerForActivityResult
+        val path = result.data?.getStringExtra(AvatarCropActivity.EXTRA_OUTPUT_PATH)
+        if (path.isNullOrBlank()) {
+            Toast.makeText(requireContext(), R.string.settings_avatar_error, Toast.LENGTH_LONG).show()
+            return@registerForActivityResult
+        }
+        viewModel.changeAvatar(path)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,18 +97,15 @@ class SettingsFragment : Fragment() {
         AppLog.d(AppLog.TAG_UI, "SettingsFragment.onViewCreated")
         binding.settingsVersion.text = getString(R.string.settings_version, BuildConfig.VERSION_NAME)
 
-        binding.settingsLogout.setOnClickListener {
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.settings_logout)
-                .setMessage(
-                    getString(
-                        R.string.settings_logout_confirm,
-                        viewModel.state.value.name,
-                    ),
-                )
-                .setNegativeButton(R.string.common_cancel, null)
-                .setPositiveButton(R.string.settings_logout) { _, _ -> viewModel.logout() }
-                .show()
+        binding.settingsLogout.setOnClickListener { showLogoutDialog() }
+        if (BuildConfig.FLAVOR != "tv") {
+            binding.settingsAvatarFrame.setOnClickListener { pickAvatar() }
+            binding.settingsAvatarFrame.pressScale()
+        } else {
+            // A TV recebe a foto pelo pareamento e não tem um seletor de
+            // imagens confortável no controle remoto.
+            binding.settingsAvatarFrame.isClickable = false
+            binding.settingsAvatarFrame.isFocusable = false
         }
 
         binding.settingsDiscordAction.setOnClickListener { onDiscordAction() }
@@ -117,17 +141,33 @@ class SettingsFragment : Fragment() {
                     viewModel.state.collect { state ->
                         AppLog.d(
                             AppLog.TAG_UI,
-                            "Settings render: conta=${state.accountType}",
+                            "Settings render: youtube=${state.youtubeConnected}",
                         )
                         binding.settingsAccountName.text = state.name
-                        binding.settingsAccountType.setText(
-                            if (state.accountType == SessionManager.TYPE_YOUTUBE) {
-                                R.string.settings_account_youtube
-                            } else {
-                                R.string.settings_account_myst
-                            },
-                        )
+                        binding.settingsAccountType.text = if (state.youtubeConnected) {
+                            getString(
+                                R.string.settings_youtube_connected,
+                                state.youtubeName.ifBlank {
+                                    getString(R.string.youtube_account_fallback)
+                                },
+                            )
+                        } else {
+                            getString(R.string.settings_youtube_disconnected)
+                        }
                         binding.settingsInitial.text = state.initial
+                        renderAvatar(state)
+                    }
+                }
+                launch {
+                    viewModel.error.collect { errorRes ->
+                        if (errorRes != null) {
+                            Toast.makeText(
+                                requireContext(),
+                                errorRes,
+                                Toast.LENGTH_LONG,
+                            ).show()
+                            viewModel.consumeError()
+                        }
                     }
                 }
                 launch {
@@ -159,6 +199,61 @@ class SettingsFragment : Fragment() {
         AppLog.d(AppLog.TAG_UI, "SettingsFragment.onDestroyView")
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun pickAvatar() {
+        runCatching {
+            avatarPicker.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+            )
+        }.onFailure { t ->
+            AppLog.failure(AppLog.TAG_UI, "Seletor de fotos indisponível", t)
+            Toast.makeText(requireContext(), R.string.settings_avatar_error, Toast.LENGTH_LONG)
+                .show()
+        }
+    }
+
+    private fun renderAvatar(state: SettingsState) {
+        binding.settingsAvatarFrame.contentDescription = if (state.name.isBlank()) {
+            getString(R.string.settings_avatar_change)
+        } else {
+            getString(R.string.settings_avatar_of, state.name)
+        }
+        val path = state.avatarPath
+        val key = AvatarStore.cacheKey(path)
+        if (path != null && key != null) {
+            binding.settingsAvatarImage.isVisible = true
+            binding.settingsInitial.isVisible = false
+            binding.settingsAvatarImage.load(File(path)) {
+                memoryCacheKey(key)
+                diskCacheKey(key)
+                crossfade(true)
+                placeholder(R.drawable.bg_avatar)
+                error(R.drawable.bg_avatar)
+            }
+        } else {
+            binding.settingsAvatarImage.isVisible = false
+            binding.settingsInitial.isVisible = true
+        }
+    }
+
+    private fun showLogoutDialog() {
+        val options = arrayOf(
+            getString(R.string.settings_logout_myst),
+            getString(R.string.settings_logout_youtube),
+            getString(R.string.settings_logout_both),
+        )
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.settings_logout_title)
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> viewModel.logoutMyst()
+                    1 -> viewModel.logoutYouTube()
+                    2 -> viewModel.logoutAll()
+                }
+            }
+            .setNegativeButton(R.string.common_cancel, null)
+            .show()
     }
 
     private fun onDiscordAction() {

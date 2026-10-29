@@ -44,6 +44,12 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".ui.auth.AvatarCropActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MystMusic"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".ui.auth.YouTubeLoginActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />

@@ -3,22 +3,28 @@ package com.iskezis.myst.ui.home
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import coil.load
 import com.iskezis.myst.R
+import com.iskezis.myst.data.account.AvatarStore
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.databinding.ItemCarouselBinding
+import com.iskezis.myst.databinding.ItemHomeHeaderBinding
 import com.iskezis.myst.databinding.ItemHomeSearchBinding
 import com.iskezis.myst.databinding.ItemSectionHeaderBinding
 import com.iskezis.myst.ui.common.LoadState
 import com.iskezis.myst.ui.common.TrackCardAdapter
+import java.io.File
 
 enum class HomeSection { RECENT, TRENDING, RECOMMENDED }
 
 sealed interface HomeItem {
-    data class Search(val initial: String) : HomeItem
+    data class Greeting(val name: String, val avatarPath: String?) : HomeItem
+    object Search : HomeItem
     data class Header(val section: HomeSection) : HomeItem
     data class Carousel(val section: HomeSection, val state: LoadState<List<Track>>) : HomeItem
 }
@@ -36,6 +42,7 @@ class HomeAdapter(
     private val cardPool = RecyclerView.RecycledViewPool()
 
     override fun getItemViewType(position: Int): Int = when (getItem(position)) {
+        is HomeItem.Greeting -> TYPE_GREETING
         is HomeItem.Search -> TYPE_SEARCH
         is HomeItem.Header -> TYPE_HEADER
         is HomeItem.Carousel -> TYPE_CAROUSEL
@@ -44,6 +51,7 @@ class HomeAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
         return when (viewType) {
+            TYPE_GREETING -> GreetingHolder(ItemHomeHeaderBinding.inflate(inflater, parent, false))
             TYPE_SEARCH -> SearchHolder(ItemHomeSearchBinding.inflate(inflater, parent, false))
             TYPE_HEADER -> HeaderHolder(ItemSectionHeaderBinding.inflate(inflater, parent, false))
             else -> CarouselHolder(
@@ -60,20 +68,53 @@ class HomeAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (val item = getItem(position)) {
-            is HomeItem.Search -> (holder as SearchHolder).bind(item, onSearch, onAvatar)
+            is HomeItem.Greeting -> (holder as GreetingHolder).bind(item, onAvatar)
+            is HomeItem.Search -> (holder as SearchHolder).bind(onSearch)
             is HomeItem.Header -> (holder as HeaderHolder).bind(item)
             is HomeItem.Carousel -> (holder as CarouselHolder).bind(item)
+        }
+    }
+
+    private class GreetingHolder(private val binding: ItemHomeHeaderBinding) :
+        RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(item: HomeItem.Greeting, onAvatar: () -> Unit) {
+            val context = binding.root.context
+            val name = item.name.trim()
+            binding.homeGreeting.text = if (name.isBlank()) {
+                context.getString(R.string.home_greeting_fallback)
+            } else {
+                context.getString(R.string.home_greeting, name)
+            }
+            binding.homeHeaderInitial.text = name.take(1).uppercase()
+            binding.homeHeaderAvatarFrame.contentDescription =
+                context.getString(R.string.nav_settings)
+
+            val path = item.avatarPath
+            val key = AvatarStore.cacheKey(path)
+            if (path != null && key != null) {
+                binding.homeHeaderAvatarImage.isVisible = true
+                binding.homeHeaderInitial.isVisible = false
+                binding.homeHeaderAvatarImage.load(File(path)) {
+                    memoryCacheKey(key)
+                    diskCacheKey(key)
+                    crossfade(true)
+                    placeholder(R.drawable.bg_avatar)
+                    error(R.drawable.bg_avatar)
+                }
+            } else {
+                binding.homeHeaderAvatarImage.isVisible = false
+                binding.homeHeaderInitial.isVisible = true
+            }
+            binding.homeHeaderAvatarFrame.setOnClickListener { onAvatar() }
         }
     }
 
     private class SearchHolder(private val binding: ItemHomeSearchBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(item: HomeItem.Search, onSearch: () -> Unit, onAvatar: () -> Unit) {
-            binding.homeAvatar.text = item.initial
+        fun bind(onSearch: () -> Unit) {
             binding.homeSearchCard.setOnClickListener { onSearch() }
-            binding.homeAvatar.setOnClickListener { onAvatar() }
-            binding.homeAvatar.contentDescription = binding.root.context.getString(R.string.nav_settings)
         }
     }
 
@@ -167,7 +208,8 @@ class HomeAdapter(
     private object Diff : DiffUtil.ItemCallback<HomeItem>() {
         override fun areItemsTheSame(oldItem: HomeItem, newItem: HomeItem): Boolean =
             when {
-                oldItem is HomeItem.Search && newItem is HomeItem.Search -> true
+                oldItem is HomeItem.Greeting && newItem is HomeItem.Greeting -> true
+                oldItem === HomeItem.Search && newItem === HomeItem.Search -> true
                 oldItem is HomeItem.Header && newItem is HomeItem.Header ->
                     oldItem.section == newItem.section
                 oldItem is HomeItem.Carousel && newItem is HomeItem.Carousel ->
@@ -180,8 +222,9 @@ class HomeAdapter(
     }
 
     companion object {
-        private const val TYPE_SEARCH = 0
-        private const val TYPE_HEADER = 1
-        private const val TYPE_CAROUSEL = 2
+        private const val TYPE_GREETING = 0
+        private const val TYPE_SEARCH = 1
+        private const val TYPE_HEADER = 2
+        private const val TYPE_CAROUSEL = 3
     }
 }

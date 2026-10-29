@@ -65,8 +65,8 @@ class MainActivity : BaseActivity() {
             finish()
             return
         }
-        if (!app.session.isLoggedIn) {
-            AppLog.i(AppLog.TAG_UI, "Sem sessão; abrindo AuthActivity")
+        if (!app.session.isLoggedIn || app.session.hasLegacyData) {
+            AppLog.i(AppLog.TAG_UI, "Sessão incompleta; abrindo AuthActivity")
             startActivity(
                 Intent(this, AuthActivity::class.java).addFlags(
                     Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK,

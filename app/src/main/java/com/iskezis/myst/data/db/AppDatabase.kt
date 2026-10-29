@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [
@@ -13,7 +15,7 @@ import androidx.room.RoomDatabase
         HistoryEntity::class,
         ArtistAffinityEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -32,7 +34,22 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "mystmusic.db",
-                ).build().also { instance = it }
+                )
+                    .addMigrations(MIGRATION_1_2)
+                    .build()
+                    .also { instance = it }
+            }
+        }
+
+        /**
+         * 0.1.0 -> 0.2.0: foto de perfil local e vínculo com a conta YouTube.
+         * Nenhuma coluna existente é removida e nenhuma tabela é recriada.
+         */
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE users ADD COLUMN avatarPath TEXT")
+                db.execSQL("ALTER TABLE users ADD COLUMN youtubeAccountId TEXT")
+                db.execSQL("ALTER TABLE users ADD COLUMN youtubeDisplayName TEXT")
             }
         }
     }

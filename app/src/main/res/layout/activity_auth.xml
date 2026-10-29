@@ -8,10 +8,12 @@
     android:clipToPadding="false"
     android:fillViewport="true">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:minHeight="640dp"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
         android:paddingStart="@dimen/screen_margin"
         android:paddingTop="@dimen/space_xl"
         android:paddingEnd="@dimen/screen_margin"
@@ -22,10 +24,7 @@
             android:layout_width="@dimen/auth_logo"
             android:layout_height="@dimen/auth_logo"
             android:background="@drawable/bg_gradient_circle"
-            android:elevation="12dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
+            android:elevation="12dp">
 
             <ImageView
                 android:layout_width="48dp"
@@ -44,77 +43,257 @@
             android:fontFamily="sans-serif-medium"
             android:text="@string/app_name"
             android:textColor="?attr/mystOnSurface"
-            android:textSize="32sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/authLogo" />
+            android:textSize="32sp" />
 
         <TextView
             android:id="@+id/authSubtitle"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_s"
             android:gravity="center"
             android:text="@string/auth_subtitle"
             android:textColor="?attr/mystOnSurfaceDim"
-            android:textSize="@dimen/text_body"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/authTitle" />
+            android:textSize="@dimen/text_body" />
 
-        <LinearLayout
-            android:id="@+id/entryPanel"
-            android:layout_width="0dp"
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/authNoticeCard"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_xl"
-            android:orientation="vertical"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/authSubtitle">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/youtubeButton"
-                style="@style/Widget.MystMusic.Button.Primary"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="@string/auth_youtube"
-                app:icon="@drawable/ic_play"
-                app:iconGravity="textStart"
-                app:iconPadding="@dimen/space_s" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/mystButton"
-                style="@style/Widget.MystMusic.Button.Secondary"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="@dimen/space_m"
-                android:text="@string/auth_myst"
-                app:icon="@drawable/ic_person"
-                app:iconGravity="textStart"
-                app:iconPadding="@dimen/space_s" />
+            android:layout_marginTop="@dimen/space_l"
+            android:visibility="gone"
+            app:cardBackgroundColor="?attr/mystSurfaceAlt"
+            app:cardCornerRadius="@dimen/corner_medium"
+            app:cardElevation="0dp"
+            app:strokeColor="?attr/mystStroke"
+            app:strokeWidth="1dp">
 
             <TextView
+                android:id="@+id/authMigrationNotice"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_l"
-                android:gravity="center"
-                android:text="@string/auth_disclaimer"
-                android:textColor="?attr/mystOnSurfaceDim"
+                android:padding="@dimen/space_m"
+                android:text="@string/auth_dual_required"
+                android:textColor="?attr/mystOnSurface"
                 android:textSize="@dimen/text_small" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <LinearLayout
+            android:id="@+id/authSteps"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_l"
+            android:orientation="vertical">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/mystStepCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="?attr/mystSurface"
+                app:cardCornerRadius="@dimen/corner_large"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/mystStroke"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/space_m">
+
+                    <FrameLayout
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_avatar">
+
+                        <TextView
+                            android:id="@+id/mystStepNumber"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="@string/auth_step_one"
+                            android:textColor="?attr/mystAccentText"
+                            android:textSize="18sp" />
+
+                        <ImageView
+                            android:id="@+id/mystStepCheck"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_check"
+                            android:visibility="gone"
+                            app:tint="?attr/mystAccentText" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_m"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="@string/auth_myst"
+                            android:textColor="?attr/mystOnSurface"
+                            android:textSize="18sp" />
+
+                        <TextView
+                            android:id="@+id/mystStepSubtitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/auth_myst_missing"
+                            android:textColor="?attr/mystOnSurfaceDim"
+                            android:textSize="@dimen/text_small" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="?attr/mystOnSurfaceDim" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/youtubeStepCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_m"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="?attr/mystSurface"
+                app:cardCornerRadius="@dimen/corner_large"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/mystStroke"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/space_m">
+
+                    <FrameLayout
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_avatar">
+
+                        <TextView
+                            android:id="@+id/youtubeStepNumber"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="@string/auth_step_two"
+                            android:textColor="?attr/mystAccentText"
+                            android:textSize="18sp" />
+
+                        <ImageView
+                            android:id="@+id/youtubeStepCheck"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_check"
+                            android:visibility="gone"
+                            app:tint="?attr/mystAccentText" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_m"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="@string/auth_youtube_title"
+                            android:textColor="?attr/mystOnSurface"
+                            android:textSize="18sp" />
+
+                        <TextView
+                            android:id="@+id/youtubeStepSubtitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/auth_youtube_missing"
+                            android:textColor="?attr/mystOnSurfaceDim"
+                            android:textSize="@dimen/text_small" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="?attr/mystOnSurfaceDim" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/authStepsHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_m"
+            android:gravity="center"
+            android:text="@string/auth_dual_hint"
+            android:textColor="?attr/mystOnSurfaceDim"
+            android:textSize="@dimen/text_small" />
+
+        <TextView
+            android:id="@+id/authStatusError"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_m"
+            android:gravity="center"
+            android:textColor="?attr/mystError"
+            android:textSize="@dimen/text_small"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/authContinue"
+            style="@style/Widget.MystMusic.Button.Primary"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="@dimen/space_l"
+            android:enabled="false"
+            android:text="@string/auth_continue" />
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/authLoading"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_m"
+            android:indeterminate="true"
+            android:visibility="gone"
+            app:indicatorColor="?attr/mystAccentText"
+            app:trackColor="?attr/mystSurfaceAlt" />
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/mystPanel"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_l"
             android:visibility="gone"
             app:cardBackgroundColor="?attr/mystSurface"
             app:cardCornerRadius="@dimen/corner_large"
             app:cardElevation="0dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/authSubtitle"
             app:strokeColor="?attr/mystStroke"
             app:strokeWidth="1dp">
 
@@ -150,6 +329,60 @@
                         android:textColor="?attr/mystOnSurface"
                         android:textSize="20sp" />
                 </LinearLayout>
+
+                <FrameLayout
+                    android:id="@+id/authAvatarPicker"
+                    android:layout_width="96dp"
+                    android:layout_height="96dp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="@dimen/space_m"
+                    android:background="@drawable/bg_avatar"
+                    android:clickable="true"
+                    android:contentDescription="@string/auth_avatar_pick"
+                    android:focusable="true">
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/authAvatarImage"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:visibility="gone"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.Circle" />
+
+                    <TextView
+                        android:id="@+id/authAvatarInitial"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:fontFamily="sans-serif-medium"
+                        android:textColor="?attr/mystAccentText"
+                        android:textSize="36sp" />
+
+                    <FrameLayout
+                        android:layout_width="30dp"
+                        android:layout_height="30dp"
+                        android:layout_gravity="bottom|end"
+                        android:background="@drawable/bg_avatar">
+
+                        <ImageView
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_edit"
+                            app:tint="?attr/mystAccentText" />
+                    </FrameLayout>
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/authAvatarHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_s"
+                    android:gravity="center"
+                    android:text="@string/auth_avatar_hint"
+                    android:textColor="?attr/mystOnSurfaceDim"
+                    android:textSize="@dimen/text_small" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/usernameLayout"
@@ -231,18 +464,17 @@
                     android:layout_marginTop="@dimen/space_s"
                     android:text="@string/auth_switch_register"
                     android:textColor="?attr/mystAccentText" />
-
-                <com.google.android.material.progressindicator.CircularProgressIndicator
-                    android:id="@+id/authProgress"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_marginTop="@dimen/space_s"
-                    android:indeterminate="true"
-                    android:visibility="gone"
-                    app:indicatorColor="?attr/mystAccentText"
-                    app:trackColor="?attr/mystSurfaceAlt" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-    </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <TextView
+            android:id="@+id/authDisclaimer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_l"
+            android:gravity="center"
+            android:text="@string/auth_disclaimer"
+            android:textColor="?attr/mystOnSurfaceDim"
+            android:textSize="@dimen/text_small" />
+    </LinearLayout>
 </androidx.core.widget.NestedScrollView>

@@ -4,10 +4,11 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import com.iskezis.myst.ui.common.BaseActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -17,23 +18,34 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.transition.TransitionManager
+import coil.load
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.transition.MaterialSharedAxis
 import com.iskezis.myst.MainActivity
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
+import com.iskezis.myst.data.account.AvatarStore
 import com.iskezis.myst.databinding.ActivityAuthBinding
+import com.iskezis.myst.ui.common.BaseActivity
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.MystTheme
 import com.iskezis.myst.util.UiAnimations
 import com.iskezis.myst.util.UiAnimations.pressScale
 import kotlinx.coroutines.launch
+import java.io.File
 
 class AuthActivity : BaseActivity() {
 
     private lateinit var binding: ActivityAuthBinding
     private val viewModel: AuthViewModel by viewModels { AuthViewModel.factory(application) }
+
     private var registerMode = false
     private var navigated = false
+    private var autoYouTubeLaunched = false
+    private var autoMystShown = false
+    private var pendingAvatarPath: String? = null
+    private var conflictDialogShowing = false
+    private var legacyDialogShowing = false
 
     private val youtubeLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -50,16 +62,45 @@ class AuthActivity : BaseActivity() {
         }
     }
 
+    private val avatarPicker = registerForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        avatarCropLauncher.launch(
+            Intent(this, AvatarCropActivity::class.java)
+                .putExtra(AvatarCropActivity.EXTRA_SOURCE_URI, uri.toString()),
+        )
+    }
+
+    private val avatarCropLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        val path = result.data?.getStringExtra(AvatarCropActivity.EXTRA_OUTPUT_PATH)
+        if (path.isNullOrBlank()) {
+            Toast.makeText(this, R.string.avatar_crop_error, Toast.LENGTH_LONG).show()
+            return@registerForActivityResult
+        }
+        pendingAvatarPath = path
+        renderAvatar()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AppLog.i(AppLog.TAG_AUTH, "AuthActivity.onCreate")
-        if ((application as MystApp).session.isLoggedIn) {
-            AppLog.i(AppLog.TAG_AUTH, "Sessão já existente; indo para MainActivity")
+        if ((application as MystApp).session.isLoggedIn &&
+            !(application as MystApp).session.hasLegacyData
+        ) {
+            AppLog.i(AppLog.TAG_AUTH, "Sessão dupla já existente; indo para MainActivity")
             goToMain()
             return
         }
         binding = ActivityAuthBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        pendingAvatarPath = savedInstanceState?.getString(STATE_AVATAR)
+        registerMode = savedInstanceState?.getBoolean(STATE_REGISTER) ?: false
+        autoYouTubeLaunched = savedInstanceState?.getBoolean(STATE_YT_LAUNCHED) ?: false
+        autoMystShown = savedInstanceState?.getBoolean(STATE_MYST_SHOWN) ?: false
         WindowCompat.setDecorFitsSystemWindows(window, false)
         MystTheme.applySystemBars(this)
         ViewCompat.setOnApplyWindowInsetsListener(binding.authRoot) { view, insets ->
@@ -68,11 +109,15 @@ class AuthActivity : BaseActivity() {
             insets
         }
 
-        binding.youtubeButton.setOnClickListener {
-            youtubeLauncher.launch(Intent(this, YouTubeLoginActivity::class.java))
+        binding.mystStepCard.setOnClickListener {
+            if (!viewModel.state.value.loading && !viewModel.state.value.mystReady) {
+                showMystPanel(true)
+            }
         }
-        binding.mystButton.setOnClickListener {
-            showMystPanel(true)
+        binding.youtubeStepCard.setOnClickListener {
+            if (!viewModel.state.value.loading && !viewModel.state.value.youtubeReady) {
+                launchYouTubeLogin()
+            }
         }
         binding.authBack.setOnClickListener { showMystPanel(false) }
         binding.authSwitch.setOnClickListener {
@@ -80,11 +125,34 @@ class AuthActivity : BaseActivity() {
             renderMode(registerMode)
         }
         binding.authSubmit.setOnClickListener { submit() }
-        binding.youtubeButton.pressScale()
-        binding.mystButton.pressScale()
+        binding.authContinue.setOnClickListener {
+            val state = viewModel.state.value
+            if (state.mystReady && state.youtubeReady &&
+                state.youtubeConflict == null && !state.needsLegacyTransfer
+            ) {
+                goToMain()
+            }
+        }
+        binding.authAvatarPicker.setOnClickListener {
+            if (registerMode) {
+                runCatching {
+                    avatarPicker.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                    )
+                }.onFailure { t ->
+                    AppLog.failure(AppLog.TAG_UI, "Seletor de fotos indisponível", t)
+                    Toast.makeText(this, R.string.avatar_crop_error, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        binding.mystStepCard.pressScale()
+        binding.youtubeStepCard.pressScale()
         binding.authSubmit.pressScale()
         binding.authBack.pressScale()
         binding.authSwitch.pressScale()
+        binding.authContinue.pressScale()
+        binding.authAvatarPicker.pressScale()
         binding.authConfirmInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 submit()
@@ -93,7 +161,10 @@ class AuthActivity : BaseActivity() {
                 false
             }
         }
-        binding.authUsernameInput.doAfterTextChanged { binding.usernameLayout.error = null }
+        binding.authUsernameInput.doAfterTextChanged {
+            binding.usernameLayout.error = null
+            renderAvatar()
+        }
         binding.authPasswordInput.doAfterTextChanged { binding.passwordLayout.error = null }
         binding.authConfirmInput.doAfterTextChanged { binding.confirmLayout.error = null }
 
@@ -107,6 +178,7 @@ class AuthActivity : BaseActivity() {
             }
         })
 
+        renderMode(registerMode)
         collectState()
         animateEntry()
     }
@@ -114,7 +186,12 @@ class AuthActivity : BaseActivity() {
     private fun animateEntry() {
         if (!UiAnimations.enabled(this)) return
         val logo = binding.authLogo
-        val items = listOf(binding.authTitle, binding.authSubtitle, binding.entryPanel)
+        val items = listOf(
+            binding.authTitle,
+            binding.authSubtitle,
+            binding.authSteps,
+            binding.authContinue,
+        )
         logo.alpha = 0f
         logo.scaleX = 0.9f
         logo.scaleY = 0.9f
@@ -142,17 +219,177 @@ class AuthActivity : BaseActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.state.collect { state ->
-                    binding.authProgress.isVisible = state.loading
+                    binding.authLoading.isVisible = state.loading
                     binding.authSubmit.isEnabled = !state.loading
                     binding.authSwitch.isEnabled = !state.loading
-                    binding.authError.isVisible = state.errorRes != null
-                    state.errorRes?.let { binding.authError.setText(it) }
-                    if (state.success && !navigated) {
+                    binding.mystStepCard.isEnabled = !state.loading
+                    binding.youtubeStepCard.isEnabled = !state.loading
+                    binding.authContinue.isEnabled = state.mystReady &&
+                        state.youtubeReady &&
+                        !state.loading &&
+                        state.youtubeConflict == null
+                    renderSteps(state)
+                    renderError(state)
+
+                    if (state.mystReady && binding.mystPanel.isVisible) {
+                        showMystPanel(false)
+                    }
+                    if (!state.mystReady && state.youtubeReady && !autoMystShown) {
+                        autoMystShown = true
+                        showMystPanel(true)
+                    }
+                    if (state.mystReady && !state.youtubeReady &&
+                        !autoYouTubeLaunched && !state.loading
+                    ) {
+                        autoYouTubeLaunched = true
+                        launchYouTubeLogin()
+                    }
+
+                    if (state.youtubeConflict != null) {
+                        if (!state.loading && state.errorRes != null) {
+                            // Falhou ao resolver: permite tentar de novo.
+                            conflictDialogShowing = false
+                        }
+                        showConflictDialog(state.youtubeConflict)
+                    } else {
+                        conflictDialogShowing = false
+                    }
+                    if (state.needsLegacyTransfer) {
+                        if (!state.loading && state.errorRes != null) {
+                            legacyDialogShowing = false
+                        }
+                        showLegacyDialog(state)
+                    } else {
+                        legacyDialogShowing = false
+                    }
+
+                    if (state.navigate && !navigated &&
+                        state.youtubeConflict == null && !state.needsLegacyTransfer
+                    ) {
                         navigated = true
-                        goToMain()
+                        binding.authRoot.postDelayed({
+                            if (!isFinishing && !isDestroyed) goToMain()
+                        }, 350)
                     }
                 }
             }
+        }
+    }
+
+    private fun renderSteps(state: AuthState) {
+        binding.mystStepCheck.isVisible = state.mystReady
+        binding.mystStepNumber.isVisible = !state.mystReady
+        binding.mystStepSubtitle.text = if (state.mystReady) {
+            getString(
+                R.string.auth_step_connected,
+                state.mystName.ifBlank { getString(R.string.auth_myst) },
+            )
+        } else {
+            getString(R.string.auth_myst_missing)
+        }
+
+        binding.youtubeStepCheck.isVisible = state.youtubeReady
+        binding.youtubeStepNumber.isVisible = !state.youtubeReady
+        binding.youtubeStepSubtitle.text = if (state.youtubeReady) {
+            getString(
+                R.string.auth_step_connected,
+                state.youtubeName.ifBlank { getString(R.string.auth_youtube_title) },
+            )
+        } else {
+            getString(R.string.auth_youtube_missing)
+        }
+
+        binding.authNoticeCard.isVisible =
+            state.migrationNotice && !binding.mystPanel.isVisible
+        binding.authStepsHint.isVisible =
+            !state.migrationNotice && !binding.mystPanel.isVisible
+    }
+
+    private fun renderError(state: AuthState) {
+        val error = state.errorRes
+        if (error == null) {
+            binding.authError.isVisible = false
+            binding.authStatusError.isVisible = false
+            return
+        }
+        if (binding.mystPanel.isVisible) {
+            binding.authError.isVisible = true
+            binding.authError.setText(error)
+            binding.authStatusError.isVisible = false
+        } else {
+            binding.authError.isVisible = false
+            binding.authStatusError.isVisible = true
+            binding.authStatusError.setText(error)
+        }
+    }
+
+    private fun showMystPanel(show: Boolean) {
+        if (show && viewModel.state.value.mystReady) return
+        val transition = MaterialSharedAxis(MaterialSharedAxis.X, show).apply {
+            duration = 300
+            addTarget(binding.authSteps)
+            addTarget(binding.mystPanel)
+            addTarget(binding.authContinue)
+            addTarget(binding.authNoticeCard)
+            addTarget(binding.authStepsHint)
+            addTarget(binding.authStatusError)
+        }
+        TransitionManager.beginDelayedTransition(binding.authRoot, transition)
+        binding.authSteps.isVisible = !show
+        binding.mystPanel.isVisible = show
+        binding.authContinue.isVisible = !show
+        binding.authNoticeCard.isVisible =
+            !show && viewModel.state.value.migrationNotice
+        binding.authStepsHint.isVisible =
+            !show && !viewModel.state.value.migrationNotice
+        if (show) {
+            binding.authStatusError.isVisible = false
+            binding.authUsernameInput.requestFocus()
+        } else {
+            binding.authError.isVisible = false
+            viewModel.clearError()
+            binding.authStatusError.isVisible = false
+        }
+    }
+
+    private fun renderMode(register: Boolean) {
+        val transition = MaterialSharedAxis(MaterialSharedAxis.X, register).apply {
+            duration = 300
+            addTarget(binding.mystPanel)
+        }
+        TransitionManager.beginDelayedTransition(binding.authRoot, transition)
+        binding.authFormTitle.setText(
+            if (register) R.string.auth_register_title else R.string.auth_login_title,
+        )
+        binding.authSubmit.setText(if (register) R.string.auth_register else R.string.auth_login)
+        binding.authSwitch.setText(
+            if (register) R.string.auth_switch_login else R.string.auth_switch_register,
+        )
+        binding.confirmLayout.visibility = if (register) View.VISIBLE else View.GONE
+        binding.authAvatarPicker.isVisible = register
+        binding.authAvatarHint.isVisible = register
+        if (!register) binding.authConfirmInput.text?.clear()
+        renderAvatar()
+    }
+
+    private fun renderAvatar() {
+        val name = binding.authUsernameInput.text?.toString()?.trim().orEmpty()
+        binding.authAvatarInitial.text = name.take(1).uppercase()
+        val path = pendingAvatarPath
+        val key = AvatarStore.cacheKey(path)
+        if (path != null && key != null) {
+            binding.authAvatarImage.isVisible = true
+            binding.authAvatarInitial.isVisible = false
+            binding.authAvatarImage.load(File(path)) {
+                memoryCacheKey(key)
+                diskCacheKey(key)
+                crossfade(true)
+                placeholder(R.drawable.bg_avatar)
+                error(R.drawable.bg_avatar)
+            }
+        } else {
+            binding.authAvatarImage.isVisible = false
+            binding.authAvatarInitial.isVisible = true
         }
     }
 
@@ -184,41 +421,54 @@ class AuthActivity : BaseActivity() {
         }
 
         if (registerMode) {
-            viewModel.register(username, password)
+            viewModel.register(username, password, pendingAvatarPath)
         } else {
             viewModel.login(username, password)
         }
     }
 
-    private fun renderMode(register: Boolean) {
-        val transition = MaterialSharedAxis(MaterialSharedAxis.X, register).apply {
-            duration = 300
-            addTarget(binding.mystPanel)
-        }
-        TransitionManager.beginDelayedTransition(binding.authRoot, transition)
-        binding.authFormTitle.setText(
-            if (register) R.string.auth_register_title else R.string.auth_login_title,
-        )
-        binding.authSubmit.setText(if (register) R.string.auth_register else R.string.auth_login)
-        binding.authSwitch.setText(
-            if (register) R.string.auth_switch_login else R.string.auth_switch_register,
-        )
-        binding.confirmLayout.visibility = if (register) View.VISIBLE else View.GONE
-        binding.authConfirmInput.text?.clear()
+    private fun launchYouTubeLogin() {
+        youtubeLauncher.launch(Intent(this, YouTubeLoginActivity::class.java))
     }
 
-    private fun showMystPanel(show: Boolean) {
-        val transition = MaterialSharedAxis(MaterialSharedAxis.X, show).apply {
-            duration = 300
-            addTarget(binding.entryPanel)
-            addTarget(binding.mystPanel)
-        }
-        TransitionManager.beginDelayedTransition(binding.authRoot, transition)
-        binding.entryPanel.visibility = if (show) View.GONE else View.VISIBLE
-        binding.mystPanel.visibility = if (show) View.VISIBLE else View.GONE
-        if (show) {
-            binding.authUsernameInput.requestFocus()
-        }
+    private fun showConflictDialog(conflict: YouTubeConflictUi) {
+        if (conflictDialogShowing) return
+        conflictDialogShowing = true
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.auth_youtube_conflict_title)
+            .setMessage(
+                getString(
+                    R.string.auth_youtube_conflict_message,
+                    conflict.linkedName,
+                    conflict.newName,
+                ),
+            )
+            .setCancelable(false)
+            .setPositiveButton(R.string.auth_youtube_conflict_replace) { _, _ ->
+                // Mantém o guarda ligado enquanto o ViewModel trabalha para o
+                // diálogo não reabrir no estado de carregamento.
+                viewModel.confirmYouTubeConflict()
+            }
+            .setNegativeButton(R.string.auth_youtube_conflict_use) { _, _ ->
+                viewModel.useLinkedYouTube()
+            }
+            .show()
+    }
+
+    private fun showLegacyDialog(state: AuthState) {
+        if (legacyDialogShowing) return
+        legacyDialogShowing = true
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.auth_legacy_title)
+            .setMessage(getString(R.string.auth_legacy_message, state.mystName))
+            .setCancelable(false)
+            .setPositiveButton(R.string.auth_legacy_transfer) { _, _ ->
+                viewModel.confirmLegacyTransfer()
+            }
+            .setNegativeButton(R.string.auth_legacy_skip) { _, _ ->
+                viewModel.skipLegacyTransfer()
+            }
+            .show()
     }
 
     private fun shake(view: View) {
@@ -240,5 +490,31 @@ class AuthActivity : BaseActivity() {
             ),
         )
         finish()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(STATE_AVATAR, pendingAvatarPath)
+        outState.putBoolean(STATE_REGISTER, registerMode)
+        outState.putBoolean(STATE_YT_LAUNCHED, autoYouTubeLaunched)
+        outState.putBoolean(STATE_MYST_SHOWN, autoMystShown)
+    }
+
+    override fun onDestroy() {
+        // Só apaga o recorte temporário quando a tela está sendo fechada de
+        // verdade. Se o sistema recriar a Activity (rotação ou processo em
+        // segundo plano), o caminho salvo em onSaveInstanceState precisa
+        // continuar apontando para um arquivo válido.
+        if (isFinishing && !isChangingConfigurations) {
+            AvatarStore.cleanupTemp(this, pendingAvatarPath)
+        }
+        super.onDestroy()
+    }
+
+    companion object {
+        private const val STATE_AVATAR = "state_avatar"
+        private const val STATE_REGISTER = "state_register"
+        private const val STATE_YT_LAUNCHED = "state_youtube_launched"
+        private const val STATE_MYST_SHOWN = "state_myst_shown"
     }
 }

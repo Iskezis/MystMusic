@@ -78,6 +78,12 @@ class HomeFragment : Fragment() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Foto e nome podem ter mudado nas Configurações.
+        viewModel.refreshAccount()
+    }
+
     private fun render(state: HomeUiState) {
         AppLog.d(
             AppLog.TAG_UI,
@@ -86,10 +92,10 @@ class HomeFragment : Fragment() {
                 "recomendados=${state.recommended.javaClass.simpleName}",
         )
         binding.homeRefresh.isRefreshing = state.refreshing
-        val initial = state.accountName.trim().take(1).uppercase()
         adapter.submitList(
             listOf(
-                HomeItem.Search(initial),
+                HomeItem.Greeting(state.accountName, state.avatarPath),
+                HomeItem.Search,
                 HomeItem.Header(HomeSection.RECENT),
                 HomeItem.Carousel(HomeSection.RECENT, state.recent),
                 HomeItem.Header(HomeSection.TRENDING),
