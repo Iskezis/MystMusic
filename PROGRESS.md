@@ -41,6 +41,7 @@ Atualize após cada etapa. Marque [x] só quando o build do GitHub estiver verde
 | 40795596184 | ac522e9 | verde | Token do Discord sem aspas, leitura por iframe, validação REST e migração de sessão antiga (v1.0.4) | `apks/app.apk`, `apks/app-tv.apk` |
 | 40899680539 | 208d4b3 | verde | Capa do Discord via media proxy (`mp:`) e card somente com ação/música/artista (v1.0.6) | `apks/app.apk`, `apks/app-tv.apk` |
 | 40903108724 | 80d2f3b | verde | Capa pelo aplicativo público do BitChord, sem criação de app (captcha) e barra de progresso restaurada (v1.0.7) | `apks/app.apk`, `apks/app-tv.apk` |
+| 40905793966 | 918715c | verde | Preparação da 0.1.0 Alpha: versionCode 9, README/CHANGELOG e APKs da release | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
 - Player: `ResolvingDataSource` resolve `myst://track/<id>` na hora de abrir. A extração foi refeita seguindo o caminho que o BitChord usa via InnerTube (`InnerTubeXResolver`/`PlaybackClientCatalog`): o primeiro cliente é o **VISIONOS 0.1** no endpoint `music.youtube.com/youtubei/v1/player`, com `visitorData` novo, `clientId` 101, `X-Goog-Api-Format-Version: 1`, sem cookies e sem `playbackContext`. Ele devolve URL direta, que é validada com Range de 2 bytes antes de chegar ao ExoPlayer.
