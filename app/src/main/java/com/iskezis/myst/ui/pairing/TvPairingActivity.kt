@@ -172,7 +172,9 @@ class TvPairingActivity : BaseActivity() {
             binding.tvPairRetry.isVisible = true
             binding.tvPairConfirm.isEnabled = false
             binding.tvPairStatus.setText(R.string.pairing_expired)
-            binding.tvPairStatus.setTextColor(MystTheme.color(this, R.attr.mystError))
+            binding.tvPairStatus.setTextColor(
+                MystTheme.color(this@TvPairingActivity, R.attr.mystError),
+            )
         }
     }
 
@@ -252,7 +254,9 @@ class TvPairingActivity : BaseActivity() {
                 success = true
                 busy = false
                 binding.tvPairStatus.setText(R.string.pairing_tv_success)
-                binding.tvPairStatus.setTextColor(MystTheme.color(this, R.attr.mystAccentText))
+                binding.tvPairStatus.setTextColor(
+                    MystTheme.color(this@TvPairingActivity, R.attr.mystAccentText),
+                )
                 binding.tvPairRetry.isVisible = false
                 binding.tvPairConfirm.isEnabled = false
                 Toast.makeText(this@TvPairingActivity, R.string.pairing_success, Toast.LENGTH_SHORT).show()
@@ -271,7 +275,9 @@ class TvPairingActivity : BaseActivity() {
                 binding.tvPairConfirm.isEnabled = true
                 binding.tvPairRetry.isVisible = true
                 binding.tvPairStatus.setText(R.string.pairing_tv_error)
-                binding.tvPairStatus.setTextColor(MystTheme.color(this, R.attr.mystError))
+                binding.tvPairStatus.setTextColor(
+                    MystTheme.color(this@TvPairingActivity, R.attr.mystError),
+                )
             }
         }
     }

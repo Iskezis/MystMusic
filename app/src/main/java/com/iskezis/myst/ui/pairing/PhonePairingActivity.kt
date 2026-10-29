@@ -137,7 +137,9 @@ class PhonePairingActivity : BaseActivity() {
             binding.phonePairCodeRoot.isVisible = false
             binding.phonePairTvList.isVisible = false
             binding.phonePairNone.isVisible = false
-            binding.phonePairStatus.setTextColor(MystTheme.color(this, R.attr.mystAccentText))
+            binding.phonePairStatus.setTextColor(
+                MystTheme.color(this@PhonePairingActivity, R.attr.mystAccentText),
+            )
             binding.phonePairStatus.setText(R.string.pairing_success)
             binding.phonePairRetry.isVisible = false
             Toast.makeText(this@PhonePairingActivity, R.string.pairing_success, Toast.LENGTH_SHORT).show()
@@ -273,7 +275,9 @@ class PhonePairingActivity : BaseActivity() {
                 binding.phonePairCode.text = newCode
                 binding.phonePairCodeRoot.isVisible = true
                 binding.phonePairStatus.setText(R.string.pairing_waiting)
-                binding.phonePairStatus.setTextColor(MystTheme.color(this, R.attr.mystAccentText))
+                binding.phonePairStatus.setTextColor(
+                    MystTheme.color(this@PhonePairingActivity, R.attr.mystAccentText),
+                )
                 scheduleExpiry()
             } catch (t: Throwable) {
                 AppLog.failure(AppLog.TAG_PAIRING, "TV não aceitou a conexão", t)
