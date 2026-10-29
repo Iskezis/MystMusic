@@ -67,15 +67,6 @@ class SessionManager(context: Context) {
         get() = prefs.getString(KEY_DISCORD_NAME, null)
         set(value) = prefs.edit().putString(KEY_DISCORD_NAME, value).apply()
 
-    /**
-     * Aplicativo do Discord usado para registrar as capas no media proxy.
-     * O gateway não aceita URLs cruas em `large_image`; ele precisa de um
-     * caminho `mp:` emitido por `/applications/{id}/external-assets`.
-     */
-    var discordAppId: String?
-        get() = prefs.getString(KEY_DISCORD_APP_ID, null)
-        set(value) = prefs.edit().putString(KEY_DISCORD_APP_ID, value).apply()
-
     var tvPaired: Boolean
         get() = prefs.getBoolean(KEY_TV_PAIRED, false)
         set(value) = prefs.edit().putBoolean(KEY_TV_PAIRED, value).apply()
@@ -138,7 +129,6 @@ class SessionManager(context: Context) {
         private const val KEY_YT_SYNC = "yt_sync"
         private const val KEY_DISCORD_TOKEN = "discord_token"
         private const val KEY_DISCORD_NAME = "discord_name"
-        private const val KEY_DISCORD_APP_ID = "discord_app_id"
         private const val KEY_TV_PAIRED = "tv_paired"
     }
 }

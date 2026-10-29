@@ -117,7 +117,7 @@
     <string name="settings_version">Versão %1$s</string>
 
     <string name="discord_warning_title">Discord Rich Presence</string>
-    <string name="discord_warning">O Rich Presence usa um token de usuário do Discord via conexão não oficial. Isso fica na zona cinzenta dos termos do Discord e pode levar a bloqueio da conta. Ative apenas se aceitar o risco. Para exibir a capa, o MystMusic pode criar um aplicativo “MystMusic” na sua conta do Discord; ele só serve para hospedar a imagem no media proxy. O MystMusic funciona normalmente sem isso.</string>
+    <string name="discord_warning">O Rich Presence usa um token de usuário do Discord via conexão não oficial. Isso fica na zona cinzenta dos termos do Discord e pode levar a bloqueio da conta. Ative apenas se aceitar o risco. Para exibir a capa, o MystMusic usa o media proxy do Discord por meio de um aplicativo público de código aberto; nenhum aplicativo é criado na sua conta. O MystMusic funciona normalmente sem isso.</string>
     <string name="discord_accept">Entendi, ativar</string>
     <string name="discord_connect">Conectar com Discord</string>
     <string name="discord_disconnect">Desconectar</string>
