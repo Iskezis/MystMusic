@@ -21,12 +21,12 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
   - [x] Configurações → Aparência: Escuro / Claro / Sistema (padrão Sistema), persistido
   - [x] Interruptor "Preto AMOLED" só aparece quando o tema efetivo é escuro; fundo #000000
   - [x] Sem cores fixas nos layouts (tudo por atributos de tema), sem piscar ao trocar
-- [ ] 12. Login obrigatório duplo + foto de perfil
-  - [ ] Navegação só abre com YouTube **e** Myst logados
-  - [ ] Criar conta Myst com foto de perfil (galeria + recorte circular, 512 px)
-  - [ ] Avatar/nome da Myst no cabeçalho e nas Configurações (nunca o do YouTube)
-  - [ ] Migração de sessões da 0.1.0 com só uma conta
-  - [ ] Pareamento da TV leva as duas contas + foto
+- [x] 12. Login obrigatório duplo + foto de perfil
+  - [x] Navegação só abre com YouTube **e** Myst logados
+  - [x] Criar conta Myst com foto de perfil (galeria + recorte circular, 512 px)
+  - [x] Avatar/nome da Myst no cabeçalho e nas Configurações (nunca o do YouTube)
+  - [x] Migração de sessões da 0.1.0 com só uma conta
+  - [x] Pareamento da TV leva as duas contas + foto
 - [ ] 13. Dados do YouTube Music da conta
   - [ ] Playlists do YTM na aba Playlists (seção "YouTube Music")
   - [ ] Histórico do YTM em Recentes (mesclado, sem duplicatas)
@@ -62,6 +62,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - API de atualização do GitHub só funciona sem token se o repositório for público.
 
 ## Release
+- **0.2.0-dev.2** (`versionCode 11`, `versionName "0.2.0-dev.2"`): build de desenvolvimento da fase 12 (login duplo obrigatório, foto de perfil da conta Myst, migração da sessão 0.1.0 e pareamento TV com as duas contas + avatar), run `40939083129`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.1** (`versionCode 10`, `versionName "0.2.0-dev.1"`): build de desenvolvimento da fase 11 (tema Sistema/Claro/Escuro + Preto AMOLED + tela Aparência), run `40930983204`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.1.0 Alpha** (`versionCode 9`, `versionName "0.1.0 Alpha"`): primeira alpha pública para celular e Android TV. A numeração anterior (1.0.x) era de desenvolvimento; o `versionCode` continua crescendo (9) para permitir atualização sobre a v1.0.7.
 - APKs: `apks/app.apk` (mobile) e `apks/app-tv.apk` (TV, armeabi-v7a), assinados com a chave de debug do build.
@@ -93,6 +94,8 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 | 40905793966 | 918715c | verde | Preparação da 0.1.0 Alpha: versionCode 9, README/CHANGELOG e APKs da release | `apks/app.apk`, `apks/app-tv.apk` |
 | 40930501819 | 33e6d20 | falha | `this` dentro de `lifecycleScope.launch` era o `CoroutineScope`, não a Activity, em `MystTheme.color(...)` no pareamento | — |
 | 40930983204 | a893a44 | verde | Fase 11: tema Sistema/Claro/Escuro, Preto AMOLED, tela Aparência e tokens de tema em todas as telas; correção do contexto de Activity no pareamento (0.2.0-dev.1) | `apks/app.apk`, `apks/app-tv.apk` |
+| 40938511745 | bf4f36d | falha | Fase 12: `completeMystAuth` chamava DAO suspenso fora de coroutine e a limpeza do cache do Coil usava `String` em vez de `MemoryCache.Key` | — |
+| 40939083129 | c38599c | verde | Fase 12: login duplo obrigatório, foto de perfil com recorte 512 px, migração 0.1.0 e pareamento TV com as duas contas + avatar (0.2.0-dev.2) | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
 - Player: `ResolvingDataSource` resolve `myst://track/<id>` na hora de abrir. A extração foi refeita seguindo o caminho que o BitChord usa via InnerTube (`InnerTubeXResolver`/`PlaybackClientCatalog`): o primeiro cliente é o **VISIONOS 0.1** no endpoint `music.youtube.com/youtubei/v1/player`, com `visitorData` novo, `clientId` 101, `X-Goog-Api-Format-Version: 1`, sem cookies e sem `playbackContext`. Ele devolve URL direta, que é validada com Range de 2 bytes antes de chegar ao ExoPlayer.
@@ -122,6 +125,15 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - Barras do sistema: `MystTheme.applySystemBars` centraliza ícones claros/escuros e é chamado no `BaseActivity` e novamente depois de `setDecorFitsSystemWindows` nas telas que usam edge-to-edge.
 - A tela Aparência usa cards + `RadioGroup` com seleção controlada em código (os cards são os alvos de toque; os radios são apenas indicadores). A linha AMOLED entra/sai com `AutoTransition` (fade + altura). O estado é relido em `refresh()` porque o ViewModel sobrevive à recriação por mudança de configuração.
 - Miniaturas claro/escuro da tela Aparência usam cores fixas de propósito: elas representam os temas, não superfícies da UI atual.
+- Login duplo (fase 12): `SessionManager` passou a guardar a identidade Myst e a identidade YouTube em chaves separadas. `isLoggedIn` exige as duas, e a navegação principal só abre nesse estado; um conflito de vínculo também bloqueia a entrada. O `MainActivity` e o `AuthActivity` usam a mesma regra, então não há caminho que abra a navegação com só uma conta.
+- Migração 0.1.0: a sessão antiga de uma conta é lida uma única vez no construtor do `SessionManager`. Se era Myst, o id vira a conta Myst dona dos dados; se era YouTube, o id antigo fica em `legacy_data_user_id` e a tela de login oferece **Trazer meus dados**. A transferência reatribui playlists, histórico e afinidade em uma transação Room; **Agora não** limpa só a oferta, sem apagar nada.
+- Foto de perfil: o seletor entrega a URI ao `AvatarCropActivity`, o `PhotoLoader` decodifica com downscale e corrige a orientação EXIF (androidx EXIF, pois `android.media.ExifInterface` só existe a partir da API 24), o `AvatarCropView` recorta 1:1 com máscara circular e o resultado é gravado em `filesDir/avatars/<userId>.jpg` (JPEG 512×512). O caminho fica no Room, nunca a URI do provedor, que pode expirar.
+- Perfil: cabeçalho da Navegação e Configurações leem sempre o nome/avatar da conta Myst. O YouTube aparece apenas como informação secundária ("YouTube conectado · nome"), nunca como identidade principal. Na TV a troca de foto fica desabilitada; a imagem chega pelo pareamento.
+- Conflito de YouTube: se a conta Myst já está vinculada a outra conta e o usuário entra com uma diferente, a sessão anterior é restaurada e a nova fica pendente. O diálogo oferece **Trocar vínculo** (confirma a nova) ou **Usar a vinculada** (mantém a antiga; se a ativa for outra, desconecta para o usuário entrar de novo). No player, o login é explícito e `linkYouTube` troca o vínculo automaticamente para não deixar a reprodução em um beco sem saída.
+- Room v2: a migração 1→2 apenas adiciona `avatarPath`, `youtubeAccountId` e `youtubeDisplayName` em `users` com `ALTER TABLE`. Nenhuma tabela é recriada e `fallbackToDestructiveMigration` continua proibido.
+- Pareamento TV (fase 12): o payload cifrado leva `avatarBase64` (JPEG 512) e a identidade YouTube (`youtubeAccountId`/`youtubeDisplayName`) além dos cookies. A exportação recusa sem as duas contas; a TV recusa payload sem cookies, força o tipo Myst mesmo em payload antigo, grava as duas sessões, o vínculo no Room e o avatar. A TV não recebe senha.
+- Configurações: **Deslogar** abre a escolha Myst / YouTube / ambas. Sair só do YouTube mantém o perfil e as playlists; sair do Myst mantém a sessão YouTube para a próxima conta Myst. Na TV, qualquer logout volta ao pareamento.
+- Versão de desenvolvimento da fase 12: `0.2.0-dev.2`, `versionCode 11`.
 - Documentação: o dono do repositório traduziu o README para inglês e apagou o `PROGRESS.md` no remoto durante a fase 11. O README em inglês foi preservado; o `PROGRESS.md` foi restaurado porque o `AGENTS.md` exige o registro de fases/builds. A referência a "Roadmap no README" foi ajustada para apontar ao `PROGRESS.md`.
 - Versão de desenvolvimento da fase 11: `0.2.0-dev.1`, `versionCode 10`.
 
