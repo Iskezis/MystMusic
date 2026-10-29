@@ -1,6 +1,8 @@
 package com.iskezis.myst
 
 import android.app.Application
+import coil.ImageLoader
+import coil.ImageLoaderFactory
 import com.iskezis.myst.data.account.AccountRepository
 import com.iskezis.myst.data.account.SessionManager
 import com.iskezis.myst.data.db.AppDatabase
@@ -24,7 +26,19 @@ data class StreamFailure(
     val at: Long = System.currentTimeMillis(),
 )
 
-class MystApp : Application() {
+class MystApp : Application(), ImageLoaderFactory {
+
+    /**
+     * O Coil usa bitmaps de hardware por padrão no Android 8+. As transições de
+     * fragmento (MaterialSharedAxis) tiram um snapshot da tela em um Canvas de
+     * software, e desenhar um bitmap de hardware nesse Canvas lança
+     * `IllegalArgumentException: Software rendering doesn't support hardware
+     * bitmaps` — exatamente o crash observado ao navegar com música tocando.
+     * Desabilitar globalmente mantém todas as capas desenháveis no snapshot.
+     */
+    override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)
+        .allowHardware(false)
+        .build()
 
     /** Última falha de resolução de stream, usada pela UI para oferecer login. */
     @Volatile
