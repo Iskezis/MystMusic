@@ -334,7 +334,7 @@ class AccountRepository(
         )
     }
 
-    private fun completeMystAuth(user: UserEntity): MystAuthResult {
+    private suspend fun completeMystAuth(user: UserEntity): MystAuthResult {
         // Um vínculo pendente pertence ao fluxo anterior de login do YouTube.
         // Ao autenticar no Myst, a decisão volta a ser do conflito atual.
         pendingYouTube = null

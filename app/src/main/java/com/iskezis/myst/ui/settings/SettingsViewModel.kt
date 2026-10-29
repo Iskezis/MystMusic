@@ -6,10 +6,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import coil.imageLoader
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
-import com.iskezis.myst.data.account.AvatarStore
 import com.iskezis.myst.data.discord.DiscordState
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,17 +61,13 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
                 _error.value = R.string.settings_avatar_error
                 return@launch
             }
-            val oldPath = _state.value.avatarPath
             val saved = app.accounts.updateAvatar(userId, sourcePath)
             if (saved == null) {
                 _error.value = R.string.settings_avatar_error
                 return@launch
             }
-            // A chave do Coil inclui tamanho e data do arquivo; limpar a antiga
-            // evita que a foto anterior reapareça ao voltar para a tela.
-            AvatarStore.cacheKey(oldPath)?.let { key ->
-                runCatching { app.imageLoader.memoryCache?.remove(key) }
-            }
+            // A chave do Coil inclui tamanho e data do arquivo: o avatar novo
+            // usa outra chave, então a foto anterior não reaparece na tela.
             refresh()
         }
     }
