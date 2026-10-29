@@ -56,6 +56,7 @@ class MystApp : Application(), ImageLoaderFactory {
     val discord: DiscordPresenceManager by lazy { DiscordPresenceManager(this, session) }
 
     private val warmUpScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val discordScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val crashFile by lazy { File(filesDir, "myst_last_crash.txt") }
 
     override fun onCreate() {
@@ -87,6 +88,29 @@ class MystApp : Application(), ImageLoaderFactory {
         }
         // Abre TLS e renova o visitorData antes do primeiro toque em uma faixa.
         warmUpScope.launch { innerTube.warmUp() }
+        observePlayerForDiscord()
+    }
+
+    /**
+     * O Discord precisa saber da pausa mesmo quando a MainActivity não está em
+     * STARTED (por exemplo, pausa pelo botão da notificação ou tela apagada).
+     * Observar o PlayerController no escopo da Application mantém a presença
+     * sincronizada sem depender do ciclo de vida de uma tela.
+     */
+    private fun observePlayerForDiscord() {
+        discordScope.launch {
+            playerController.state.collect { state ->
+                runCatching {
+                    discord.onPlayerState(state)
+                }.onFailure { t ->
+                    AppLog.failure(
+                        AppLog.TAG_DISCORD,
+                        "Falha atualizando Discord; player continua",
+                        t,
+                    )
+                }
+            }
+        }
     }
 
     private fun installCrashLogger() {

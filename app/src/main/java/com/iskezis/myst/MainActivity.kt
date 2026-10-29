@@ -188,15 +188,6 @@ class MainActivity : AppCompatActivity() {
                         lastLoggedError = null
                     }
                     renderMiniPlayer()
-                    runCatching {
-                        (application as MystApp).discord.onPlayerState(state)
-                    }.onFailure {
-                        AppLog.failure(
-                            AppLog.TAG_UI,
-                            "Falha atualizando Discord; player continua",
-                            it,
-                        )
-                    }
                 }
             }
         }

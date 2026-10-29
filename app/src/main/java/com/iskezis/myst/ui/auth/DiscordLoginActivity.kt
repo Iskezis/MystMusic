@@ -174,18 +174,26 @@ class DiscordLoginActivity : AppCompatActivity() {
             ): Boolean {
                 // Se o alerta atrasar além do timeout, ainda assim não deixe
                 // um token aparecer em um diálogo do WebView.
-                val lateToken = if (!awaitingToken) parseToken(message) else null
-                if (lateToken != null) {
-                    result?.confirm()
-                    if (!finished && !captured) {
-                        captured = true
-                        finishWithToken(lateToken)
+                if (!awaitingToken) {
+                    val lateToken = parseToken(message)
+                    if (lateToken != null) {
+                        result?.confirm()
+                        if (!finished && !captured) {
+                            captured = true
+                            finishWithToken(lateToken)
+                        }
+                        return true
                     }
-                    return true
+                    val empty = message.isNullOrBlank() ||
+                        message == "null" ||
+                        message == "undefined"
+                    if (empty && attempts > 0) {
+                        result?.confirm()
+                        return true
+                    }
+                    // Não engole alertas legítimos do Discord.
+                    return super.onJsAlert(view, url, message, result)
                 }
-                // Não engole alertas legítimos do Discord: só intercepta a
-                // resposta da leitura que nós mesmos disparamos.
-                if (!awaitingToken) return super.onJsAlert(view, url, message, result)
                 awaitingToken = false
                 handler.removeCallbacks(harvestTimeout)
                 result?.confirm()

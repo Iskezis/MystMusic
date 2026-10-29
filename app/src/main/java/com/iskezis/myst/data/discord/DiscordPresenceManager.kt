@@ -51,8 +51,9 @@ data class DiscordState(
  *
  * A implementação segue o mesmo fluxo do KizzyRPC usado pelo BitChord:
  * valida o token na REST, identifica com o fingerprint do cliente Android,
- * mantém heartbeat com ACK, reconecta com backoff e reenvia a última presença
- * quando a sessão do gateway volta. Nenhum token é gravado no Logcat.
+ * mantém heartbeat com ACK e reconecta com backoff. Ao voltar, a presença é
+ * reconstruída a partir do estado atual do player. Nenhum token é gravado no
+ * Logcat.
  */
 class DiscordPresenceManager(
     @Suppress("UNUSED_PARAMETER") context: Context,
@@ -90,7 +91,6 @@ class DiscordPresenceManager(
     private var connectJob: Job? = null
     private var heartbeatJob: Job? = null
     private var reconnectJob: Job? = null
-    private var pauseClearJob: Job? = null
     private var helloTimeoutJob: Job? = null
     private var readyTimeoutJob: Job? = null
 
@@ -105,7 +105,6 @@ class DiscordPresenceManager(
     private var reconnectAttempt = 0
 
     private var latestPlayerState: PlayerState? = null
-    private var lastPresence: JsonObject? = null
     private var presenceActive = false
     private var presenceTrackId: String? = null
     private var presenceStart = 0L
@@ -155,8 +154,6 @@ class DiscordPresenceManager(
         helloTimeoutJob = null
         readyTimeoutJob?.cancel()
         readyTimeoutJob = null
-        pauseClearJob?.cancel()
-        pauseClearJob = null
         ready = false
         sequence = null
         sessionId = null
@@ -164,7 +161,6 @@ class DiscordPresenceManager(
         awaitingAck = false
         presenceActive = false
         presenceTrackId = null
-        lastPresence = null
         lastPlaying = false
         session.clearDiscord()
         runCatching {
@@ -184,9 +180,9 @@ class DiscordPresenceManager(
     }
 
     /**
-     * Chamado pela MainActivity a cada atualização do player. Qualquer falha
-     * aqui fica isolada: o Discord nunca pode derrubar a reprodução nem a
-     * navegação do app.
+     * Chamado pelo observador global de `MystApp` a cada atualização do player.
+     * Qualquer falha aqui fica isolada: o Discord nunca pode derrubar a
+     * reprodução nem a navegação do app.
      */
     fun onPlayerState(state: PlayerState) {
         try {
@@ -200,33 +196,29 @@ class DiscordPresenceManager(
         latestPlayerState = state
         val track = state.track
         if (track == null) {
-            pauseClearJob?.cancel()
-            pauseClearJob = null
             lastPlaying = false
-            presenceActive = false
-            presenceTrackId = null
-            clearPresence()
-            return
-        }
-
-        if (!state.isPlaying) {
-            lastPlaying = false
-            if (pauseClearJob == null) {
-                pauseClearJob = scope.launch {
-                    delay(PAUSE_CLEAR_MS)
-                    pauseClearJob = null
-                    if (latestPlayerState?.isPlaying == false && presenceActive) {
-                        presenceActive = false
-                        presenceTrackId = null
-                        clearPresence()
-                    }
-                }
+            if (presenceActive) {
+                presenceActive = false
+                presenceTrackId = null
+                clearPresence()
             }
             return
         }
 
-        pauseClearJob?.cancel()
-        pauseClearJob = null
+        if (!state.isPlaying) {
+            // O card do Discord não deve continuar contando tempo enquanto a
+            // música está pausada. Antes havia uma carência de 2 minutos; o
+            // usuário pediu que sumisse imediatamente, inclusive ao trocar de
+            // faixa (o estado intermediário é "pausado").
+            lastPlaying = false
+            if (presenceActive) {
+                presenceActive = false
+                presenceTrackId = null
+                clearPresence()
+            }
+            return
+        }
+
         val resumed = !lastPlaying
         lastPlaying = true
 
@@ -243,8 +235,13 @@ class DiscordPresenceManager(
         val presence = presencePayload(
             buildActivity(track, expectedStart, state.durationMs),
         )
-        lastPresence = presence
-        if (ready) sendPresence(presence)
+        if (ready) {
+            AppLog.d(
+                AppLog.TAG_DISCORD,
+                "Presença do Discord atualizada: ${track.title} | capa=${!track.artworkUrl().isNullOrBlank()}",
+            )
+            sendPresence(presence)
+        }
     }
 
     private fun startConnection(validateToken: Boolean) {
@@ -570,12 +567,10 @@ class DiscordPresenceManager(
             AppLog.TAG_DISCORD,
             "Discord pronto como ${name ?: session.discordName ?: "usuário"}",
         )
-        val pending = lastPresence
-        if (pending != null) {
-            sendPresence(pending)
-        } else {
-            replayLatest()
-        }
+        // Sempre reconstrói a partir do estado atual do player. Reenviar um
+        // `lastPresence` antigo poderia ressuscitar uma música que já foi
+        // pausada ou trocada enquanto o socket estava caído.
+        replayLatest()
     }
 
     private fun handleResumed() {
@@ -601,10 +596,17 @@ class DiscordPresenceManager(
             presenceStart = start
             lastPlaying = true
             val presence = presencePayload(buildActivity(track, start, current.durationMs))
-            lastPresence = presence
+            AppLog.d(
+                AppLog.TAG_DISCORD,
+                "Presença do Discord reenviada: ${track.title} | capa=${!track.artworkUrl().isNullOrBlank()}",
+            )
             sendPresence(presence)
-        } else if (lastPresence != null) {
-            lastPresence?.let { sendPresence(it) }
+        } else {
+            // Pausado, parado ou sem faixa: o card não deve voltar no reconnect.
+            presenceActive = false
+            presenceTrackId = null
+            lastPlaying = false
+            clearPresence()
         }
     }
 
@@ -748,6 +750,19 @@ class DiscordPresenceManager(
         put("details", track.title.ifBlank { "MystMusic" }.take(128))
         put("state", track.artist.ifBlank { "MystMusic" }.take(128))
         put("status_display_type", 1)
+        val artwork = discordArtwork(track)
+        if (artwork != null) {
+            // O Discord aceita uma URL externa completa em large_image e a
+            // resolve pelo media proxy dele; não é preciso application_id nem
+            // cadastrar o asset previamente.
+            put(
+                "assets",
+                buildJsonObject {
+                    put("large_image", artwork)
+                    put("large_text", track.title.ifBlank { "MystMusic" }.take(128))
+                },
+            )
+        }
         put(
             "timestamps",
             buildJsonObject {
@@ -755,6 +770,28 @@ class DiscordPresenceManager(
                 if (durationMs > 0) put("end", startMs + durationMs)
             },
         )
+    }
+
+    /**
+     * O cartão do Discord é pequeno e o media proxy não tenta outra resolução
+     * quando a URL responde 404. `maxresdefault`/`hq720` não existem para todos
+     * os vídeos do YouTube; `mqdefault` existe sempre, é 16:9 (sem as tarjas
+     * do `hqdefault`) e cobre com folga os ~96dp desenhados pelo Discord.
+     * Capas quadradas do YouTube Music (`googleusercontent`) são mantidas.
+     */
+    private fun discordArtwork(track: Track): String? {
+        val url = track.artworkUrl()?.takeIf { it.startsWith("https://") } ?: return null
+        if (!url.contains("i.ytimg.com/vi/")) return url
+        return when {
+            url.contains("maxresdefault") || url.contains("hq720") ||
+                url.contains("hqdefault") || url.contains("sddefault") ->
+                url.replace("maxresdefault", "mqdefault")
+                    .replace("hq720", "mqdefault")
+                    .replace("hqdefault", "mqdefault")
+                    .replace("sddefault", "mqdefault")
+
+            else -> url
+        }
     }
 
     private fun presencePayload(activity: JsonObject?): JsonObject = buildJsonObject {
@@ -768,7 +805,6 @@ class DiscordPresenceManager(
     }
 
     private fun sendPresence(presence: JsonObject) {
-        lastPresence = presence
         if (!ready) return
         send(
             buildJsonObject {
@@ -780,8 +816,10 @@ class DiscordPresenceManager(
 
     private fun clearPresence() {
         val presence = presencePayload(null)
-        lastPresence = presence
-        if (ready) sendPresence(presence)
+        if (ready) {
+            AppLog.i(AppLog.TAG_DISCORD, "Presença do Discord removida (pausa/parada)")
+            sendPresence(presence)
+        }
     }
 
     private fun send(payload: JsonObject): Boolean {
@@ -822,7 +860,6 @@ class DiscordPresenceManager(
         private const val HELLO_TIMEOUT_MS = 15_000L
         private const val READY_TIMEOUT_MS = 20_000L
         private const val MAX_RECONNECT_ATTEMPTS = 3
-        private const val PAUSE_CLEAR_MS = 2 * 60 * 1000L
         private val AUTH_CLOSE_CODES = setOf(4003, 4004, 4010, 4011, 4012, 4013, 4014, 401, 403)
     }
 }
