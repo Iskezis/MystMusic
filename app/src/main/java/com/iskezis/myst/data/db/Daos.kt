@@ -233,6 +233,14 @@ interface YouTubeLibraryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertPlaylistTracks(tracks: List<YtPlaylistTrackEntity>)
 
+    @Query(
+        """
+        SELECT * FROM yt_playlist_tracks WHERE userId = :userId
+        ORDER BY ytId ASC, position ASC
+        """,
+    )
+    suspend fun allPlaylistTracks(userId: Long): List<YtPlaylistTrackEntity>
+
     @Query("DELETE FROM yt_playlist_tracks WHERE userId = :userId AND ytId = :ytId")
     suspend fun deletePlaylistTracks(userId: Long, ytId: String)
 
@@ -260,6 +268,9 @@ interface YouTubeLibraryDao {
 
     @Query("SELECT * FROM yt_sync_state WHERE userId = :userId AND section = :section LIMIT 1")
     suspend fun sync(userId: Long, section: String): YtSyncEntity?
+
+    @Query("SELECT * FROM yt_sync_state WHERE userId = :userId")
+    suspend fun syncStates(userId: Long): List<YtSyncEntity>
 
     @Upsert
     suspend fun upsertSync(sync: YtSyncEntity)

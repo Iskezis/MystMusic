@@ -19,6 +19,19 @@ enum class ThemeMode(val storageValue: String) {
     companion object {
         fun fromStorage(value: String?): ThemeMode =
             entries.firstOrNull { it.storageValue == value } ?: SYSTEM
+
+        fun fromStorageOrNull(value: String?): ThemeMode? =
+            entries.firstOrNull { it.storageValue == value }
+    }
+}
+
+/** Fotografia das preferências de aparência usada pelo Mystaccount.json. */
+data class AppearanceSettings(
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val amoled: Boolean = false,
+) {
+    companion object {
+        val DEFAULT = AppearanceSettings()
     }
 }
 
@@ -59,6 +72,24 @@ class AppearancePreferences(context: Context) {
     }
 
     fun isAmoledActive(context: Context): Boolean = amoled && isDarkEffective(context)
+
+    /** Lê tudo que deve viajar no Mystaccount.json. */
+    fun snapshot(): AppearanceSettings = AppearanceSettings(
+        themeMode = themeMode,
+        amoled = amoled,
+    )
+
+    /**
+     * Restaura as preferências de uma conta. A mudança do modo noturno é
+     * aplicada pelo chamador na thread principal, porque o AppCompat recria as
+     * Activities abertas.
+     */
+    fun apply(settings: AppearanceSettings) {
+        prefs.edit()
+            .putString(KEY_THEME_MODE, settings.themeMode.storageValue)
+            .putBoolean(KEY_AMOLED, settings.amoled)
+            .apply()
+    }
 
     companion object {
         private const val PREFS_NAME = "myst_appearance"

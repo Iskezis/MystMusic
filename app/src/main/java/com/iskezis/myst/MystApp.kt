@@ -54,7 +54,9 @@ class MystApp : Application(), ImageLoaderFactory {
     val appearance: AppearancePreferences by lazy { AppearancePreferences(this) }
     val innerTube: InnerTubeClient by lazy { InnerTubeClient(this, session) }
     val youtube: YouTubeRepository by lazy { YouTubeRepository(innerTube) }
-    val accountFiles: MystAccountFileRepository by lazy { MystAccountFileRepository(this, database) }
+    val accountFiles: MystAccountFileRepository by lazy {
+        MystAccountFileRepository(this, database, appearance)
+    }
     val accounts: AccountRepository by lazy {
         AccountRepository(this, database, session, innerTube, accountFiles)
     }

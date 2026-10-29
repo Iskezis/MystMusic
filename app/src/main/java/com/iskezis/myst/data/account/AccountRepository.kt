@@ -3,6 +3,7 @@ package com.iskezis.myst.data.account
 import android.content.Context
 import android.net.Uri
 import android.webkit.CookieManager
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.room.withTransaction
 import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.UserEntity
@@ -120,14 +121,36 @@ class AccountRepository(
         val user = restored.user
         val name = user.displayName.ifBlank { user.username }
         session.saveMyst(user.id, name)
+        // A URI escolhida no OpenDocument também passa a ser a cópia externa
+        // automática. Reinstalar o app apaga as permissões persistidas, então
+        // sem este passo o arquivo restaurado nunca mais seria atualizado.
+        val linked = runCatching { accountFiles.saveToUri(user.id, uri) }
+            .onFailure {
+                AppLog.w(
+                    AppLog.TAG_AUTH,
+                    "Arquivo restaurado, mas não foi possível religar a cópia externa: " +
+                        AppLog.describe(it),
+                )
+            }
+            .getOrNull()
         accountFiles.requestSync()
         AppLog.i(
             AppLog.TAG_AUTH,
             "Conta Myst restaurada do arquivo: id=${user.id} novo=${restored.created} " +
                 "playlists=${restored.playlists} faixas=${restored.tracks} " +
-                "histórico=${restored.history}",
+                "histórico=${restored.history} ytPlaylists=${restored.youtubePlaylists} " +
+                "ytFaixas=${restored.youtubeTracks} ytHistórico=${restored.youtubeHistory} " +
+                "cópiaExterna=${linked?.autoSync == true}",
         )
-        completeMystAuth(user)
+        val result = completeMystAuth(user)
+        // O AppCompat recria as Activities abertas; por isso a troca de tema
+        // só acontece no fim, na thread principal, depois de tudo persistido.
+        restored.appearance?.let { appearance ->
+            withContext(Dispatchers.Main.immediate) {
+                AppCompatDelegate.setDefaultNightMode(appearance.themeMode.nightMode)
+            }
+        }
+        result
     }
 
     suspend fun saveAccountFile(userId: Long, uri: Uri): AccountFileSaveResult =

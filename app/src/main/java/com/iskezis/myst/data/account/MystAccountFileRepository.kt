@@ -13,6 +13,13 @@ import com.iskezis.myst.data.db.HistoryEntity
 import com.iskezis.myst.data.db.PlaylistEntity
 import com.iskezis.myst.data.db.PlaylistTrackEntity
 import com.iskezis.myst.data.db.UserEntity
+import com.iskezis.myst.data.db.YtHistoryEntity
+import com.iskezis.myst.data.db.YtPlaylistEntity
+import com.iskezis.myst.data.db.YtPlaylistTrackEntity
+import com.iskezis.myst.data.db.YtSyncEntity
+import com.iskezis.myst.data.settings.AppearancePreferences
+import com.iskezis.myst.data.settings.AppearanceSettings
+import com.iskezis.myst.data.settings.ThemeMode
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,8 +48,9 @@ import java.io.InputStream
  *
  * O usuário salva uma cópia fora do armazenamento privado do app (Downloads,
  * Drive, cartão SD). O login pode ler esse arquivo e restaurar perfil, avatar,
- * playlists, histórico e afinidade. A cópia interna é regravada sempre que o
- * Room muda, e a cópia externa também é atualizada quando o provedor concede
+ * playlists Myst e do YouTube Music, histórico, afinidade e as preferências de
+ * aparência. A cópia interna é regravada sempre que o Room ou a aparência
+ * mudam, e a cópia externa também é atualizada quando o provedor concede
  * permissão persistente de escrita.
  *
  * O arquivo NÃO contém cookies do YouTube nem token do Discord. Essas são
@@ -54,6 +62,7 @@ import java.io.InputStream
 class MystAccountFileRepository(
     private val context: Context,
     private val database: AppDatabase,
+    private val appearance: AppearancePreferences,
 ) {
 
     @OptIn(ExperimentalSerializationApi::class)
@@ -176,6 +185,66 @@ class MystAccountFileRepository(
             )
         }
 
+        val youtubeDao = database.youTubeLibraryDao()
+        var ytTrackBudget = MAX_EXPORT_YT_TRACKS_TOTAL
+        var omittedYtTracks = 0
+        val allYtPlaylists = youtubeDao.playlists(userId)
+        val ytTracksByPlaylist = youtubeDao.allPlaylistTracks(userId).groupBy { it.ytId }
+        val ytPlaylists = allYtPlaylists.take(MAX_EXPORT_YT_PLAYLISTS).mapNotNull { playlist ->
+            val ytId = playlist.ytId.trim().take(MAX_ID_LENGTH)
+            if (ytId.isBlank()) return@mapNotNull null
+            val allTracks = ytTracksByPlaylist[ytId].orEmpty()
+            val exportedTracks = if (allTracks.size <= ytTrackBudget) {
+                allTracks
+            } else {
+                allTracks.take(ytTrackBudget)
+            }
+            omittedYtTracks += allTracks.size - exportedTracks.size
+            ytTrackBudget -= exportedTracks.size
+            MystAccountYtPlaylistBackup(
+                ytId = ytId,
+                title = playlist.title.trim().take(MAX_TITLE_LENGTH),
+                thumbnailUrl = playlist.thumbnailUrl?.take(MAX_URL_LENGTH),
+                trackCount = maxOf(playlist.trackCount, allTracks.size),
+                liked = playlist.liked,
+                syncedAt = playlist.syncedAt,
+                tracks = exportedTracks.map { track ->
+                    MystAccountYtTrackBackup(
+                        videoId = track.videoId,
+                        title = track.title,
+                        artist = track.artist,
+                        thumbnailUrl = track.thumbnailUrl?.take(MAX_URL_LENGTH),
+                        durationMs = track.durationMs,
+                        syncedAt = track.syncedAt,
+                    )
+                },
+            )
+        }
+        if (allYtPlaylists.size > ytPlaylists.size) {
+            AppLog.w(
+                AppLog.TAG_AUTH,
+                "Mystaccount.json: ${allYtPlaylists.size - ytPlaylists.size} playlists " +
+                    "do YouTube além do limite não exportadas",
+            )
+        }
+        val ytHistory = youtubeDao.history(userId, MAX_EXPORT_YT_HISTORY).map { item ->
+            MystAccountYtHistoryBackup(
+                videoId = item.videoId,
+                title = item.title,
+                artist = item.artist,
+                thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
+                durationMs = item.durationMs,
+                playedAt = item.playedAt,
+            )
+        }
+        val ytSync = youtubeDao.syncStates(userId)
+            .take(MAX_EXPORT_YT_SYNC)
+            .mapNotNull { item ->
+                val section = item.section.trim().take(MAX_SECTION_LENGTH)
+                if (section.isBlank()) return@mapNotNull null
+                MystAccountYtSyncBackup(section = section, syncedAt = item.syncedAt)
+            }
+
         val file = MystAccountBackup(
             appVersion = BuildConfig.VERSION_NAME,
             generatedAt = System.currentTimeMillis(),
@@ -192,12 +261,22 @@ class MystAccountFileRepository(
             playlists = playlists,
             history = history,
             affinities = affinities,
+            youtube = MystAccountYouTubeBackup(
+                playlists = ytPlaylists,
+                history = ytHistory,
+                sync = ytSync,
+            ),
+            settings = MystAccountSettingsBackup(
+                themeMode = appearance.themeMode.storageValue,
+                amoled = appearance.amoled,
+            ),
         )
-        if (omittedTracks > 0 || omittedCovers > 0) {
+        if (omittedTracks > 0 || omittedCovers > 0 || omittedYtTracks > 0) {
             AppLog.w(
                 AppLog.TAG_AUTH,
                 "Mystaccount.json limitado para caber no arquivo de importação: " +
-                    "faixas omitidas=$omittedTracks capas omitidas=$omittedCovers",
+                    "faixas Myst omitidas=$omittedTracks capas omitidas=$omittedCovers " +
+                    "faixas YouTube omitidas=$omittedYtTracks",
             )
         }
         json.encodeToString(MystAccountBackup.serializer(), file)
@@ -280,6 +359,15 @@ class MystAccountFileRepository(
             AppLog.w(AppLog.TAG_AUTH, "Backup com histórico demais; importando o mais recente")
         }
         val affinities = file.affinities.take(MAX_IMPORT_AFFINITIES)
+        val ytPlaylists = file.youtube.playlists.take(MAX_IMPORT_YT_PLAYLISTS)
+        if (file.youtube.playlists.size > MAX_IMPORT_YT_PLAYLISTS) {
+            AppLog.w(
+                AppLog.TAG_AUTH,
+                "Backup com playlists do YouTube demais; importando as primeiras",
+            )
+        }
+        val ytHistory = file.youtube.history.take(MAX_IMPORT_YT_HISTORY)
+        val ytSync = file.youtube.sync.take(MAX_IMPORT_YT_SYNC)
 
         val now = System.currentTimeMillis()
         val createdAt = file.account.createdAt.takeIf { it in 1..now } ?: now
@@ -287,6 +375,9 @@ class MystAccountFileRepository(
         var created = false
         var importedTracks = 0
         var importedHistory = 0
+        var importedYtPlaylists = 0
+        var importedYtTracks = 0
+        var importedYtHistory = 0
 
         database.withTransaction {
             val dao = database.userDao()
@@ -405,6 +496,118 @@ class MystAccountFileRepository(
                     ),
                 )
             }
+
+            // A biblioteca do YouTube é somente leitura no app, mas o cache
+            // local faz parte do que o usuário vê em Playlists/Recentes. Ele
+            // viaja no arquivo para a tela não abrir vazia depois de reinstalar
+            // e antes de a sessão do YouTube ser refeita. Dados já existentes
+            // vencem quando são mais recentes; a próxima sincronização remota
+            // continua sendo a fonte final.
+            val ytDao = database.youTubeLibraryDao()
+            ytPlaylists.forEach { backup ->
+                val ytId = backup.ytId.trim().take(MAX_ID_LENGTH)
+                if (ytId.isBlank()) return@forEach
+                val existingPlaylist = ytDao.playlist(userId, ytId)
+                val syncedAt = maxOf(
+                    existingPlaylist?.syncedAt ?: 0L,
+                    backup.syncedAt.coerceIn(0L, now),
+                )
+                val playlist = YtPlaylistEntity(
+                    userId = userId,
+                    ytId = ytId,
+                    title = existingPlaylist?.title?.takeIf { it.isNotBlank() }
+                        ?: backup.title.trim().take(MAX_TITLE_LENGTH)
+                            .ifBlank { "Playlist do YouTube Music" },
+                    thumbnailUrl = existingPlaylist?.thumbnailUrl
+                        ?: backup.thumbnailUrl?.take(MAX_URL_LENGTH),
+                    trackCount = maxOf(
+                        existingPlaylist?.trackCount ?: 0,
+                        backup.trackCount.coerceAtLeast(0),
+                    ),
+                    liked = existingPlaylist?.liked ?: backup.liked,
+                    syncedAt = syncedAt,
+                )
+                ytDao.upsertPlaylists(listOf(playlist))
+                importedYtPlaylists++
+
+                // Se a playlist já tem faixas em cache, preserva a ordem local.
+                // Só restaura faixas quando o cache atual está vazio.
+                if (ytDao.playlistTracks(userId, ytId).isEmpty()) {
+                    val knownTracks = mutableSetOf<String>()
+                    val tracks = mutableListOf<YtPlaylistTrackEntity>()
+                    backup.tracks.take(MAX_IMPORT_YT_TRACKS_PER_PLAYLIST).forEach { track ->
+                        val videoId = track.videoId.trim().take(MAX_ID_LENGTH)
+                        if (videoId.isBlank() || !knownTracks.add(videoId)) return@forEach
+                        tracks += YtPlaylistTrackEntity(
+                            userId = userId,
+                            ytId = ytId,
+                            videoId = videoId,
+                            title = track.title.trim().take(MAX_TITLE_LENGTH),
+                            artist = track.artist.trim().take(MAX_ARTIST_LENGTH),
+                            thumbnailUrl = track.thumbnailUrl?.take(MAX_URL_LENGTH),
+                            durationMs = track.durationMs.coerceAtLeast(0L),
+                            position = tracks.size,
+                            syncedAt = track.syncedAt.coerceIn(0L, now),
+                        )
+                    }
+                    if (tracks.isNotEmpty()) {
+                        ytDao.upsertPlaylistTracks(tracks)
+                        importedYtTracks += tracks.size
+                        ytDao.updatePlaylistCount(
+                            userId = userId,
+                            ytId = ytId,
+                            count = maxOf(playlist.trackCount, tracks.size),
+                            syncedAt = playlist.syncedAt,
+                        )
+                    }
+                }
+            }
+
+            val knownYtHistory = ytDao.history(userId, MAX_IMPORT_YT_HISTORY)
+                .associateByTo(mutableMapOf()) { it.videoId }
+            val restoredYtHistory = mutableListOf<YtHistoryEntity>()
+            ytHistory.forEachIndexed { index, item ->
+                val videoId = item.videoId.trim().take(MAX_ID_LENGTH)
+                if (videoId.isBlank()) return@forEachIndexed
+                val playedAt = item.playedAt.takeIf { it > 0L }
+                    ?: (now - index * YT_HISTORY_STEP_MS)
+                val normalizedPlayedAt = playedAt.coerceIn(1L, now)
+                val previous = knownYtHistory[videoId]
+                if (previous != null && previous.playedAt >= normalizedPlayedAt) {
+                    return@forEachIndexed
+                }
+                val entity = YtHistoryEntity(
+                    userId = userId,
+                    videoId = videoId,
+                    title = item.title.trim().take(MAX_TITLE_LENGTH),
+                    artist = item.artist.trim().take(MAX_ARTIST_LENGTH),
+                    thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
+                    durationMs = item.durationMs.coerceAtLeast(0L),
+                    playedAt = normalizedPlayedAt,
+                )
+                knownYtHistory[videoId] = entity
+                restoredYtHistory += entity
+            }
+            if (restoredYtHistory.isNotEmpty()) {
+                ytDao.upsertHistory(restoredYtHistory)
+                importedYtHistory = restoredYtHistory.size
+            }
+
+            ytSync.forEach { item ->
+                val section = item.section.trim().take(MAX_SECTION_LENGTH)
+                if (section.isBlank()) return@forEach
+                val syncedAt = item.syncedAt.coerceIn(0L, now)
+                val previous = ytDao.sync(userId, section)
+                if (previous == null || syncedAt > previous.syncedAt) {
+                    ytDao.upsertSync(
+                        YtSyncEntity(
+                            userId = userId,
+                            section = section,
+                            syncedAt = syncedAt,
+                        ),
+                    )
+                }
+            }
         }
 
         if (!file.account.avatarBase64.isNullOrBlank()) {
@@ -413,12 +616,40 @@ class MystAccountFileRepository(
             }
         }
 
+        // As preferências de aparência são do aparelho, mas o usuário pediu que
+        // também voltem junto com a conta. Campos nulos (arquivos v1 ou campos
+        // que uma versão futura não conheça) não sobrescrevem a escolha local.
+        val restoredAppearance = file.settings?.let { settings ->
+            val restoredMode = settings.themeMode?.let { value ->
+                ThemeMode.fromStorageOrNull(value).also { parsed ->
+                    if (parsed == null) {
+                        AppLog.w(
+                            AppLog.TAG_AUTH,
+                            "Mystaccount.json com tema desconhecido: ${value.take(32)}",
+                        )
+                    }
+                }
+            }
+            val restoredAmoled = settings.amoled
+            if (restoredMode == null && restoredAmoled == null) {
+                null
+            } else {
+                val current = appearance.snapshot()
+                AppearanceSettings(
+                    themeMode = restoredMode ?: current.themeMode,
+                    amoled = restoredAmoled ?: current.amoled,
+                ).also { appearance.apply(it) }
+            }
+        }
+
         val user = database.userDao().findById(userId)
             ?: throw AccountFileException(AccountFileException.Reason.CORRUPT)
         AppLog.i(
             AppLog.TAG_AUTH,
             "Mystaccount.json importado: usuário=$userId novo=$created " +
-                "playlists=${playlists.size} faixas=$importedTracks histórico=$importedHistory",
+                "playlists=${playlists.size} faixas=$importedTracks histórico=$importedHistory " +
+                "ytPlaylists=$importedYtPlaylists ytFaixas=$importedYtTracks " +
+                "ytHistórico=$importedYtHistory aparência=${restoredAppearance != null}",
         )
         RestoredAccount(
             user = user,
@@ -426,6 +657,10 @@ class MystAccountFileRepository(
             playlists = playlists.size,
             tracks = importedTracks,
             history = importedHistory,
+            youtubePlaylists = importedYtPlaylists,
+            youtubeTracks = importedYtTracks,
+            youtubeHistory = importedYtHistory,
+            appearance = restoredAppearance,
         )
     }
 
@@ -628,7 +863,7 @@ class MystAccountFileRepository(
 
         private const val APP_NAME = "MystMusic"
         private const val KIND = "MystAccount"
-        private const val SCHEMA_VERSION = 1
+        private const val SCHEMA_VERSION = 2
         private const val PREFS_NAME = "myst_account_file"
         private const val ACCOUNT_DIR = "account"
         private const val COVERS_DIR = "covers"
@@ -643,6 +878,16 @@ class MystAccountFileRepository(
         private const val MAX_EXPORT_TRACKS_TOTAL = 30_000
         private const val MAX_IMPORT_PLAYLISTS = 2_000
         private const val MAX_IMPORT_TRACKS = 10_000
+        private const val MAX_EXPORT_YT_PLAYLISTS = 300
+        private const val MAX_EXPORT_YT_TRACKS_TOTAL = 30_000
+        private const val MAX_EXPORT_YT_HISTORY = 200
+        private const val MAX_EXPORT_YT_SYNC = 500
+        private const val MAX_IMPORT_YT_PLAYLISTS = 300
+        private const val MAX_IMPORT_YT_TRACKS_PER_PLAYLIST = 5_000
+        private const val MAX_IMPORT_YT_HISTORY = 200
+        private const val MAX_IMPORT_YT_SYNC = 500
+        private const val MAX_SECTION_LENGTH = 160
+        private const val YT_HISTORY_STEP_MS = 1_000L
         private const val MAX_ID_LENGTH = 128
         private const val MAX_TITLE_LENGTH = 300
         private const val MAX_ARTIST_LENGTH = 200
@@ -657,6 +902,10 @@ class MystAccountFileRepository(
             "playlist_tracks",
             "history",
             "artist_affinity",
+            "yt_playlists",
+            "yt_playlist_tracks",
+            "yt_history",
+            "yt_sync_state",
         )
     }
 }
@@ -678,6 +927,10 @@ data class RestoredAccount(
     val playlists: Int,
     val tracks: Int,
     val history: Int,
+    val youtubePlaylists: Int = 0,
+    val youtubeTracks: Int = 0,
+    val youtubeHistory: Int = 0,
+    val appearance: AppearanceSettings? = null,
 )
 
 class AccountFileException(
@@ -696,15 +949,69 @@ class AccountFileException(
 data class MystAccountBackup(
     val app: String = "MystMusic",
     val kind: String = "MystAccount",
-    val schemaVersion: Int = 1,
+    val schemaVersion: Int = 2,
     val appVersion: String = "",
     val generatedAt: Long = 0L,
     val account: MystAccountProfileBackup,
     val playlists: List<MystAccountPlaylistBackup> = emptyList(),
     val history: List<MystAccountHistoryBackup> = emptyList(),
     val affinities: List<MystAccountAffinityBackup> = emptyList(),
+    /** Cache da biblioteca do YouTube Music (somente leitura no app). */
+    val youtube: MystAccountYouTubeBackup = MystAccountYouTubeBackup(),
+    /** Preferências do aparelho que o usuário quer recuperar junto da conta. */
+    val settings: MystAccountSettingsBackup? = null,
     /** Campo reservado para dados que versões futuras adicionarem ao arquivo. */
     val extras: JsonObject = JsonObject(emptyMap()),
+)
+
+@Serializable
+data class MystAccountSettingsBackup(
+    val themeMode: String? = null,
+    val amoled: Boolean? = null,
+)
+
+@Serializable
+data class MystAccountYouTubeBackup(
+    val playlists: List<MystAccountYtPlaylistBackup> = emptyList(),
+    val history: List<MystAccountYtHistoryBackup> = emptyList(),
+    val sync: List<MystAccountYtSyncBackup> = emptyList(),
+)
+
+@Serializable
+data class MystAccountYtPlaylistBackup(
+    val ytId: String,
+    val title: String,
+    val thumbnailUrl: String? = null,
+    val trackCount: Int = 0,
+    val liked: Boolean = false,
+    val syncedAt: Long = 0L,
+    val tracks: List<MystAccountYtTrackBackup> = emptyList(),
+)
+
+@Serializable
+data class MystAccountYtTrackBackup(
+    val videoId: String,
+    val title: String,
+    val artist: String,
+    val thumbnailUrl: String? = null,
+    val durationMs: Long = 0L,
+    val syncedAt: Long = 0L,
+)
+
+@Serializable
+data class MystAccountYtHistoryBackup(
+    val videoId: String,
+    val title: String,
+    val artist: String,
+    val thumbnailUrl: String? = null,
+    val durationMs: Long = 0L,
+    val playedAt: Long = 0L,
+)
+
+@Serializable
+data class MystAccountYtSyncBackup(
+    val section: String,
+    val syncedAt: Long = 0L,
 )
 
 @Serializable

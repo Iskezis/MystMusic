@@ -42,6 +42,9 @@ class AppearanceViewModel(private val app: MystApp) : ViewModel() {
         app.appearance.themeMode = mode
         _state.value = readState()
         AppLog.i(AppLog.TAG_UI, "Aparência: modo=${mode.storageValue}")
+        // A preferência não está no Room; avisa o arquivo da conta para a
+        // cópia interna/externa também levar a nova aparência.
+        app.accountFiles.requestSync()
         // O AppCompat recria as Activities abertas quando o modo noturno muda.
         // O overlay AMOLED é reaplicado no início de cada Activity.
         AppCompatDelegate.setDefaultNightMode(mode.nightMode)
@@ -53,6 +56,7 @@ class AppearanceViewModel(private val app: MystApp) : ViewModel() {
         app.appearance.amoled = enabled
         _state.value = readState()
         AppLog.i(AppLog.TAG_UI, "Aparência: AMOLED=$enabled")
+        app.accountFiles.requestSync()
         return true
     }
 

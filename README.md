@@ -37,11 +37,11 @@ Android music app (Kotlin + XML) featuring YouTube Music (via InnerTube), Spotif
 ### TV (`tv` flavor)
 - Layouts designed for 10-foot UI, D-pad navigation, pairing screen with a 5-digit code, `minSdk 21`, and `armeabi-v7a` ABI.
 
-## Portable Myst account (`Mystaccount.json`, 0.2.0-dev.5)
+## Portable Myst account (`Mystaccount.json`, 0.2.0-dev.7)
 - When a Myst account is created, the app generates an internal `Mystaccount.json` and offers to save a copy to Downloads, Drive or another folder chosen by the user.
-- The login screen has **Entrar com Mystaccount.json**. After choosing the file and confirming, the app restores the Myst profile, avatar, playlists, covers, history and artist affinity. If the same account already exists on the device, the data is merged without deleting local playlists or history.
-- The internal copy is rewritten automatically after every change to the account (profile, playlists, tracks, history and affinity). When the file provider grants persistent write access, the external copy is updated automatically too; otherwise the app shows that a new copy must be saved manually.
-- The file deliberately **does not contain YouTube cookies, Discord tokens or other sessions**. After restoring the Myst account, the app asks for the YouTube login again.
+- The login screen has **Entrar com Mystaccount.json**. After choosing the file and confirming, the app restores the Myst profile, avatar, Myst playlists, YouTube Music library cache (playlists, cached tracks, recent history and sync timestamps), play history, artist affinity and the appearance preferences (Claro/Escuro/Sistema and AMOLED). If the same account already exists on the device, the data is merged without deleting local playlists or history.
+- The internal copy is rewritten automatically after every change to the account (profile, Myst and YouTube playlists, tracks, history, affinity and appearance). When the file provider grants persistent write access, the external copy is updated automatically too; otherwise the app shows that a new copy must be saved manually. Importing a file also re-links that same file for automatic updates when the provider allows it.
+- The file deliberately **does not contain YouTube cookies, Discord tokens or other sessions**. After restoring the Myst account, the app asks for the YouTube login again; the restored YouTube cache is shown immediately while the account reconnects.
 - Treat the file as a key: it contains the PBKDF2 salt/hash and the account data, so anyone with the file can sign in to the Myst account. Keep it private.
 - Settings → **Conta Myst** shows the synchronization status and has a **Salvar Mystaccount.json** button. The TV flavor hides this section because the account arrives through pairing.
 
