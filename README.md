@@ -4,7 +4,7 @@ Android music app (Kotlin + XML) featuring YouTube Music (via InnerTube), Spotif
 
 - **App Name:** MystMusic
 - **Package:** `com.iskezis.myst`
-- **Current Version:** 0.2.0-dev.4 (versionCode 13) · **Public alpha:** 0.1.0 Alpha (versionCode 9)
+- **Current Version:** 0.2.0-dev.5 (versionCode 14) · **Public alpha:** 0.1.0 Alpha (versionCode 9)
 - **Status:** Alpha testing phase; includes unofficial integrations for YouTube Music and Discord.
 - **Theme Color:** Sky blue (simple gradients, minimalist and modern aesthetic).
 - **UI Language:** Portuguese (Brazil).
@@ -37,6 +37,14 @@ Android music app (Kotlin + XML) featuring YouTube Music (via InnerTube), Spotif
 ### TV (`tv` flavor)
 - Layouts designed for 10-foot UI, D-pad navigation, pairing screen with a 5-digit code, `minSdk 21`, and `armeabi-v7a` ABI.
 
+## Portable Myst account (`Mystaccount.json`, 0.2.0-dev.5)
+- When a Myst account is created, the app generates an internal `Mystaccount.json` and offers to save a copy to Downloads, Drive or another folder chosen by the user.
+- The login screen has **Entrar com Mystaccount.json**. After choosing the file and confirming, the app restores the Myst profile, avatar, playlists, covers, history and artist affinity. If the same account already exists on the device, the data is merged without deleting local playlists or history.
+- The internal copy is rewritten automatically after every change to the account (profile, playlists, tracks, history and affinity). When the file provider grants persistent write access, the external copy is updated automatically too; otherwise the app shows that a new copy must be saved manually.
+- The file deliberately **does not contain YouTube cookies, Discord tokens or other sessions**. After restoring the Myst account, the app asks for the YouTube login again.
+- Treat the file as a key: it contains the PBKDF2 salt/hash and the account data, so anyone with the file can sign in to the Myst account. Keep it private.
+- Settings → **Conta Myst** shows the synchronization status and has a **Salvar Mystaccount.json** button. The TV flavor hides this section because the account arrives through pairing.
+
 ## Installation (alpha)
 1. Download `apks/app.apk` for mobile or `apks/app-tv.apk` for Android TV.
 2. Enable the installation of apps from unknown sources for the browser or file manager you are using.
@@ -45,7 +53,7 @@ Android music app (Kotlin + XML) featuring YouTube Music (via InnerTube), Spotif
 
 ## Known limitations
 - YouTube Music is accessed via InnerTube (an unofficial API), and Discord RPC uses a user token. These integrations may change or stop working without notice; Discord RPC is an opt-in feature and includes a risk warning.
-- Development APKs use a stable signing key stored only in GitHub Secrets, so they are not suitable for store publication, but updates no longer require uninstalling. The Myst account is local: keep Android backup enabled to restore the database on a new device/install. The encrypted session is deliberately not backed up, so you sign in again after a restore; the login screen lists the accounts restored from the database.
+- Development APKs use a stable signing key stored only in GitHub Secrets, so they are not suitable for store publication, but updates no longer require uninstalling. The Myst account is local: keep Android backup enabled **and/or** save a `Mystaccount.json` copy to restore the database on a new device/install. The encrypted session is deliberately not backed up, so you sign in again after a restore; the login screen lists the accounts restored from the database and can also restore a `Mystaccount.json` file.
 - Spotify imports map tracks based on title, artist, and duration; ambiguous tracks may be skipped, with an on-screen notification provided. - Pairing a mobile device with a TV requires both devices to be on the same Wi-Fi network.
 - Playback depends on the AAC/Opus codecs available on the device or the TV.
 
@@ -56,7 +64,7 @@ Android music app (Kotlin + XML) featuring YouTube Music (via InnerTube), Spotif
 - The first build after switching from the per-run debug key requires one uninstall. After that, `versionCode` must always increase for in-place updates.
 
 ## Changelog
-See [CHANGELOG.md](CHANGELOG.md) for the version 0.1.0 Alpha release notes.
+See [CHANGELOG.md](CHANGELOG.md) for the 0.2.0-dev.5 portable-account notes and the 0.1.0 Alpha release notes.
 
 ## Important
 The application for Android TVs has not been released yet, as it is still in the testing phase. In the future, this version will become available, alongside interface updates, new languages, customization options, and full integration with other applications.

@@ -57,16 +57,18 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - [ ] 19. Revisão final da 0.2.0 (checklist do AGENTS.md, APKs finais, CHANGELOG, tag `v0.2.0-alpha`)
 
 ## Riscos conhecidos da 0.2.0
-- Atualização por cima só instala se a assinatura for a mesma. As APKs da 0.1.0 usam a chave de debug do runner; ao migrar para a keystore fixa (fase 18) o usuário precisa **desinstalar e reinstalar uma vez**. Avisar no CHANGELOG. Isso apaga dados locais: oferecer backup antes (fase 14).
+- Atualização por cima só instala se a assinatura for a mesma. As APKs até a 0.2.0-dev.3 usam a chave de debug do runner; a keystore fixa entrou no 0.2.0-dev.4. Quem tem uma APK anterior ao dev.4 precisa **desinstalar e reinstalar uma vez**; isso apaga os dados locais, então salve um `Mystaccount.json` antes. Do dev.4 em diante as atualizações instalam por cima.
 - Downloads de áudio do YouTube Music podem violar os Termos do YouTube; uso pessoal, arquivos privados do app, aviso na primeira vez.
 - API de atualização do GitHub só funciona sem token se o repositório for público.
 
 ## Release
+- **0.2.0-dev.5** (`versionCode 14`, `versionName "0.2.0-dev.5"`): conta Myst portátil (`Mystaccount.json`) gerada no cadastro, restauração pelo arquivo com mesclagem segura, atualização automática da cópia interna/externa e seção em Configurações; run `40958020423`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
+- **0.2.0-dev.4** (`versionCode 13`, `versionName "0.2.0-dev.4"`): assinatura estável com a keystore dos GitHub Secrets e correção de crash na navegação/persistência da conta Myst; run `40948817158`. APKs não foram commitados nesta etapa (a pasta `apks/` estava removida); o dev.5 já usa a mesma assinatura.
 - **0.2.0-dev.3** (`versionCode 12`, `versionName "0.2.0-dev.3"`): build de desenvolvimento da fase 13 (biblioteca, histórico e recomendações do YouTube Music, cache Room com atualização por gesto e aviso de sessão expirada), run `40944696111`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.2** (`versionCode 11`, `versionName "0.2.0-dev.2"`): build de desenvolvimento da fase 12 (login duplo obrigatório, foto de perfil da conta Myst, migração da sessão 0.1.0 e pareamento TV com as duas contas + avatar), run `40939083129`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.1** (`versionCode 10`, `versionName "0.2.0-dev.1"`): build de desenvolvimento da fase 11 (tema Sistema/Claro/Escuro + Preto AMOLED + tela Aparência), run `40930983204`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.1.0 Alpha** (`versionCode 9`, `versionName "0.1.0 Alpha"`): primeira alpha pública para celular e Android TV. A numeração anterior (1.0.x) era de desenvolvimento; o `versionCode` continua crescendo (9) para permitir atualização sobre a v1.0.7.
-- APKs: `apks/app.apk` (mobile) e `apks/app-tv.apk` (TV, armeabi-v7a), assinados com a chave de debug do build.
+- APKs: `apks/app.apk` (mobile) e `apks/app-tv.apk` (TV, armeabi-v7a), assinados com a keystore estável dos GitHub Secrets a partir do dev.4 (antes disso, chave de debug do runner).
 - Notas: `CHANGELOG.md` e `README.md` (instalação e limitações).
 - Tag prevista: `v0.1.0-alpha`.
 
@@ -98,6 +100,9 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 | 40938511745 | bf4f36d | falha | Fase 12: `completeMystAuth` chamava DAO suspenso fora de coroutine e a limpeza do cache do Coil usava `String` em vez de `MemoryCache.Key` | — |
 | 40939083129 | c38599c | verde | Fase 12: login duplo obrigatório, foto de perfil com recorte 512 px, migração 0.1.0 e pareamento TV com as duas contas + avatar (0.2.0-dev.2) | `apks/app.apk`, `apks/app-tv.apk` |
 | 40944696111 | 2436592 | verde | Fase 13: playlists/histórico/recomendações do YouTube Music, cache Room (TTL 15 min), pull-to-refresh, cópia para Myst e banner de sessão expirada (0.2.0-dev.3) | `apks/app.apk`, `apks/app-tv.apk` |
+| 40948817158 | b51cf02 | verde | Assinatura estável (keystore dos Secrets) e correção de crash na navegação/persistência da conta Myst (0.2.0-dev.4) | — (pasta `apks/` removida) |
+| 40957679150 | fd3a0c3 | falha | `existingByName` era `Map` imutável; trocado por `toMutableMap()` ao mesclar playlists do `Mystaccount.json` | — |
+| 40958020423 | ac4716b | verde | Conta Myst portátil: geração/restauração do `Mystaccount.json`, sincronização automática, Configurações e proteção das sessões (0.2.0-dev.5) | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
 - YouTube Music (fase 13): a biblioteca da conta é **somente leitura**. O cache fica em tabelas próprias do Room (`yt_playlists`, `yt_playlist_tracks`, `yt_history`, `yt_sync_state`), com validade de 15 minutos e estratégia *stale-while-revalidate*: a tela mostra o cache na hora e atualiza em segundo plano. O botão/gesto de atualizar força a rede. Nenhuma escrita é enviada ao YouTube.
@@ -144,6 +149,14 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - Versão de desenvolvimento da fase 12: `0.2.0-dev.2`, `versionCode 11`.
 - Documentação: o dono do repositório traduziu o README para inglês e apagou o `PROGRESS.md` no remoto durante a fase 11. O README em inglês foi preservado; o `PROGRESS.md` foi restaurado porque o `AGENTS.md` exige o registro de fases/builds. A referência a "Roadmap no README" foi ajustada para apontar ao `PROGRESS.md`.
 - Versão de desenvolvimento da fase 11: `0.2.0-dev.1`, `versionCode 10`.
+- Conta portátil (0.2.0-dev.5): o `Mystaccount.json` é um backup **e** uma chave de login. O esquema v1 guarda perfil, salt/hash PBKDF2, avatar em base64, playlists com capas em base64 (quando disponíveis), faixas, histórico e afinidade. Cookies do YouTube, token do Discord e outras sessões ficam de fora de propósito: são sessões, não dados da conta, e o login do YouTube é pedido depois da restauração.
+- Cópia interna em `filesDir/account/Mystaccount-<userId>.json`; cópia externa escolhida pelo usuário via SAF. A URI externa só é guardada quando o provedor concede escrita persistente; nesse caso a cópia é atualizada junto com a interna. Sem permissão persistente, a tela mostra "atualização automática indisponível" e permite salvar outra cópia.
+- Atualização automática: um `InvalidationTracker.Observer` observa `users`, `playlists`, `playlist_tracks`, `history` e `artist_affinity`; o pedido é debounced em 1,5 s e roda em `Dispatchers.IO`. O observer é registrado fora da thread principal porque `addObserver` executa SQL no Room. Cadastro, login, importação, avatar e vínculo do YouTube também chamam `requestSync()` explicitamente.
+- Importação: se o usuário já existe (mesmo username), o arquivo é mesclado sem apagar playlists/histórico locais; playlists são casadas por nome, faixas por `videoId`, histórico por `videoId|playedAt` e afinidade usa o maior score. Se a conta não existe, é recriada com o mesmo `createdAt` (quando válido). O arquivo é validado antes de qualquer escrita e o limite de leitura é 32 MB.
+- Limites de exportação: 30.000 faixas no total, 4 MB de capas, 20.000 itens de histórico e 5.000 artistas. Eles mantêm o arquivo abaixo do limite de importação e evitam OOM em aparelhos pequenos; o que for omitido fica registrado no log.
+- Backup do Android: `myst_account_file.xml` (URI externa) e `account/` (cópia interna) são excluídos das regras de backup/transferência, pois a URI não vale em outro aparelho e a cópia interna é regenerada do Room. As sessões (`myst_session*.xml`) continuam excluídas.
+- Segurança do arquivo: ele contém o hash PBKDF2 e os dados da conta, então a UI avisa que deve ser guardado como uma chave. Não há criptografia própria no JSON; a proteção é o armazenamento escolhido pelo usuário e o aviso explícito. O avatar e as capas têm limites de tamanho antes de decodificar base64.
+- TV: a seção de arquivo em Configurações fica oculta porque o seletor de documentos não é confortável no controle remoto; a conta chega pelo pareamento. O botão de importação no login continua disponível para quem usa teclado/controle compatível, com erro visível se não houver seletor.
 
 ## Problemas em aberto
 - Validação funcional em aparelho físico confirmada pelo usuário em 29/10/2026: login YouTube, reprodução, navegação, Discord RPC com capa/progresso e pareamento TV. Nenhum bloqueador conhecido para a 0.1.0 Alpha.

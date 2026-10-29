@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.2.0-dev.5 — 29/10/2026
+
+Conta Myst portátil com `Mystaccount.json`.
+
+### Incluído
+- Ao criar uma conta Myst, o app grava uma cópia interna do `Mystaccount.json` e oferece salvar uma cópia externa em Downloads, Drive, cartão SD ou outra pasta escolhida pelo usuário.
+- Login pelo arquivo: o botão **Entrar com Mystaccount.json** lê o arquivo, pede confirmação e restaura perfil, avatar, playlists, capas, histórico e afinidade de artistas. Se a conta já existir no aparelho, os dados são mesclados sem apagar playlists ou histórico locais.
+- Atualização automática: um observador do Room regrava a cópia interna após mudanças em perfil, playlists, faixas, histórico e afinidade. A cópia externa também é atualizada quando o provedor de arquivos concede permissão persistente de escrita; sem essa permissão, a tela avisa que é preciso salvar uma nova cópia.
+- Configurações → **Conta Myst** mostra o estado da sincronização e o botão **Salvar Mystaccount.json**. O flavor de TV oculta essa seção.
+- As regras de backup do Android excluem a cópia interna e a URI externa, que são específicas do aparelho e podem ser regeneradas.
+- Limites de exportação para manter o arquivo importável: 30.000 faixas no total, 4 MB de capas, 20.000 itens de histórico e 5.000 artistas; a importação aceita arquivos de até 32 MB.
+- Cookies do YouTube, token do Discord e outras sessões **não** entram no arquivo. Depois de restaurar a conta Myst, o login do YouTube é solicitado novamente.
+
+### Segurança
+- O arquivo contém o salt e o hash PBKDF2 da senha e todos os dados da conta. Guarde-o como uma chave: quem tiver o arquivo pode entrar na conta Myst.
+
+## 0.2.0-dev.4 — 29/10/2026
+
+- Assinatura estável do APK com a keystore guardada apenas nos GitHub Secrets: atualizações instalam por cima e preservam a conta Myst, playlists, histórico e estatísticas. APKs anteriores ao dev.4 ainda exigem uma desinstalação única.
+- Correção de crash na navegação e na persistência da conta Myst.
+
 ## 0.1.0 Alpha — 29/10/2026
 
 Primeira alpha pública do MystMusic, para celular e Android TV 32 bits.
