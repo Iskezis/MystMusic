@@ -384,7 +384,7 @@ object PairingSync {
             }
 
             if (coverWrites.isNotEmpty()) {
-                var budget = MAX_COVER_BUDGET_BYTES
+                var budget = MAX_COVER_BUDGET_BYTES.toLong()
                 coverWrites.forEach { (playlistId, incoming) ->
                     if (budget <= 0) return@forEach
                     val saved = saveCover(app, playlistId, incoming, budget)
