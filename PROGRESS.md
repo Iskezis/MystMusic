@@ -62,7 +62,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - API de atualização do GitHub só funciona sem token se o repositório for público.
 
 ## Release
-- **0.2.0-dev.5** (`versionCode 14`, `versionName "0.2.0-dev.5"`): conta Myst portátil (`Mystaccount.json`) gerada no cadastro, restauração pelo arquivo com mesclagem segura, atualização automática da cópia interna/externa e seção em Configurações; run `40958020423`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
+- **0.2.0-dev.5** (`versionCode 14`, `versionName "0.2.0-dev.5"`): conta Myst portátil (`Mystaccount.json`) gerada no cadastro, restauração pelo arquivo com mesclagem segura, atualização automática da cópia interna/externa e seção em Configurações; run `40958020423`. APKs em `apks/app.apk` e `apks/app-tv.apk` (restaurados a partir do run `40959796937`, assinatura `6164b272…a5b9`).
 - **0.2.0-dev.4** (`versionCode 13`, `versionName "0.2.0-dev.4"`): assinatura estável com a keystore dos GitHub Secrets e correção de crash na navegação/persistência da conta Myst; run `40948817158`. APKs não foram commitados nesta etapa (a pasta `apks/` estava removida); o dev.5 já usa a mesma assinatura.
 - **0.2.0-dev.3** (`versionCode 12`, `versionName "0.2.0-dev.3"`): build de desenvolvimento da fase 13 (biblioteca, histórico e recomendações do YouTube Music, cache Room com atualização por gesto e aviso de sessão expirada), run `40944696111`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.2** (`versionCode 11`, `versionName "0.2.0-dev.2"`): build de desenvolvimento da fase 12 (login duplo obrigatório, foto de perfil da conta Myst, migração da sessão 0.1.0 e pareamento TV com as duas contas + avatar), run `40939083129`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
@@ -103,6 +103,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 | 40948817158 | b51cf02 | verde | Assinatura estável (keystore dos Secrets) e correção de crash na navegação/persistência da conta Myst (0.2.0-dev.4) | — (pasta `apks/` removida) |
 | 40957679150 | fd3a0c3 | falha | `existingByName` era `Map` imutável; trocado por `toMutableMap()` ao mesclar playlists do `Mystaccount.json` | — |
 | 40958020423 | ac4716b | verde | Conta Myst portátil: geração/restauração do `Mystaccount.json`, sincronização automática, Configurações e proteção das sessões (0.2.0-dev.5) | `apks/app.apk`, `apks/app-tv.apk` |
+| 40959796937 | 0f03047 | verde | Build após o commit "Delete apks directory"; APKs release do dev.5 baixados e restaurados em `apks/` | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
 - YouTube Music (fase 13): a biblioteca da conta é **somente leitura**. O cache fica em tabelas próprias do Room (`yt_playlists`, `yt_playlist_tracks`, `yt_history`, `yt_sync_state`), com validade de 15 minutos e estratégia *stale-while-revalidate*: a tela mostra o cache na hora e atualiza em segundo plano. O botão/gesto de atualizar força a rede. Nenhuma escrita é enviada ao YouTube.
