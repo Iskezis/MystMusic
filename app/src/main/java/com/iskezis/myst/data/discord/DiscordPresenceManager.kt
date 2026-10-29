@@ -81,7 +81,7 @@ class DiscordPresenceManager(
     val state: StateFlow<DiscordState> = _state.asStateFlow()
 
     @Volatile
-    private var token: String? = session.discordToken?.takeIf { it.isNotBlank() }
+    private var token: String? = cleanToken(session.discordToken)
     @Volatile
     private var socket: WebSocket? = null
     @Volatile
@@ -112,16 +112,24 @@ class DiscordPresenceManager(
     private var lastPlaying = false
 
     init {
-        if (token != null) startConnection(validateToken = true)
+        // Versões antigas salvavam o token com as aspas do localStorage do
+        // Discord (74 caracteres em vez de 72). O Discord responde 401 a esse
+        // valor; limpar na leitura conserta a sessão já salva sem exigir um
+        // novo login.
+        val stored = token
+        if (stored != null) {
+            if (stored != session.discordToken) session.discordToken = stored
+            startConnection(validateToken = true)
+        }
     }
 
     fun connect(newToken: String) {
-        val clean = newToken.trim()
+        val clean = cleanToken(newToken)
         AppLog.i(
             AppLog.TAG_DISCORD,
-            "Discord connect solicitado (token=${clean.length} caracteres)",
+            "Discord connect solicitado (token=${clean?.length ?: 0} caracteres)",
         )
-        if (clean.isBlank()) {
+        if (clean == null) {
             AppLog.w(AppLog.TAG_DISCORD, "Discord connect com token vazio")
             _state.value = DiscordState(DiscordConnection.ERROR, session.discordName)
             return
@@ -288,6 +296,9 @@ class DiscordPresenceManager(
     }
 
     private fun fetchUserName(currentToken: String): String? {
+        // Mesmo caminho do KizzyRPC/BitChord: REST v9 com o fingerprint do
+        // cliente Android. O token já chega sem as aspas do localStorage;
+        // enviar as aspas no header Authorization é o que causava HTTP 401.
         val request = Request.Builder()
             .url("https://discord.com/api/v9/users/@me")
             .header("Authorization", currentToken)
@@ -298,7 +309,10 @@ class DiscordPresenceManager(
         client.newCall(request).execute().use { response ->
             val text = response.body?.string().orEmpty()
             if (response.code == 401 || response.code == 403) {
-                AppLog.w(AppLog.TAG_DISCORD, "Discord recusou o token: HTTP ${response.code}")
+                AppLog.w(
+                    AppLog.TAG_DISCORD,
+                    "Discord recusou o token: HTTP ${response.code} ${text.take(120)}",
+                )
                 throw InvalidTokenException()
             }
             if (!response.isSuccessful) {
@@ -780,6 +794,20 @@ class DiscordPresenceManager(
     private class InvalidTokenException : Exception()
 
     companion object {
+        /**
+         * Remove aspas/JSON que o WebView pode ter incluído no token. O
+         * `localStorage.token` do Discord é uma string JSON (com aspas); se
+         * elas forem enviadas no header Authorization, o Discord responde 401.
+         * Aceita mais de uma camada para tokens antigos duplamente codificados.
+         */
+        private fun cleanToken(raw: String?): String? {
+            var value = raw?.trim().orEmpty()
+            while (value.length >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
+                value = value.substring(1, value.length - 1).trim()
+            }
+            return value.takeIf { it.isNotBlank() }
+        }
+
         private const val GATEWAY_URL = "wss://gateway.discord.gg/?v=9&encoding=json"
         private const val OP_DISPATCH = 0
         private const val OP_HEARTBEAT = 1
