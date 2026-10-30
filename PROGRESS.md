@@ -43,15 +43,15 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
   - [x] AMOLED efetivo e conexão do Discord reaplicados na TV; mudanças disparam sync imediato
   - [x] Botão de desconexão na TV, portas fixas com fallback e remoção local quando a TV não responde
   - [x] Estatísticas contam depois dos primeiros 10 s, inclusive com pulo, usando o tempo exato
-- [ ] Correções da fase 14 (0.2.0-dev.12)
-  - [ ] Áudio: renovação do visitorData e nova tentativa quando o YouTube pede login/verificação de bot
-  - [ ] Recentes do YouTube Music: telemetria de reprodução enviada com cookies/SAPISID após 10 s
-  - [ ] Estatísticas: evento criado aos 10 s e atualizado na mesma linha ao pular/finalizar; merge preserva o maior tempo
-  - [ ] Mystaccount.json v4: Discord salvo/restaurado e reconectado; UI/documentação atualizadas
-  - [ ] Discord em tempo real: conectar/desconectar regrava o arquivo e envia à TV sem esperar o ciclo periódico
-  - [ ] TV → celular: `/push`, retrato final no `/disconnect`, merge antes do ack, remoção de faixas por lápide e limpeza só depois da confirmação
-  - [ ] Desconexão confiável: remoção local sem resposta da TV, botão na tela inicial e proteção contra limpeza de um pareamento novo
-  - [ ] AMOLED reaplicado a cada sync e NSD com retentativas/desregistro
+- [x] Correções da fase 14 (0.2.0-dev.12)
+  - [x] Áudio: renovação do visitorData e nova tentativa quando o YouTube pede login/verificação de bot
+  - [x] Recentes do YouTube Music: telemetria de reprodução enviada com cookies/SAPISID após 10 s
+  - [x] Estatísticas: evento criado aos 10 s e atualizado na mesma linha ao pular/finalizar; merge preserva o maior tempo
+  - [x] Mystaccount.json v4: Discord salvo/restaurado e reconectado; UI/documentação atualizadas
+  - [x] Discord em tempo real: conectar/desconectar regrava o arquivo e envia à TV sem esperar o ciclo periódico
+  - [x] TV → celular: `/push`, retrato final no `/disconnect`, merge antes do ack, remoção de faixas por lápide e limpeza só depois da confirmação
+  - [x] Desconexão confiável: remoção local sem resposta da TV, botão na tela inicial e proteção contra limpeza de um pareamento novo
+  - [x] AMOLED reaplicado a cada sync e NSD com retentativas/desregistro
 - [ ] 15. Busca: artistas, álbuns e playlists
   - [ ] Chips Tudo / Músicas / Artistas / Álbuns / Playlists
   - [ ] Perfil do artista, tela do álbum, tela da playlist
@@ -77,6 +77,8 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - API de atualização do GitHub só funciona sem token se o repositório for público.
 
 ## Release
+- **0.2.0-dev.12** (`versionCode 21`, `versionName "0.2.0-dev.12"`): correções da fase 14 — renovação do visitorData no áudio, telemetria de reprodução no YouTube Music após 10 s, evento de estatística atualizado na mesma linha, `Mystaccount.json` v4 com Discord, Discord em tempo real, `/push` da TV para o celular com lápides de faixas, desconexão confiável e NSD/AMOLED reaplicados; run `41103446681`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
+- **0.2.0-dev.11** (`versionCode 20`, `versionName "0.2.0-dev.11"`): sincronização em tempo real celular↔TV, pareamento com biblioteca do YouTube, aparência/Discord em cada sync, desconexão confiável e estatísticas aos 10 s; run `40994494407`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.10** (`versionCode 19`, `versionName "0.2.0-dev.10"`): conta Myst persistente com dados isolados por conta e tela Estatísticas (tempo ouvido, reproduções, tops de músicas/artistas/álbuns, gráficos de 24 h e por dia, sequência atual/recorde), eventos em `play_events`, migração Room 4→5 não destrutiva e schema exportado; run `40987101834`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.9** (`versionCode 18`, `versionName "0.2.0-dev.9"`): a TV recebe o tema e o AMOLED do celular no pareamento e usa essa aparência temporariamente até desconectar ou deslogar; run `40978889454`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.8** (`versionCode 17`, `versionName "0.2.0-dev.8"`): TV como terminal temporário (Room em memória, sem `Mystaccount.json`, limpeza ao desconectar/deslogar) e backup automático do `Mystaccount.json` no celular em `/sdcard/MystMusic` (fallback `Download/MystMusic` sem a permissão especial); run `40973178702`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
@@ -131,6 +133,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 | 40987101834 | 2ed8ca2 | verde | Fase 14: estatísticas da conta Myst, eventos `play_events`, dados isolados por conta, migração Room 4→5 e schema exportado (0.2.0-dev.10) | `apks/app.apk`, `apks/app-tv.apk` |
 | 40988066201 | 14bc43b | verde | Publicação do schema Room 5, dos APKs do dev.10 e das notas da fase 14 no repositório | `apks/app.apk`, `apks/app-tv.apk` |
 | 40988591943 | 3d39cfa | verde | APKs do dev.10 e registro do build no repositório; build final da fase 14 verde | — |
+| 41103446681 | 566a721 | verde | Correções da fase 14 (0.2.0-dev.12): áudio, telemetria do YTM, estatísticas aos 10 s, conta v4 com Discord, TV→celular e NSD | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
 - YouTube Music (fase 13): a biblioteca da conta é **somente leitura**. O cache fica em tabelas próprias do Room (`yt_playlists`, `yt_playlist_tracks`, `yt_history`, `yt_sync_state`), com validade de 15 minutos e estratégia *stale-while-revalidate*: a tela mostra o cache na hora e atualiza em segundo plano. O botão/gesto de atualizar força a rede. Nenhuma escrita é enviada ao YouTube.
