@@ -18,6 +18,10 @@ abstract class BaseActivity : AppCompatActivity() {
         (application as? MystApp)?.applyAppearanceNightMode()
         MystTheme.applyAmoledOverlay(this)
         super.onCreate(savedInstanceState)
+        // O AppCompat pode aplicar o modo noturno durante o `super.onCreate`.
+        // Reaplica o overlay depois disso para a TV já nascer AMOLED quando o
+        // tema chega pelo pareamento no mesmo processo.
+        MystTheme.applyAmoledOverlay(this)
         MystTheme.applySystemBars(this)
     }
 }
