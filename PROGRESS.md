@@ -114,6 +114,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 | 40973178702 | 1c6fe94 | verde | TV temporária com Room em memória e backup automático do `Mystaccount.json` no celular (0.2.0-dev.8) | `apks/app.apk`, `apks/app-tv.apk` |
 | 40978889454 | d02bc70 | verde | TV adota tema/AMOLED do celular no pareamento, com aparência temporária apagada na desconexão/logout (0.2.0-dev.9) | `apks/app.apk`, `apks/app-tv.apk` |
 | 40987101834 | 2ed8ca2 | verde | Fase 14: estatísticas da conta Myst, eventos `play_events`, dados isolados por conta, migração Room 4→5 e schema exportado (0.2.0-dev.10) | `apks/app.apk`, `apks/app-tv.apk` |
+| 40988066201 | 14bc43b | verde | Publicação do schema Room 5, dos APKs do dev.10 e das notas da fase 14 no repositório | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
 - YouTube Music (fase 13): a biblioteca da conta é **somente leitura**. O cache fica em tabelas próprias do Room (`yt_playlists`, `yt_playlist_tracks`, `yt_history`, `yt_sync_state`), com validade de 15 minutos e estratégia *stale-while-revalidate*: a tela mostra o cache na hora e atualiza em segundo plano. O botão/gesto de atualizar força a rede. Nenhuma escrita é enviada ao YouTube.
