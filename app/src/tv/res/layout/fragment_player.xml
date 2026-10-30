@@ -95,10 +95,27 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/space_xs"
+                android:background="?attr/selectableItemBackgroundBorderless"
                 android:ellipsize="end"
                 android:maxLines="1"
+                android:paddingStart="@dimen/space_s"
+                android:paddingEnd="@dimen/space_s"
                 android:textColor="?attr/mystOnSurfaceDim"
                 android:textSize="24sp" />
+
+            <TextView
+                android:id="@+id/playerAlbum"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:paddingStart="@dimen/space_s"
+                android:paddingEnd="@dimen/space_s"
+                android:textColor="?attr/mystAccentText"
+                android:textSize="@dimen/text_body"
+                android:visibility="gone" />
 
             <SeekBar
                 android:id="@+id/playerSeek"

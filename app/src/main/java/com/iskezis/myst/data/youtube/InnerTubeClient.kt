@@ -1648,8 +1648,8 @@ class InnerTubeClient(
         return Thumbnails.best(url, findVideoId(item))
     }
 
-    private fun runsText(text: JsonObject): String {
-        val runs = text["runs"] as? JsonArray ?: return ""
+    private fun runsText(text: JsonObject?): String {
+        val runs = text?.get("runs") as? JsonArray ?: return ""
         return runs.joinToString("") { run ->
             ((run as? JsonObject)?.get("text") as? JsonPrimitive)?.contentOrNull.orEmpty()
         }.trim()
