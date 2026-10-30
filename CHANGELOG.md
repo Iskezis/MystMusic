@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0-dev.11 — 29/10/2026
+
+Correções de sincronização, desconexão e Estatísticas.
+
+### Corrigido
+- Sincronização bidirecional em tempo real entre celular e TV: o canal TV→celular avisa o celular quando o histórico, as estatísticas ou uma playlist mudam na TV, e o celular envia as novidades ao Room temporário da TV. O primeiro sync logo após o pareamento tenta de novo em 5 s se a TV ainda estiver gravando o payload.
+- **Recentes** e a biblioteca do YouTube Music agora fazem parte do pareamento e das sincronizações seguintes: playlists, faixas carregadas, histórico e estado de atualização viajam junto com os dados da conta Myst. Sem isso a TV só recebia o histórico local e ficava sem a parte do YouTube.
+- Aparência e Discord são reaplicados a cada sync. O **Preto AMOLED** chega ativo na TV quando o telefone está efetivamente no tema escuro, mesmo que a preferência seja "Sistema"; mudanças em Aparência e Discord disparam um sync imediato.
+- Desconexão mais confiável: portas fixas 8765 (TV) e 8766 (celular) com fallback, reconexão pelo último endereço ou NSD, botão **Desconectar do celular** nas Configurações da TV e opção de remover o pareamento só do celular quando a TV estiver inalcançável.
+- Estatísticas contam a música depois dos **10 primeiros segundos ouvidos**, inclusive quando a faixa é pulada no meio; o tempo gravado é o trecho exato escutado. O corte antigo de 30 s/50% foi removido de todas as agregações e do histórico.
+
 ## 0.2.0-dev.10 — 29/10/2026
 
 Fase 14: conta Myst persistente e Estatísticas.
