@@ -32,11 +32,11 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
   - [x] Histórico do YTM em Recentes (mesclado, sem duplicatas)
   - [x] Recomendados/Em Alta baseados na conta do YTM
   - [x] Cache + pull-to-refresh + estados de erro
-- [ ] 14. Conta Myst: dados persistentes + Estatísticas
-  - [ ] Dados isolados por conta Myst (recentes, gostos, playlists, histórico, preferências)
-  - [ ] Migrações Room não destrutivas; teste: atualizar → relogar → dados intactos
-  - [ ] Botão no canto superior direito da Navegação → tela Estatísticas
-  - [ ] Estatísticas armazenadas na conta Myst (eventos de reprodução)
+- [x] 14. Conta Myst: dados persistentes + Estatísticas
+  - [x] Dados isolados por conta Myst (recentes, gostos, playlists, histórico, preferências)
+  - [x] Migrações Room não destrutivas; schema 5 conferido coluna a coluna contra a migração (teste de atualização em aparelho pendente)
+  - [x] Botão no canto superior direito da Navegação → tela Estatísticas
+  - [x] Estatísticas armazenadas na conta Myst (eventos de reprodução)
 - [ ] 15. Busca: artistas, álbuns e playlists
   - [ ] Chips Tudo / Músicas / Artistas / Álbuns / Playlists
   - [ ] Perfil do artista, tela do álbum, tela da playlist
@@ -62,6 +62,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - API de atualização do GitHub só funciona sem token se o repositório for público.
 
 ## Release
+- **0.2.0-dev.10** (`versionCode 19`, `versionName "0.2.0-dev.10"`): conta Myst persistente com dados isolados por conta e tela Estatísticas (tempo ouvido, reproduções, tops de músicas/artistas/álbuns, gráficos de 24 h e por dia, sequência atual/recorde), eventos em `play_events`, migração Room 4→5 não destrutiva e schema exportado; run `40987101834`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.9** (`versionCode 18`, `versionName "0.2.0-dev.9"`): a TV recebe o tema e o AMOLED do celular no pareamento e usa essa aparência temporariamente até desconectar ou deslogar; run `40978889454`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.8** (`versionCode 17`, `versionName "0.2.0-dev.8"`): TV como terminal temporário (Room em memória, sem `Mystaccount.json`, limpeza ao desconectar/deslogar) e backup automático do `Mystaccount.json` no celular em `/sdcard/MystMusic` (fallback `Download/MystMusic` sem a permissão especial); run `40973178702`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.7** (`versionCode 16`, `versionName "0.2.0-dev.7"`): o `Mystaccount.json` passou a levar playlists do YouTube Music, histórico do YouTube e as preferências de aparência, e a restauração religa esses dados; run `40966779743`.
@@ -112,6 +113,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 | 40966779743 | 55b18d2 | verde | `Mystaccount.json` com playlists do YouTube, histórico e aparência (0.2.0-dev.7) | — |
 | 40973178702 | 1c6fe94 | verde | TV temporária com Room em memória e backup automático do `Mystaccount.json` no celular (0.2.0-dev.8) | `apks/app.apk`, `apks/app-tv.apk` |
 | 40978889454 | d02bc70 | verde | TV adota tema/AMOLED do celular no pareamento, com aparência temporária apagada na desconexão/logout (0.2.0-dev.9) | `apks/app.apk`, `apks/app-tv.apk` |
+| 40987101834 | 2ed8ca2 | verde | Fase 14: estatísticas da conta Myst, eventos `play_events`, dados isolados por conta, migração Room 4→5 e schema exportado (0.2.0-dev.10) | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
 - YouTube Music (fase 13): a biblioteca da conta é **somente leitura**. O cache fica em tabelas próprias do Room (`yt_playlists`, `yt_playlist_tracks`, `yt_history`, `yt_sync_state`), com validade de 15 minutos e estratégia *stale-while-revalidate*: a tela mostra o cache na hora e atualiza em segundo plano. O botão/gesto de atualizar força a rede. Nenhuma escrita é enviada ao YouTube.
@@ -172,8 +174,15 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - Backup automático (0.2.0-dev.8): o celular grava o `Mystaccount.json` em `/sdcard/MystMusic` quando tem `MANAGE_EXTERNAL_STORAGE` (Android 11+) ou `WRITE_EXTERNAL_STORAGE` (Android 6–10). Sem essa permissão, usa `Download/MystMusic` via MediaStore sem pedir nada; em último caso, o armazenamento privado do app (some ao desinstalar). O app pede o acesso uma vez na abertura e oferece de novo em Configurações → Conta Myst, mostrando o caminho real. O arquivo é regravado a cada mudança do Room e antes de qualquer logout; a TV nunca chama esse caminho.
 - Logout com TV pareada: o celular tenta avisar a TV por até 3 s antes de apagar o segredo local. Se a TV estiver desligada/fora da rede, o logout continua e a TV limpa os dados temporários quando o processo terminar; o pareamento local é removido de qualquer forma.
 - Aparência no `Mystaccount.json`: tema e AMOLED continuam sendo preferências do aparelho, mas são exportados/restaurados junto com a conta a pedido do usuário; campos ausentes (arquivos v1) não sobrescrevem a escolha local.
+- Dados por conta Myst (fase 14): `playlists`, `history`, `artist_affinity`, `pair_tombstones` e as tabelas `yt_*` já eram filtradas por `userId`. A migração 4→5 passou a levar `userId` também para `playlist_tracks`, com FK para `users` e cópia do dono da playlist; assim nenhuma faixa órfã fica visível para outra conta. Aparência continua por aparelho (decisão da fase 11); os dados de gosto/afinidade, histórico, playlists e estatísticas são da conta. Ao trocar de conta Myst, as consultas usam o `userId` da sessão ativa, sem misturar nada.
+- Migração Room 4→5: `yt_playlist_tracks` e `yt_history` ganham `album` com `ALTER TABLE`; `history`, `artist_affinity` e `playlist_tracks` são recriadas em uma transação, copiando os dados e ligando `userId` ao dono existente (`JOIN users`), e `play_events` é criada. `fallbackToDestructiveMigration` continua proibido. `exportSchema = true` e o schema 5 fica em `app/schemas/com.iskezis.myst.data.db.AppDatabase/5.json`; o workflow publica `myst-room-schema` como artefato. O SQL gerado pelo Room foi comparado coluna a coluna com o da migração (tabelas, defaults, FKs e índices) antes de fechar a fase; o teste de instalação por cima do dev.9 em aparelho ainda depende do usuário.
+- Eventos de reprodução: `play_events` guarda `userId`, `videoId`, título, artista, álbum, capa, `startedAt`, `playedMs`, `durationMs`, `completed` e `source`, com índices `(userId, startedAt)` e `(userId, artist)`. O tempo é medido por deltas da posição do player: pausa, buffering e salto para frente/trás não contam. O evento é gravado na troca de faixa, no fim, após 30 s de pausa ou na destruição do serviço, sempre em `Dispatchers.IO` e na `backgroundScope` do app para sobreviver ao fim do `PlaybackService`. Uma reprodução conta a partir de 30 s ou 50% da duração; o limite de um evento é 24 h.
+- Estatísticas (fase 14): a tela abre pelo ícone de gráfico no cabeçalho da Navegação, empilhada com voltar e navbar visível. Os chips Semana/Mês/Ano/Sempre consultam só a conta Myst ativa. Tempo ouvido compara com o período anterior de mesmo tamanho (Sempre não compara), reproduções usam o corte de 30 s/50%, tops limitam a 5 itens e os gráficos de 24 h e por dia são desenhados em `BarChartView` (Canvas, sem dependência nova, animação de 400 ms). Carregando usa shimmer; vazio mostra "Ouça algumas músicas para ver suas estatísticas"; erro mostra a mensagem e "Tentar novamente". A tela usa os tokens de tema e os tamanhos do flavor TV, com chips e botão de voltar focáveis por D-pad.
+- Álbuns: o parser do InnerTube passou a extrair o álbum; ele viaja em `Track`, playlists, histórico e cache do YouTube e é gravado em `play_events`, permitindo o top álbuns. Eventos sem álbum ficam fora do ranking (`TRIM(album) != ''`); se nenhum evento do período tiver metadado, o card mostra a mensagem de vazio em vez de inventar nome. O top artistas usa o mesmo cuidado com artista vazio.
+- `Mystaccount.json` v3: inclui `playEvents` (até 20.000, com o mesmo corte da importação), além dos dados das versões anteriores. A importação mescla por `videoId|startedAt`, aceita arquivos v1/v2 sem os eventos e não apaga eventos locais. O pareamento celular↔TV também transporta os eventos, então as estatísticas da conta acompanham a TV temporária e voltam ao celular.
 
 ## Problemas em aberto
+- Fase 14: falta a confirmação em aparelho de que instalar o dev.10 por cima do dev.9, relogar e encontrar playlists/histórico/estatísticas intactos. A migração 4→5 e o schema exportado foram conferidos no CI e o build `40987101834` está verde; o ambiente do agente não tem ADB/aparelho para executar o teste de atualização.
 - Validação funcional em aparelho físico confirmada pelo usuário em 29/10/2026: login YouTube, reprodução, navegação, Discord RPC com capa/progresso e pareamento TV. Nenhum bloqueador conhecido para a 0.1.0 Alpha.
 - Discord: se o aplicativo público de capas for recusado, o log mostra `Discord recusou o aplicativo de capas: HTTP ...`; nesse caso, criar um aplicativo no Discord Developer Portal e definir `DISCORD_APP_ID` em `local.properties`/GitHub Secrets. Sem isso, o app continua funcionando e a presença aparece sem capa.
 - Crash corrigido: o log de 28/10 mostrou `IllegalArgumentException: Software rendering doesn't support hardware bitmaps` em `TransitionUtils.createViewBitmap` ao sair da Busca com capas carregadas. A causa era o bitmap de hardware padrão do Coil; `MystApp.newImageLoader()` usa `allowHardware(false)` e o build 40795596184 inclui a correção.
