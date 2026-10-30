@@ -531,6 +531,7 @@ class AccountRepository(
             AppLog.failure(AppLog.TAG_AUTH, "Falha limpando o banco temporário da TV", it)
         }
         TvEphemeralData.purge(context)
+        TvEphemeralData.resetAppearance(context)
     }
 
     /** Mantido para chamadas antigas; desloga as duas contas. */

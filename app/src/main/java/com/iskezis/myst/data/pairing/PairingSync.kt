@@ -14,6 +14,8 @@ import com.iskezis.myst.data.db.PlaylistEntity
 import com.iskezis.myst.data.db.PlaylistRepository
 import com.iskezis.myst.data.db.PlaylistTrackEntity
 import com.iskezis.myst.data.db.UserEntity
+import com.iskezis.myst.data.settings.AppearanceSettings
+import com.iskezis.myst.data.settings.ThemeMode
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.sha256Hex
@@ -52,6 +54,7 @@ object PairingSync {
             ?: throw IllegalStateException("Conta Myst ausente")
         val user = app.accounts.currentUser()
         val avatarBase64 = AvatarStore.readBase64(user?.avatarPath)
+        val appearance = app.appearance.snapshot()
         val account = PairAccount(
             type = session.type,
             username = user?.username ?: "paired_${sha256Hex(session.displayName).take(12)}",
@@ -80,6 +83,10 @@ object PairingSync {
             history = snapshot.history,
             affinities = snapshot.affinities,
             tombstones = snapshot.tombstones,
+            appearance = PairAppearance(
+                themeMode = appearance.themeMode.storageValue,
+                amoled = appearance.amoled,
+            ),
             pairId = pairId,
             pairSecret = pairSecret,
             phoneName = phoneName,
@@ -204,6 +211,26 @@ object PairingSync {
         )
         app.session.youtubeVisitorData = bundle.youtubeVisitorData
         app.session.youtubeDataSyncId = bundle.youtubeDataSyncId
+
+        // A TV é temporária: o tema/AMOLED do celular vale só enquanto o
+        // pareamento existir. É gravado nas preferências do aparelho para
+        // sobreviver a uma recriação de Activity e apagado na desconexão/logout.
+        val incomingAppearance = bundle.appearance
+        if (incomingAppearance != null) {
+            val current = app.appearance.snapshot()
+            val settings = AppearanceSettings(
+                themeMode = incomingAppearance.themeMode
+                    ?.let { ThemeMode.fromStorageOrNull(it) }
+                    ?: current.themeMode,
+                amoled = incomingAppearance.amoled ?: current.amoled,
+            )
+            app.appearance.apply(settings)
+            AppLog.i(
+                AppLog.TAG_PAIRING,
+                "Aparência do celular aplicada na TV: " +
+                    "modo=${settings.themeMode.storageValue} amoled=${settings.amoled}",
+            )
+        }
 
         if (!account.avatarBase64.isNullOrBlank()) {
             val avatarPath = AvatarStore.saveBase64(app, userId, account.avatarBase64)

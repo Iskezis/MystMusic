@@ -137,6 +137,13 @@ data class PairPlaylist(
 )
 
 @Serializable
+data class PairAppearance(
+    /** "system", "light" ou "dark"; nulo em payloads antigos. */
+    val themeMode: String? = null,
+    val amoled: Boolean? = null,
+)
+
+@Serializable
 data class PairBundle(
     val account: PairAccount? = null,
     val youtubeCookies: String? = null,
@@ -147,6 +154,8 @@ data class PairBundle(
     val history: List<PairHistory> = emptyList(),
     val affinities: List<PairAffinity> = emptyList(),
     val tombstones: List<PairTombstone> = emptyList(),
+    /** Tema/AMOLED do celular, aplicados temporariamente na TV. */
+    val appearance: PairAppearance? = null,
     /** Identidade do canal celular↔TV criada junto com o primeiro pareamento. */
     val pairId: String? = null,
     val pairSecret: String? = null,

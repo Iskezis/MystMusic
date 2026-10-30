@@ -88,6 +88,11 @@ class MystApp : Application(), ImageLoaderFactory {
             // TV = terminal temporário. Remove resíduos de versões antigas
             // antes de qualquer tela; o banco novo será em memória.
             TvEphemeralData.purge(this)
+            if (!session.hasTvPairing) {
+                // Sem pareamento não existe tema temporário do celular para
+                // manter; a próxima tela usa o padrão do sistema.
+                TvEphemeralData.resetAppearance(this)
+            }
         }
         // Mantém o Mystaccount.json interno e a cópia externa (quando o
         // provedor permite escrita persistente) atualizados a cada mudança no
@@ -163,6 +168,16 @@ class MystApp : Application(), ImageLoaderFactory {
                 }
             }
         }
+    }
+
+    /**
+     * Reaplica o modo noturno atual antes de uma Activity ser criada. É o que
+     * faz a TV adotar o tema recebido no pareamento sem precisar reiniciar o
+     * processo: o `PairingSync` grava as preferências e a próxima tela já
+     * nasce no tema do celular. No celular a chamada é idempotente.
+     */
+    fun applyAppearanceNightMode() {
+        AppCompatDelegate.setDefaultNightMode(appearance.nightMode)
     }
 
     /**

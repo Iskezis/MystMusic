@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0-dev.9 — 29/10/2026
+
+Aparência do celular na TV ao parear.
+
+### Incluído
+- O payload de pareamento agora leva o tema (Sistema/Claro/Escuro) e o Preto AMOLED do celular; a TV aplica a aparência assim que o pareamento termina, antes de abrir a navegação.
+- A escolha fica só enquanto o pareamento existir: sobrevive a uma recriação de Activity/processo da TV, mas é apagada ao desconectar ou deslogar, voltando ao padrão do sistema.
+- A TV continua sem gravar conta, playlists, capas ou `Mystaccount.json`; apenas a preferência temporária de aparência é mantida para evitar piscar o tema errado entre telas.
+
 ## 0.2.0-dev.8 — 29/10/2026
 
 TV temporária e backup automático do `Mystaccount.json`.

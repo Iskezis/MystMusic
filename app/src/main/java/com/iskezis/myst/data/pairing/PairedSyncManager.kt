@@ -140,6 +140,9 @@ class PairedSyncManager(private val app: MystApp) {
             TvEphemeralData.purge(app)
         }
         handler.post {
+            // Limpa o tema temporário antes de abrir a tela de código, para
+            // ela não herdar a aparência do celular que acabou de desconectar.
+            TvEphemeralData.resetAppearance(app)
             val intent = Intent(app, TvPairingActivity::class.java).addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK,
             )

@@ -2,6 +2,7 @@ package com.iskezis.myst.ui.common
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import com.iskezis.myst.MystApp
 import com.iskezis.myst.util.MystTheme
 
 /**
@@ -11,6 +12,10 @@ import com.iskezis.myst.util.MystTheme
 abstract class BaseActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Na TV, o tema chega pelo pareamento e é gravado nas preferências
+        // temporárias; esta chamada garante que a próxima tela já use o modo
+        // certo. No celular o valor normalmente já coincide.
+        (application as? MystApp)?.applyAppearanceNightMode()
         MystTheme.applyAmoledOverlay(this)
         super.onCreate(savedInstanceState)
         MystTheme.applySystemBars(this)
