@@ -69,6 +69,12 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
   - [x] TV: anel/borda de foco visível em todos os controles do player, incluindo play/pause, artista, álbum, seek e botões de erro
   - [x] TV: foco inicial no play/pause e ordem de foco explícita entre todos os controles
   - [x] Falha de busca/navegação nunca deixa a linha sem resposta; abre a busca pelo nome como fallback
+- [ ] Pareamento e sincronização em segundo plano (0.2.0-dev.19)
+  - [ ] Confirmação do código continua com a tela fechada, app em segundo plano ou removido dos recentes
+  - [ ] Serviço em primeiro plano mantém o servidor do celular e o ciclo TV → celular ativos
+  - [ ] Serviço volta com `START_STICKY`, `BOOT_COMPLETED` e `MY_PACKAGE_REPLACED`
+  - [ ] TV reenvia o retrato pendente com espera crescente quando o celular está inacessível
+  - [ ] Notificação discreta alterna entre "Pareando" e "Conectado à TV"
 - [x] 15. Busca: artistas, álbuns e playlists
   - [x] Chips Tudo / Músicas / Artistas / Álbuns / Playlists
   - [x] Perfil do artista, tela do álbum, tela da playlist

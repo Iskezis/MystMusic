@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0-dev.19 — 30/10/2026
+
+Pareamento e sincronização com a TV funcionando com o app em segundo plano ou fechado.
+
+### Corrigido
+- **Confirmação do código com o app fora da tela:** a sessão que responde ao `/confirm` da TV saiu da `PhonePairingActivity` e passou a viver na `Application`. Fechar a tela, voltar para a TV ou remover o MystMusic dos recentes não fecha mais o servidor temporário nem apaga o código de 5 dígitos. O código continua válido por 2 minutos e a TV consegue concluir o pareamento nesse intervalo.
+- **Sincronização TV → celular em segundo plano:** um serviço em primeiro plano (`PairingSyncService`, tipo `connectedDevice`) mantém o servidor HTTP do celular e o ciclo de sincronização ativos depois que a Activity sai da tela. O histórico, as estatísticas e as playlists temporárias da TV chegam ao celular mesmo com o app em segundo plano ou removido dos recentes.
+- **Retomada automática:** o serviço usa `START_STICKY` e um receptor de `BOOT_COMPLETED`/`MY_PACKAGE_REPLACED` para voltar depois de o Android encerrar o processo, reiniciar o aparelho ou instalar uma atualização. Ao reabrir o app, o canal e o ciclo também são garantidos.
+- **Retentativa da TV:** quando o celular está temporariamente inacessível, a TV não descarta o retrato. Ela tenta o `/push` e o aviso `/notify` de novo com espera crescente (5 s até 60 s) enquanto o pareamento existir.
+- **Notificação do canal:** uma notificação discreta e sem som mostra "Pareando com a TV" durante o código e "MystMusic conectado à TV" quando o pareamento está ativo. Tocar nela abre o app.
+- **Permissões do Android 14:** foram declaradas `FOREGROUND_SERVICE_CONNECTED_DEVICE`, `CHANGE_NETWORK_STATE`, `CHANGE_WIFI_STATE` e `RECEIVE_BOOT_COMPLETED` para o serviço de rede local funcionar nas versões novas do Android.
+
+### Notas
+- O serviço é encerrado ao cancelar o código, quando ele expira, ao desconectar a TV ou ao deslogar. Ele não aparece na TV.
+- Continua valendo a limitação de rede: celular e TV precisam estar na mesma rede Wi-Fi/LAN. Forçar a parada do app nas configurações do Android encerra qualquer serviço e interrompe o canal até o app ser aberto de novo.
+
 ## 0.2.0-dev.18 — 30/10/2026
 
 Estatísticas interativas, fotos de artistas e navegação por D-pad no player de TV.

@@ -394,6 +394,12 @@
     <string name="pairing_tv_connecting_phone">Validando código com o celular…</string>
     <string name="pairing_tv_request_received">Conexão de %1$s. Digite o código do celular.</string>
     <string name="pairing_tv_network_error">Não foi possível anunciar a TV na rede. Verifique o Wi-Fi.</string>
+    <string name="pairing_sync_channel_name">Conexão com a TV</string>
+    <string name="pairing_sync_channel_description">Mantém o MystMusic sincronizado com a TV pareada em segundo plano.</string>
+    <string name="pairing_sync_active_title">Pareando com a TV</string>
+    <string name="pairing_sync_active_text">Mantenha o celular na mesma rede Wi-Fi até a TV confirmar o código.</string>
+    <string name="pairing_sync_connected_title">MystMusic conectado à TV</string>
+    <string name="pairing_sync_connected_text">Sincronizando dados de %1$s em segundo plano.</string>
     <string name="common_back">Voltar</string>
 
     <string name="home_greeting">Olá, %1$s</string>

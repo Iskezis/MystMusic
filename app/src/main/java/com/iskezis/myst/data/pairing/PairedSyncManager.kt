@@ -55,10 +55,18 @@ class PairedSyncManager(private val app: MystApp) {
     private var changeJob: Job? = null
     private var serverRetryJob: Job? = null
     private var unpairCleanupJob: Job? = null
+    private var tvPushRetryJob: Job? = null
     private var observer: InvalidationTracker.Observer? = null
 
     @Volatile
     private var suppressChangesUntil = 0L
+
+    /** MainActivity visível e serviço em primeiro plano são fontes independentes. */
+    @Volatile
+    private var mainVisible = false
+
+    @Volatile
+    private var backgroundActive = false
 
     /**
      * Impede um sync novo de começar enquanto o usuário desconecta. A flag é
@@ -102,6 +110,8 @@ class PairedSyncManager(private val app: MystApp) {
         serverRetryJob = null
         changeJob?.cancel()
         changeJob = null
+        tvPushRetryJob?.cancel()
+        tvPushRetryJob = null
         synchronized(this) {
             runCatching { tvServer?.close() }
             tvServer = null
@@ -133,6 +143,7 @@ class PairedSyncManager(private val app: MystApp) {
         // não serve mais: fecha e sobe outro com as credenciais recém-gravadas.
         synchronized(this) { stopPhoneChannel() }
         startPhoneServerIfNeeded()
+        startPhoneLoop()
         requestSync()
     }
 
@@ -142,14 +153,41 @@ class PairedSyncManager(private val app: MystApp) {
             onTvMainReady()
             return
         }
+        mainVisible = true
         startPhoneServerIfNeeded()
         startPhoneLoop()
+        PairingSyncService.startIfPaired(app)
     }
 
     fun onMainStop() {
         if (isTv) return
-        phoneLoop?.cancel()
-        phoneLoop = null
+        mainVisible = false
+        if (!backgroundActive) {
+            phoneLoop?.cancel()
+            phoneLoop = null
+        }
+    }
+
+    /**
+     * Serviço em primeiro plano ativo: o ciclo de sincronização não pode
+     * parar quando a Activity sai da tela. É esse ciclo que garante que uma
+     * mudança feita na TV chegue ao celular mesmo com o app fechado.
+     */
+    fun onBackgroundServiceStarted() {
+        if (isTv) return
+        backgroundActive = true
+        if (!app.session.hasTvPairing) return
+        startPhoneServerIfNeeded()
+        startPhoneLoop()
+    }
+
+    fun onBackgroundServiceStopped() {
+        if (isTv) return
+        backgroundActive = false
+        if (!mainVisible) {
+            phoneLoop?.cancel()
+            phoneLoop = null
+        }
     }
 
     /** Dispara uma sincronização imediata sem bloquear a UI. */
@@ -216,6 +254,7 @@ class PairedSyncManager(private val app: MystApp) {
         stopPhoneChannel()
         phoneLoop?.cancel()
         phoneLoop = null
+        PairingSyncService.stop(app)
         if (!notified) clearPairingLocally()
         return notified
     }
@@ -232,6 +271,7 @@ class PairedSyncManager(private val app: MystApp) {
         phoneLoop = null
         changeJob?.cancel()
         changeJob = null
+        PairingSyncService.stop(app)
         AppLog.i(AppLog.TAG_PAIRING, "Pareamento removido localmente no celular")
     }
 
@@ -416,6 +456,8 @@ class PairedSyncManager(private val app: MystApp) {
         serverRetryJob = null
         changeJob?.cancel()
         changeJob = null
+        tvPushRetryJob?.cancel()
+        tvPushRetryJob = null
         app.session.clearTvPairing()
         runCatching { app.discord.disconnect() }
             .onFailure { AppLog.failure(AppLog.TAG_DISCORD, "Falha desconectando Discord na TV", it) }
@@ -622,6 +664,8 @@ class PairedSyncManager(private val app: MystApp) {
                 if (System.currentTimeMillis() < suppressChangesUntil) continue
                 if (!app.session.hasTvPairing) return@launch
                 if (isTv) {
+                    tvPushRetryJob?.cancel()
+                    tvPushRetryJob = null
                     val pushed = runCatching { pushTvSnapshotToPhone() }
                         .onFailure {
                             AppLog.d(
@@ -631,17 +675,64 @@ class PairedSyncManager(private val app: MystApp) {
                         }
                         .getOrDefault(false)
                     if (!pushed) {
-                        runCatching { notifyPhone("sync") }.onFailure {
-                            AppLog.d(
-                                AppLog.TAG_PAIRING,
-                                "Aviso em tempo real para o celular não entregue: ${it.message}",
-                            )
-                        }
+                        val notified = runCatching { notifyPhone("sync") }
+                            .onFailure {
+                                AppLog.d(
+                                    AppLog.TAG_PAIRING,
+                                    "Aviso em tempo real para o celular não entregue: ${it.message}",
+                                )
+                            }
+                            .getOrDefault(false)
+                        // Se o celular estava dormindo, com o processo recém-
+                        // criado ou fora da rede por um instante, tenta de novo.
+                        // O retrato não pode ficar só na memória da TV.
+                        if (!notified) scheduleTvPushRetry()
                     }
                 } else {
                     runCatching { syncNow() }
                 }
                 return@launch
+            }
+        }
+    }
+
+    /**
+     * A TV é o único lugar onde o retrato temporário existe. Quando o celular
+     * está inacessível no exato momento da mudança, o envio não pode ser
+     * descartado: tenta de novo com espera crescente enquanto o pareamento
+     * continuar ativo. O ciclo do celular também puxa o retrato ao voltar.
+     */
+    private fun scheduleTvPushRetry() {
+        if (!isTv || !app.session.hasTvPairing) return
+        if (tvPushRetryJob?.isActive == true) return
+        tvPushRetryJob = scope.launch {
+            var waitMs = TV_PUSH_RETRY_INITIAL_MS
+            while (isActive && app.session.hasTvPairing) {
+                delay(waitMs)
+                val pushed = runCatching { pushTvSnapshotToPhone() }
+                    .onFailure {
+                        AppLog.d(
+                            AppLog.TAG_PAIRING,
+                            "Nova tentativa de retrato da TV falhou: ${it.message}",
+                        )
+                    }
+                    .getOrDefault(false)
+                if (pushed) {
+                    AppLog.i(
+                        AppLog.TAG_PAIRING,
+                        "Retrato pendente da TV entregue ao celular",
+                    )
+                    return@launch
+                }
+                val notified = runCatching { notifyPhone("sync") }.getOrDefault(false)
+                if (notified) {
+                    AppLog.i(
+                        AppLog.TAG_PAIRING,
+                        "Retrato pendente avisado ao celular para sincronização",
+                    )
+                    return@launch
+                }
+                waitMs = (waitMs * 2).coerceAtMost(TV_PUSH_RETRY_MAX_MS)
             }
         }
     }
@@ -755,6 +846,8 @@ class PairedSyncManager(private val app: MystApp) {
         private const val DISCONNECT_WAIT_MS = 2_000L
         private const val VERIFY_THROTTLE_MS = 5_000L
         private const val VERIFY_DISCOVERY_TIMEOUT_MS = 4_000L
+        private const val TV_PUSH_RETRY_INITIAL_MS = 5_000L
+        private const val TV_PUSH_RETRY_MAX_MS = 60_000L
 
         private val PAIRING_TABLES = arrayOf(
             "playlists",

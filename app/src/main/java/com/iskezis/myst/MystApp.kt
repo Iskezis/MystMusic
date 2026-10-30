@@ -13,6 +13,7 @@ import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.PlaylistRepository
 import com.iskezis.myst.data.discord.DiscordPresenceManager
 import com.iskezis.myst.data.pairing.PairedSyncManager
+import com.iskezis.myst.data.pairing.PhonePairingSession
 import com.iskezis.myst.data.settings.AppearancePreferences
 import com.iskezis.myst.data.recommendations.RecommendationRepository
 import com.iskezis.myst.data.spotify.SpotifyImporter
@@ -87,6 +88,7 @@ class MystApp : Application(), ImageLoaderFactory {
         }
     }
     val pairedSync: PairedSyncManager by lazy { PairedSyncManager(this) }
+    val phonePairing: PhonePairingSession by lazy { PhonePairingSession(this) }
 
     val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val discordScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
