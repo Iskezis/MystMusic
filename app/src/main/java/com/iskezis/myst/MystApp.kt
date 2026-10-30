@@ -16,6 +16,7 @@ import com.iskezis.myst.data.pairing.PairedSyncManager
 import com.iskezis.myst.data.settings.AppearancePreferences
 import com.iskezis.myst.data.recommendations.RecommendationRepository
 import com.iskezis.myst.data.spotify.SpotifyImporter
+import com.iskezis.myst.data.stats.StatsRepository
 import com.iskezis.myst.data.youtube.InnerTubeClient
 import com.iskezis.myst.data.youtube.YouTubeLibraryRepository
 import com.iskezis.myst.data.youtube.YouTubeRepository
@@ -67,12 +68,13 @@ class MystApp : Application(), ImageLoaderFactory {
         YouTubeLibraryRepository(database, youtube, playlists, session)
     }
     val recommendations: RecommendationRepository by lazy { RecommendationRepository(database, youtube) }
+    val stats: StatsRepository by lazy { StatsRepository(database) }
     val spotify: SpotifyImporter by lazy { SpotifyImporter(this, youtube, playlists) }
     val playerController: PlayerController by lazy { PlayerController(this) }
     val discord: DiscordPresenceManager by lazy { DiscordPresenceManager(this, session) }
     val pairedSync: PairedSyncManager by lazy { PairedSyncManager(this) }
 
-    private val warmUpScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val discordScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val crashFile by lazy { File(filesDir, "myst_last_crash.txt") }
 
@@ -128,12 +130,12 @@ class MystApp : Application(), ImageLoaderFactory {
             }
         }
         // Abre TLS e renova o visitorData antes do primeiro toque em uma faixa.
-        warmUpScope.launch { innerTube.warmUp() }
+        backgroundScope.launch { innerTube.warmUp() }
         observePlayerForDiscord()
         if (BuildConfig.FLAVOR == "tv" && session.hasTvPairing) {
             // O banco é em memória; recria a linha mínima do usuário para o
             // servidor de pareamento continuar aceitando o celular.
-            warmUpScope.launch {
+            backgroundScope.launch {
                 runCatching { accounts.ensureTvSessionUser() }.onFailure {
                     AppLog.failure(
                         AppLog.TAG_AUTH,

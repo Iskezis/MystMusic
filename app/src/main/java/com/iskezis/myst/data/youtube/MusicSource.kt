@@ -8,6 +8,7 @@ data class Track(
     val artist: String,
     val thumbnailUrl: String? = null,
     val durationMs: Long = 0L,
+    val album: String = "",
 ) {
     /** Melhor arte disponível, mesmo para faixas antigas salvas com URL pequena. */
     fun artworkUrl(): String? = Thumbnails.best(thumbnailUrl, videoId)

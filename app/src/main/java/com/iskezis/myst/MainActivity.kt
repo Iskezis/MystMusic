@@ -345,7 +345,8 @@ class MainActivity : BaseActivity() {
     }
 
     private fun updateSelection(destinationId: Int) {
-        binding.navBar.navHome.isSelected = destinationId == R.id.homeFragment
+        binding.navBar.navHome.isSelected =
+            destinationId == R.id.homeFragment || destinationId == R.id.statsFragment
         binding.navBar.navPlaylists.isSelected = destinationId == R.id.playlistsFragment
         binding.navBar.navSettings.isSelected =
             destinationId == R.id.settingsFragment || destinationId == R.id.appearanceFragment

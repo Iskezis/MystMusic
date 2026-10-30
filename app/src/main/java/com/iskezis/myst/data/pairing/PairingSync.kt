@@ -10,6 +10,7 @@ import com.iskezis.myst.data.account.YouTubeAccount
 import com.iskezis.myst.data.db.ArtistAffinityEntity
 import com.iskezis.myst.data.db.HistoryEntity
 import com.iskezis.myst.data.db.PairTombstoneEntity
+import com.iskezis.myst.data.db.PlayEventEntity
 import com.iskezis.myst.data.db.PlaylistEntity
 import com.iskezis.myst.data.db.PlaylistRepository
 import com.iskezis.myst.data.db.PlaylistTrackEntity
@@ -82,6 +83,7 @@ object PairingSync {
             playlists = snapshot.playlists,
             history = snapshot.history,
             affinities = snapshot.affinities,
+            playEvents = snapshot.playEvents,
             tombstones = snapshot.tombstones,
             appearance = PairAppearance(
                 themeMode = appearance.themeMode.storageValue,
@@ -127,6 +129,7 @@ object PairingSync {
                             videoId = track.videoId,
                             title = track.title,
                             artist = track.artist,
+                            album = track.album,
                             thumbnailUrl = track.thumbnailUrl?.take(MAX_URL_LENGTH),
                             durationMs = track.durationMs,
                         )
@@ -138,6 +141,7 @@ object PairingSync {
                     videoId = item.videoId,
                     title = item.title,
                     artist = item.artist,
+                    album = item.album,
                     thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
                     durationMs = item.durationMs,
                     playedMs = item.playedMs,
@@ -155,12 +159,27 @@ object PairingSync {
             val tombstones = database.pairTombstoneDao().all(userId).take(MAX_TOMBSTONES).map {
                 PairTombstone(key = it.key, deletedAt = it.deletedAt)
             }
+            val playEvents = database.playEventDao().recent(userId, MAX_PLAY_EVENTS).map { item ->
+                PairPlayEvent(
+                    videoId = item.videoId,
+                    title = item.title,
+                    artist = item.artist,
+                    album = item.album,
+                    thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
+                    startedAt = item.startedAt,
+                    playedMs = item.playedMs,
+                    durationMs = item.durationMs,
+                    completed = item.completed,
+                    source = item.source.take(MAX_SOURCE_LENGTH),
+                )
+            }
             PairSnapshot(
                 generatedAt = System.currentTimeMillis(),
                 playlists = playlists,
                 tombstones = tombstones,
                 history = history,
                 affinities = affinities,
+                playEvents = playEvents,
             )
         }
 
@@ -247,6 +266,7 @@ object PairingSync {
                 playlists = bundle.playlists,
                 history = bundle.history,
                 affinities = bundle.affinities,
+                playEvents = bundle.playEvents,
                 tombstones = bundle.tombstones,
             ),
         )
@@ -279,6 +299,7 @@ object PairingSync {
             var importedPlaylists = 0
             var importedTracks = 0
             var importedHistory = 0
+            var importedPlayEvents = 0
             val coverWrites = mutableListOf<Pair<Long, PairPlaylist>>()
 
             database.withTransaction {
@@ -353,10 +374,12 @@ object PairingSync {
                         if (videoId.isBlank() || !knownTracks.add(videoId)) return@forEach
                         val inserted = playlistDao.insertTrack(
                             PlaylistTrackEntity(
+                                userId = userId,
                                 playlistId = playlistId,
                                 videoId = videoId,
                                 title = track.title.trim().take(MAX_TITLE_LENGTH),
                                 artist = track.artist.trim().take(MAX_ARTIST_LENGTH),
+                                album = track.album.trim().take(MAX_ALBUM_LENGTH),
                                 thumbnailUrl = track.thumbnailUrl?.take(MAX_URL_LENGTH),
                                 durationMs = track.durationMs.coerceAtLeast(0L),
                                 position = position,
@@ -382,6 +405,7 @@ object PairingSync {
                             videoId = videoId,
                             title = item.title.trim().take(MAX_TITLE_LENGTH),
                             artist = item.artist.trim().take(MAX_ARTIST_LENGTH),
+                            album = item.album.trim().take(MAX_ALBUM_LENGTH),
                             thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
                             durationMs = item.durationMs.coerceAtLeast(0L),
                             playedMs = item.playedMs.coerceAtLeast(0L),
@@ -408,6 +432,31 @@ object PairingSync {
                         ),
                     )
                 }
+
+                val playEventDao = database.playEventDao()
+                val playEventKeys = playEventDao.keys(userId).toMutableSet()
+                snapshot.playEvents.take(MAX_PLAY_EVENTS).forEach { item ->
+                    val videoId = item.videoId.trim().take(MAX_ID_LENGTH)
+                    if (videoId.isBlank() || item.playedMs <= 0L) return@forEach
+                    val startedAt = item.startedAt.takeIf { it in 1..now } ?: now
+                    if (!playEventKeys.add("$videoId|$startedAt")) return@forEach
+                    playEventDao.insert(
+                        PlayEventEntity(
+                            userId = userId,
+                            videoId = videoId,
+                            title = item.title.trim().take(MAX_TITLE_LENGTH),
+                            artist = item.artist.trim().take(MAX_ARTIST_LENGTH),
+                            album = item.album.trim().take(MAX_ALBUM_LENGTH),
+                            thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
+                            startedAt = startedAt,
+                            playedMs = item.playedMs.coerceAtMost(MAX_PLAYED_MS),
+                            durationMs = item.durationMs.coerceIn(0L, MAX_DURATION_MS),
+                            completed = item.completed,
+                            source = item.source.trim().take(MAX_SOURCE_LENGTH).ifBlank { "pairing" },
+                        ),
+                    )
+                    importedPlayEvents++
+                }
             }
 
             if (coverWrites.isNotEmpty()) {
@@ -424,11 +473,14 @@ object PairingSync {
                 }
             }
 
-            if (importedPlaylists > 0 || importedTracks > 0 || importedHistory > 0) {
+            if (importedPlaylists > 0 || importedTracks > 0 || importedHistory > 0 ||
+                importedPlayEvents > 0
+            ) {
                 AppLog.i(
                     AppLog.TAG_PAIRING,
                     "Sincronização mesclada: playlists=$importedPlaylists " +
-                        "faixas=$importedTracks histórico=$importedHistory",
+                        "faixas=$importedTracks histórico=$importedHistory " +
+                        "eventos=$importedPlayEvents",
                 )
             }
         }
@@ -490,10 +542,15 @@ object PairingSync {
     private const val MAX_TRACKS_TOTAL = 30_000
     private const val MAX_HISTORY = 2_000
     private const val MAX_AFFINITIES = 500
+    private const val MAX_PLAY_EVENTS = 5_000
+    private const val MAX_PLAYED_MS = 24L * 60L * 60L * 1000L
+    private const val MAX_DURATION_MS = 24L * 60L * 60L * 1000L
     private const val MAX_TOMBSTONES = 5_000
     private const val MAX_ID_LENGTH = 128
     private const val MAX_TITLE_LENGTH = 300
     private const val MAX_ARTIST_LENGTH = 200
+    private const val MAX_ALBUM_LENGTH = 200
+    private const val MAX_SOURCE_LENGTH = 32
     private const val MAX_NAME_LENGTH = 40
     private const val MAX_URL_LENGTH = 2_000
 }

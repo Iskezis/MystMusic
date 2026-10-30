@@ -15,4 +15,7 @@
     <exclude domain="file" path="account/" />
     <exclude domain="file" path="logs/" />
     <exclude domain="file" path="myst_last_crash.txt" />
+    <!-- Cookies do WebView e arquivos baixados não entram no backup. -->
+    <exclude domain="root" path="app_webview/" />
+    <exclude domain="file" path="downloads/" />
 </full-backup-content>

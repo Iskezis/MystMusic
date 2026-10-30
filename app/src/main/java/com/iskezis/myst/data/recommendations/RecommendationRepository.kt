@@ -1,5 +1,6 @@
 package com.iskezis.myst.data.recommendations
 
+import androidx.room.withTransaction
 import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.ArtistAffinityEntity
 import com.iskezis.myst.data.db.HistoryEntity
@@ -148,19 +149,22 @@ class RecommendationRepository(
 
     suspend fun recordPlay(userId: Long, track: Track, playedMs: Long, completed: Boolean) =
         withContext(Dispatchers.IO) {
-            database.historyDao().insert(
-                HistoryEntity(
-                    userId = userId,
-                    videoId = track.videoId,
-                    title = track.title,
-                    artist = track.artist,
-                    thumbnailUrl = track.thumbnailUrl,
-                    durationMs = track.durationMs,
-                    playedMs = playedMs,
-                    completed = completed,
-                ),
-            )
-            updateAffinity(userId, track.artist, if (completed) 2.0 else 1.0)
+            database.withTransaction {
+                database.historyDao().insert(
+                    HistoryEntity(
+                        userId = userId,
+                        videoId = track.videoId,
+                        title = track.title,
+                        artist = track.artist,
+                        album = track.album,
+                        thumbnailUrl = track.thumbnailUrl,
+                        durationMs = track.durationMs,
+                        playedMs = playedMs,
+                        completed = completed,
+                    ),
+                )
+                updateAffinity(userId, track.artist, if (completed) 2.0 else 1.0)
+            }
         }
 
     suspend fun recordSkip(userId: Long, track: Track) = withContext(Dispatchers.IO) {
@@ -223,6 +227,7 @@ class RecommendationRepository(
         artist = artist,
         thumbnailUrl = thumbnailUrl,
         durationMs = durationMs,
+        album = album,
     )
 
     private fun YtHistoryEntity.toTrack(): Track = Track(
@@ -231,5 +236,6 @@ class RecommendationRepository(
         artist = artist,
         thumbnailUrl = thumbnailUrl,
         durationMs = durationMs,
+        album = album,
     )
 }

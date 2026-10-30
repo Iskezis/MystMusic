@@ -16,6 +16,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.MainActivity
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.data.youtube.Track
@@ -24,6 +25,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -42,6 +44,19 @@ class PlaybackService : MediaSessionService() {
     private var currentPosition = 0L
     private var recordedCurrent = false
     private var retriedCurrent = false
+
+    // Sessão de estatística: começa quando a faixa realmente entra em
+    // reprodução e é gravada ao trocar, terminar, pausar por mais de 30 s ou
+    // fechar o serviço. O tempo é medido por delta de posição, então pausas,
+    // buffering e saltos (seek) não inflam o tempo ouvido.
+    private var eventTrack: Track? = null
+    private var eventUserId: Long? = null
+    private var eventStartedAt = 0L
+    private var eventPlayedMs = 0L
+    private var eventLastPosition = 0L
+    private var eventLastTickAt = 0L
+    private var eventPausedAt = 0L
+    private var eventActive = false
 
     override fun onCreate() {
         super.onCreate()
@@ -174,8 +189,12 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         AppLog.i(AppLog.TAG_PLAYER, "PlaybackService.onDestroy")
+        // Grava o último trecho antes de soltar o player. A escrita roda no
+        // escopo do Application para terminar mesmo depois que este serviço
+        // for destruído; o ticker local é encerrado em seguida.
+        flushEvent(application as MystApp, completed = false)
         historyJob?.cancel()
-        scope.coroutineContext[Job]?.cancel()
+        scope.cancel()
         mediaSession?.release()
         mediaSession = null
         player.release()
@@ -185,6 +204,7 @@ class PlaybackService : MediaSessionService() {
     private fun handleTransition(mediaItem: MediaItem?) {
         val app = application as MystApp
         val previous = currentTrack
+        flushEvent(app, completed = false)
         if (previous != null && !recordedCurrent) {
             if (currentPosition >= 10_000L) {
                 record(app, previous, currentPosition, completed = false)
@@ -203,16 +223,24 @@ class PlaybackService : MediaSessionService() {
                 artist = item.mediaMetadata.artist?.toString().orEmpty(),
                 thumbnailUrl = item.mediaMetadata.artworkUri?.toString(),
                 durationMs = item.mediaMetadata.extras?.getLong(EXTRA_DURATION, 0L) ?: 0L,
+                album = item.mediaMetadata.albumTitle?.toString().orEmpty(),
             )
         }
         currentPosition = 0L
         recordedCurrent = false
         retriedCurrent = false
+        if (currentTrack == null) {
+            eventTrack = null
+            eventUserId = null
+        } else {
+            currentTrack?.let { track -> startEvent(app, track) }
+        }
     }
 
     private fun finishCurrent() {
         val app = application as MystApp
         val track = currentTrack
+        flushEvent(app, completed = true)
         if (track != null && !recordedCurrent) {
             record(app, track, player.currentPosition, completed = true)
         }
@@ -220,16 +248,94 @@ class PlaybackService : MediaSessionService() {
 
     private suspend fun trackHistory(app: MystApp) {
         while (scope.isActive) {
-            delay(2_000)
+            delay(1_000)
             val position = player.currentPosition
             if (position > 0) currentPosition = position
             val track = currentTrack ?: continue
+            updateEvent(app, position)
             val duration = player.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: track.durationMs
             if (!recordedCurrent) {
                 val threshold = minOf(20_000L, (duration * 0.3f).toLong().coerceAtLeast(5_000L))
                 if (position >= threshold) {
                     record(app, track, position, completed = duration > 0 && position >= duration - 2_000)
                 }
+            }
+        }
+    }
+
+    private fun startEvent(app: MystApp, track: Track) {
+        eventTrack = track
+        eventUserId = app.session.session?.userId?.takeIf { it > 0L }
+        eventStartedAt = System.currentTimeMillis()
+        eventPlayedMs = 0L
+        eventLastPosition = player.currentPosition.coerceAtLeast(0L)
+        eventLastTickAt = System.currentTimeMillis()
+        eventPausedAt = 0L
+        eventActive = eventUserId != null
+    }
+
+    private fun updateEvent(app: MystApp, position: Long) {
+        val track = eventTrack ?: return
+        val userId = eventUserId ?: return
+        val now = System.currentTimeMillis()
+        val playing = player.isPlaying && player.playbackState == Player.STATE_READY
+        if (playing) {
+            if (!eventActive) {
+                startEvent(app, track)
+                return
+            }
+            val wallDelta = (now - eventLastTickAt).coerceIn(0L, MAX_TICK_MS)
+            val positionDelta = position - eventLastPosition
+            if (positionDelta in 1..(wallDelta + SEEK_TOLERANCE_MS)) {
+                eventPlayedMs = (eventPlayedMs + positionDelta).coerceAtMost(MAX_EVENT_MS)
+            }
+            eventLastPosition = position
+            eventLastTickAt = now
+            eventPausedAt = 0L
+        } else {
+            eventLastPosition = position
+            eventLastTickAt = now
+            if (eventActive) {
+                if (eventPausedAt == 0L) {
+                    eventPausedAt = now
+                } else if (now - eventPausedAt >= PAUSE_FLUSH_MS) {
+                    flushEvent(app, completed = false)
+                }
+            }
+        }
+    }
+
+    private fun flushEvent(app: MystApp, completed: Boolean) {
+        val track = eventTrack ?: return
+        val userId = eventUserId ?: return
+        val playedMs = eventPlayedMs
+        val startedAt = eventStartedAt
+        val duration = player.duration.takeIf { it != C.TIME_UNSET && it > 0 }
+            ?: track.durationMs
+        val position = player.currentPosition.coerceAtLeast(0L)
+        val completedNow = completed || (duration > 0L && position >= duration - 2_000L)
+        eventPlayedMs = 0L
+        eventStartedAt = 0L
+        eventActive = false
+        if (playedMs < MIN_EVENT_MS) return
+        AppLog.d(
+            AppLog.TAG_PLAYER,
+            "Registrando estatística: ${track.videoId} ouvido=${AppLog.durationForLog(playedMs)} " +
+                "completa=$completedNow",
+        )
+        app.backgroundScope.launch {
+            runCatching {
+                app.stats.record(
+                    userId = userId,
+                    track = track,
+                    startedAt = startedAt,
+                    playedMs = playedMs,
+                    durationMs = duration,
+                    completed = completedNow,
+                    source = if (BuildConfig.FLAVOR == "tv") "tv" else "app",
+                )
+            }.onFailure {
+                AppLog.failure(AppLog.TAG_DB, "Falha ao registrar evento de reprodução", it)
             }
         }
     }
@@ -272,5 +378,11 @@ class PlaybackService : MediaSessionService() {
 
     companion object {
         const val EXTRA_DURATION = "extra_duration"
+
+        private const val MIN_EVENT_MS = 1_000L
+        private const val PAUSE_FLUSH_MS = 30_000L
+        private const val MAX_TICK_MS = 5_000L
+        private const val SEEK_TOLERANCE_MS = 1_500L
+        private const val MAX_EVENT_MS = 24L * 60L * 60L * 1000L
     }
 }

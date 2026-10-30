@@ -683,7 +683,7 @@ class InnerTubeClient(
         if (title.isBlank()) return null
 
         val rawArtist = columns.getOrNull(1)?.let(::runsText).orEmpty()
-        val artist = cleanArtist(rawArtist)
+        val (artist, album) = parseSubtitle(rawArtist)
         val videoId = findVideoId(item) ?: return null
         if (!isVideoId(videoId)) return null
 
@@ -699,7 +699,7 @@ class InnerTubeClient(
         val duration = parseDuration(durationText)
 
         val thumb = extractThumbnail(item)
-        return Track(videoId, title.trim(), artist, thumb, duration)
+        return Track(videoId, title.trim(), artist, thumb, duration, album)
     }
 
     private fun parseTwoRow(item: JsonObject): Track? {
@@ -711,7 +711,8 @@ class InnerTubeClient(
         val videoId = (watch["videoId"] as? JsonPrimitive)?.contentOrNull ?: return null
         if (!isVideoId(videoId)) return null
         val thumb = extractThumbnail(item)
-        return Track(videoId, title.trim(), cleanArtist(subtitle), thumb, 0L)
+        val (artist, album) = parseSubtitle(subtitle)
+        return Track(videoId, title.trim(), artist, thumb, 0L, album)
     }
 
     private fun findVideoId(item: JsonObject): String? {
@@ -765,10 +766,27 @@ class InnerTubeClient(
         }.trim()
     }
 
-    private fun cleanArtist(raw: String): String {
-        if (raw.isBlank()) return ""
-        val first = raw.split("•").firstOrNull().orEmpty().trim()
-        return first.removeSuffix(" E").removeSuffix(" E ").trim()
+    /**
+     * A segunda coluna do InnerTube costuma ser "Artista • Álbum • Ano" ou
+     * "Artista • 1,2 mi visualizações". Só tratamos o segundo trecho como
+     * álbum quando ele não é um número, ano, duração ou contagem de views.
+     */
+    private fun parseSubtitle(raw: String): Pair<String, String> {
+        if (raw.isBlank()) return "" to ""
+        val parts = raw.split("•").map { it.trim() }.filter { it.isNotBlank() }
+        val artist = parts.firstOrNull().orEmpty()
+            .removeSuffix(" E")
+            .removeSuffix(" E ")
+            .trim()
+        val album = parts.drop(1).firstOrNull { candidate ->
+            !candidate.matches(Regex("\\d{4}")) &&
+                !candidate.matches(Regex("\\d+[:.]\\d+.*")) &&
+                !candidate.contains("visualiza", ignoreCase = true) &&
+                !candidate.contains("view", ignoreCase = true) &&
+                !candidate.contains("curtida", ignoreCase = true) &&
+                !candidate.contains("like", ignoreCase = true)
+        }.orEmpty()
+        return artist to album
     }
 
     private fun parseDuration(raw: String?): Long {

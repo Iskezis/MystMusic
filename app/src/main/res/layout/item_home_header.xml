@@ -61,4 +61,16 @@
             android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="@dimen/text_small" />
     </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/homeStatsButton"
+        android:layout_width="@dimen/touch_target"
+        android:layout_height="@dimen/touch_target"
+        android:layout_marginStart="@dimen/space_s"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/stats_open"
+        android:focusable="true"
+        android:padding="12dp"
+        android:src="@drawable/ic_stats"
+        app:tint="?attr/mystOnSurface" />
 </LinearLayout>

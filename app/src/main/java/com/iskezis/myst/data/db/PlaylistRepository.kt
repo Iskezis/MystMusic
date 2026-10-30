@@ -83,17 +83,19 @@ class PlaylistRepository(private val database: AppDatabase) {
     }
 
     suspend fun addTrack(playlistId: Long, track: Track): Boolean = withContext(Dispatchers.IO) {
+        val playlist = dao.findById(playlistId) ?: return@withContext false
         val position = dao.maxPosition(playlistId) + 1
-        val result = dao.insertTrack(track.toEntity(playlistId, position))
+        val result = dao.insertTrack(track.toEntity(playlist.userId, playlistId, position))
         result != -1L
     }
 
     suspend fun addTracks(playlistId: Long, tracks: List<Track>): Int = withContext(Dispatchers.IO) {
+        val playlist = dao.findById(playlistId) ?: return@withContext 0
         database.withTransaction {
             var position = dao.maxPosition(playlistId) + 1
             var inserted = 0
             tracks.forEach { track ->
-                val result = dao.insertTrack(track.toEntity(playlistId, position))
+                val result = dao.insertTrack(track.toEntity(playlist.userId, playlistId, position))
                 if (result != -1L) {
                     position++
                     inserted++
@@ -108,7 +110,8 @@ class PlaylistRepository(private val database: AppDatabase) {
     }
 
     suspend fun restoreTrack(playlistId: Long, track: Track, position: Int) = withContext(Dispatchers.IO) {
-        dao.insertTrack(track.toEntity(playlistId, position))
+        val playlist = dao.findById(playlistId) ?: return@withContext
+        dao.insertTrack(track.toEntity(playlist.userId, playlistId, position))
     }
 
     suspend fun reorder(playlistId: Long, ordered: List<Track>) = withContext(Dispatchers.IO) {
@@ -142,7 +145,7 @@ class PlaylistRepository(private val database: AppDatabase) {
                         ),
                     )
                     export.tracks.forEachIndexed { index, track ->
-                        dao.insertTrack(track.toEntity(playlistId, index))
+                        dao.insertTrack(track.toEntity(userId, playlistId, index))
                     }
                 }
             }
@@ -158,7 +161,7 @@ class PlaylistRepository(private val database: AppDatabase) {
                 ),
             )
             export.tracks.forEachIndexed { index, track ->
-                dao.insertTrack(track.toEntity(playlistId, index))
+                dao.insertTrack(track.toEntity(userId, playlistId, index))
             }
         }
     }
@@ -167,6 +170,7 @@ class PlaylistRepository(private val database: AppDatabase) {
         videoId = entity.videoId,
         title = entity.title,
         artist = entity.artist,
+        album = entity.album,
         thumbnailUrl = entity.thumbnailUrl,
         durationMs = entity.durationMs,
     )
@@ -175,12 +179,14 @@ class PlaylistRepository(private val database: AppDatabase) {
         fun normalizePlaylistName(name: String): String = name.trim().lowercase()
     }
 
-    private fun Track.toEntity(playlistId: Long, position: Int): PlaylistTrackEntity =
+    private fun Track.toEntity(userId: Long, playlistId: Long, position: Int): PlaylistTrackEntity =
         PlaylistTrackEntity(
+            userId = userId,
             playlistId = playlistId,
             videoId = videoId,
             title = title,
             artist = artist,
+            album = album,
             thumbnailUrl = thumbnailUrl,
             durationMs = durationMs,
             position = position,

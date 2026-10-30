@@ -1,5 +1,6 @@
 package com.iskezis.myst.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -278,3 +279,199 @@ interface YouTubeLibraryDao {
     @Query("DELETE FROM yt_sync_state WHERE userId = :userId")
     suspend fun deleteSync(userId: Long)
 }
+
+@Dao
+interface PlayEventDao {
+    @Insert
+    suspend fun insert(event: PlayEventEntity): Long
+
+    @Query(
+        "SELECT * FROM play_events WHERE userId = :userId " +
+            "ORDER BY startedAt DESC LIMIT :limit",
+    )
+    suspend fun recent(userId: Long, limit: Int): List<PlayEventEntity>
+
+    /** Chaves `videoId|startedAt` para mesclar backups/sincronizações sem duplicar. */
+    @Query("SELECT videoId || '|' || startedAt FROM play_events WHERE userId = :userId")
+    suspend fun keys(userId: Long): List<String>
+
+    @Query(
+        "SELECT COUNT(*) FROM play_events WHERE userId = :userId " +
+            "AND startedAt >= :from AND startedAt < :to",
+    )
+    suspend fun eventCount(userId: Long, from: Long, to: Long): Int
+
+    @Query(
+        "SELECT COALESCE(SUM(playedMs), 0) FROM play_events WHERE userId = :userId " +
+            "AND startedAt >= :from AND startedAt < :to",
+    )
+    suspend fun totalPlayedMs(userId: Long, from: Long, to: Long): Long
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM play_events
+        WHERE userId = :userId AND startedAt >= :from AND startedAt < :to
+          AND (
+              playedMs >= :minPlayedMs
+              OR (durationMs > 0 AND playedMs * 2 >= durationMs)
+          )
+        """,
+    )
+    suspend fun playCount(userId: Long, from: Long, to: Long, minPlayedMs: Long): Int
+
+    @Query(
+        """
+        SELECT videoId,
+               MIN(title) AS title,
+               MIN(artist) AS artist,
+               MAX(thumbnailUrl) AS thumbnailUrl,
+               COUNT(*) AS plays,
+               SUM(playedMs) AS playedMs
+        FROM play_events
+        WHERE userId = :userId AND startedAt >= :from AND startedAt < :to
+          AND (
+              playedMs >= :minPlayedMs
+              OR (durationMs > 0 AND playedMs * 2 >= durationMs)
+          )
+        GROUP BY videoId
+        ORDER BY plays DESC, playedMs DESC, title COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun topTracks(
+        userId: Long,
+        from: Long,
+        to: Long,
+        minPlayedMs: Long,
+        limit: Int,
+    ): List<PlayEventTrackStat>
+
+    @Query(
+        """
+        SELECT MIN(artist) AS name,
+               MAX(thumbnailUrl) AS thumbnailUrl,
+               COUNT(*) AS plays,
+               SUM(playedMs) AS playedMs
+        FROM play_events
+        WHERE userId = :userId AND startedAt >= :from AND startedAt < :to
+          AND TRIM(artist) != ''
+          AND (
+              playedMs >= :minPlayedMs
+              OR (durationMs > 0 AND playedMs * 2 >= durationMs)
+          )
+        GROUP BY LOWER(TRIM(artist))
+        ORDER BY plays DESC, playedMs DESC, name COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun topArtists(
+        userId: Long,
+        from: Long,
+        to: Long,
+        minPlayedMs: Long,
+        limit: Int,
+    ): List<PlayEventNameStat>
+
+    @Query(
+        """
+        SELECT MIN(album) AS name,
+               MIN(artist) AS artist,
+               MAX(thumbnailUrl) AS thumbnailUrl,
+               COUNT(*) AS plays,
+               SUM(playedMs) AS playedMs
+        FROM play_events
+        WHERE userId = :userId AND startedAt >= :from AND startedAt < :to
+          AND TRIM(album) != ''
+          AND (
+              playedMs >= :minPlayedMs
+              OR (durationMs > 0 AND playedMs * 2 >= durationMs)
+          )
+        GROUP BY LOWER(TRIM(album))
+        ORDER BY plays DESC, playedMs DESC, name COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun topAlbums(
+        userId: Long,
+        from: Long,
+        to: Long,
+        minPlayedMs: Long,
+        limit: Int,
+    ): List<PlayEventAlbumStat>
+
+    @Query(
+        """
+        SELECT date(startedAt / 1000, 'unixepoch', 'localtime') AS day,
+               SUM(playedMs) AS playedMs
+        FROM play_events
+        WHERE userId = :userId AND startedAt >= :from AND startedAt < :to
+        GROUP BY day
+        ORDER BY day ASC
+        """,
+    )
+    suspend fun dailyPlayedMs(
+        userId: Long,
+        from: Long,
+        to: Long,
+    ): List<PlayEventDayStat>
+
+    @Query(
+        """
+        SELECT CAST(strftime('%H', startedAt / 1000, 'unixepoch', 'localtime') AS INTEGER) AS hour,
+               SUM(playedMs) AS playedMs
+        FROM play_events
+        WHERE userId = :userId AND startedAt >= :from AND startedAt < :to
+        GROUP BY hour
+        ORDER BY hour ASC
+        """,
+    )
+    suspend fun hourlyPlayedMs(
+        userId: Long,
+        from: Long,
+        to: Long,
+    ): List<PlayEventHourStat>
+
+    @Query(
+        """
+        SELECT DISTINCT CAST(julianday(date(startedAt / 1000, 'unixepoch', 'localtime')) + 0.5 AS INTEGER) AS day
+        FROM play_events
+        WHERE userId = :userId
+        ORDER BY day DESC
+        """,
+    )
+    suspend fun listenedDays(userId: Long): List<Long>
+}
+
+data class PlayEventTrackStat(
+    @ColumnInfo(name = "videoId") val videoId: String,
+    @ColumnInfo(name = "title") val title: String,
+    @ColumnInfo(name = "artist") val artist: String,
+    @ColumnInfo(name = "thumbnailUrl") val thumbnailUrl: String?,
+    @ColumnInfo(name = "plays") val plays: Int,
+    @ColumnInfo(name = "playedMs") val playedMs: Long,
+)
+
+data class PlayEventNameStat(
+    @ColumnInfo(name = "name") val name: String,
+    @ColumnInfo(name = "thumbnailUrl") val thumbnailUrl: String?,
+    @ColumnInfo(name = "plays") val plays: Int,
+    @ColumnInfo(name = "playedMs") val playedMs: Long,
+)
+
+data class PlayEventAlbumStat(
+    @ColumnInfo(name = "name") val name: String,
+    @ColumnInfo(name = "artist") val artist: String,
+    @ColumnInfo(name = "thumbnailUrl") val thumbnailUrl: String?,
+    @ColumnInfo(name = "plays") val plays: Int,
+    @ColumnInfo(name = "playedMs") val playedMs: Long,
+)
+
+data class PlayEventDayStat(
+    @ColumnInfo(name = "day") val day: String,
+    @ColumnInfo(name = "playedMs") val playedMs: Long,
+)
+
+data class PlayEventHourStat(
+    @ColumnInfo(name = "hour") val hour: Int,
+    @ColumnInfo(name = "playedMs") val playedMs: Long,
+)

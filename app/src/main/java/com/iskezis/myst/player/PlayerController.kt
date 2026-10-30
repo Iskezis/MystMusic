@@ -426,6 +426,7 @@ class PlayerController(context: Context) {
         val metadata = MediaMetadata.Builder()
             .setTitle(title.ifBlank { "MystMusic" })
             .setArtist(artist)
+            .setAlbumTitle(album.takeIf { it.isNotBlank() })
             .setArtworkUri(artworkUrl()?.takeIf { it.isNotBlank() }?.let(Uri::parse))
             .setExtras(extras)
             .build()
@@ -444,6 +445,7 @@ class PlayerController(context: Context) {
             artist = mediaMetadata.artist?.toString().orEmpty(),
             thumbnailUrl = mediaMetadata.artworkUri?.toString(),
             durationMs = extras?.getLong(PlaybackService.EXTRA_DURATION, 0L) ?: 0L,
+            album = mediaMetadata.albumTitle?.toString().orEmpty(),
         )
     }
 }

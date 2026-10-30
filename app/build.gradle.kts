@@ -36,8 +36,8 @@ android {
         applicationId = "com.iskezis.myst"
         minSdk = 21
         targetSdk = 34
-        versionCode = 18
-        versionName = "0.2.0-dev.9"
+        versionCode = 19
+        versionName = "0.2.0-dev.10"
         multiDexEnabled = true
         vectorDrawables.useSupportLibrary = true
 
@@ -115,6 +115,11 @@ kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
+}
+
+ksp {
+    // Mantém o schema versionado em app/schemas para revisar cada migração.
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {

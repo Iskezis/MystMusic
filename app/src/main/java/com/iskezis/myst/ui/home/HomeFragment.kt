@@ -49,6 +49,7 @@ class HomeFragment : YouTubeLoginFragment() {
         adapter = HomeAdapter(
             onSearch = { findNavController().navigate(R.id.searchFragment) },
             onAvatar = { findNavController().navigate(R.id.settingsFragment) },
+            onStats = { findNavController().navigate(R.id.statsFragment) },
             onPlay = { tracks, index ->
                 AppLog.i(
                     AppLog.TAG_UI,

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0-dev.10 — 29/10/2026
+
+Fase 14: conta Myst persistente e Estatísticas.
+
+### Incluído
+- Tela **Estatísticas** aberta pelo ícone de gráfico no cabeçalho da Navegação, com filtros Semana, Mês, Ano e Sempre.
+- Tempo ouvido (com comparação ao período anterior), reproduções, top músicas, top artistas, top álbuns, gráfico de 24 horas, atividade por dia e sequência atual/recorde.
+- Eventos de reprodução gravados na conta Myst em `play_events`, com o tempo realmente ouvido (pausas, buffering e saltos não contam) e corte de 30 s ou 50% da faixa para contar como reprodução.
+- Os eventos entram no `Mystaccount.json`, no backup automático e na sincronização com a TV; trocar de conta Myst troca as estatísticas.
+- Migração Room 4→5 não destrutiva: `playlist_tracks` ganhou `userId`/FK, `history` e `artist_affinity` ganharam FK para `users`, e as tabelas do YouTube ganharam o álbum.
+- Metadados de álbum passaram a ser lidos do InnerTube e guardados em playlists, histórico e recomendações.
+- `exportSchema` ativado; o schema do Room é publicado como artefato em cada build.
+
 ## 0.2.0-dev.9 — 29/10/2026
 
 Aparência do celular na TV ao parear.

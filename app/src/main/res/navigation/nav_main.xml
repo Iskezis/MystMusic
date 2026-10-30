@@ -25,6 +25,11 @@
         android:label="@string/settings_appearance" />
 
     <fragment
+        android:id="@+id/statsFragment"
+        android:name="com.iskezis.myst.ui.stats.StatsFragment"
+        android:label="@string/stats_title" />
+
+    <fragment
         android:id="@+id/searchFragment"
         android:name="com.iskezis.myst.ui.search.SearchFragment"
         android:label="@string/search_title" />

@@ -74,6 +74,8 @@ data class PairSnapshot(
     val tombstones: List<PairTombstone> = emptyList(),
     val history: List<PairHistory> = emptyList(),
     val affinities: List<PairAffinity> = emptyList(),
+    /** Eventos de reprodução usados nas Estatísticas; a TV mantém só em memória. */
+    val playEvents: List<PairPlayEvent> = emptyList(),
 )
 
 /** Nome de playlist apagada/renomeada; impede que a sincronização a ressuscite. */
@@ -88,11 +90,26 @@ data class PairHistory(
     val videoId: String,
     val title: String,
     val artist: String,
+    val album: String = "",
     val thumbnailUrl: String? = null,
     val durationMs: Long = 0L,
     val playedMs: Long = 0L,
     val playedAt: Long = 0L,
     val completed: Boolean = false,
+)
+
+@Serializable
+data class PairPlayEvent(
+    val videoId: String,
+    val title: String,
+    val artist: String,
+    val album: String = "",
+    val thumbnailUrl: String? = null,
+    val startedAt: Long = 0L,
+    val playedMs: Long = 0L,
+    val durationMs: Long = 0L,
+    val completed: Boolean = false,
+    val source: String = "app",
 )
 
 @Serializable
@@ -123,6 +140,7 @@ data class PairTrack(
     val videoId: String,
     val title: String,
     val artist: String,
+    val album: String = "",
     val thumbnailUrl: String? = null,
     val durationMs: Long = 0L,
 )
@@ -153,6 +171,7 @@ data class PairBundle(
     val playlists: List<PairPlaylist> = emptyList(),
     val history: List<PairHistory> = emptyList(),
     val affinities: List<PairAffinity> = emptyList(),
+    val playEvents: List<PairPlayEvent> = emptyList(),
     val tombstones: List<PairTombstone> = emptyList(),
     /** Tema/AMOLED do celular, aplicados temporariamente na TV. */
     val appearance: PairAppearance? = null,

@@ -10,6 +10,7 @@ import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.ArtistAffinityEntity
 import com.iskezis.myst.data.db.HistoryEntity
+import com.iskezis.myst.data.db.PlayEventEntity
 import com.iskezis.myst.data.db.PlaylistEntity
 import com.iskezis.myst.data.db.PlaylistTrackEntity
 import com.iskezis.myst.data.db.UserEntity
@@ -168,6 +169,7 @@ class MystAccountFileRepository(
                         videoId = track.videoId,
                         title = track.title,
                         artist = track.artist,
+                        album = track.album,
                         thumbnailUrl = track.thumbnailUrl?.take(MAX_URL_LENGTH),
                         durationMs = track.durationMs,
                     )
@@ -180,6 +182,7 @@ class MystAccountFileRepository(
                 videoId = item.videoId,
                 title = item.title,
                 artist = item.artist,
+                album = item.album,
                 thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
                 durationMs = item.durationMs,
                 playedMs = item.playedMs,
@@ -193,6 +196,21 @@ class MystAccountFileRepository(
                 artist = item.artist,
                 score = item.score,
                 updatedAt = item.updatedAt,
+            )
+        }
+
+        val playEvents = database.playEventDao().recent(userId, MAX_EXPORT_PLAY_EVENTS).map { item ->
+            MystAccountPlayEventBackup(
+                videoId = item.videoId,
+                title = item.title,
+                artist = item.artist,
+                album = item.album,
+                thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
+                startedAt = item.startedAt,
+                playedMs = item.playedMs,
+                durationMs = item.durationMs,
+                completed = item.completed,
+                source = item.source.take(MAX_SOURCE_LENGTH),
             )
         }
 
@@ -224,6 +242,7 @@ class MystAccountFileRepository(
                         videoId = track.videoId,
                         title = track.title,
                         artist = track.artist,
+                        album = track.album,
                         thumbnailUrl = track.thumbnailUrl?.take(MAX_URL_LENGTH),
                         durationMs = track.durationMs,
                         syncedAt = track.syncedAt,
@@ -243,6 +262,7 @@ class MystAccountFileRepository(
                 videoId = item.videoId,
                 title = item.title,
                 artist = item.artist,
+                album = item.album,
                 thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
                 durationMs = item.durationMs,
                 playedAt = item.playedAt,
@@ -272,6 +292,7 @@ class MystAccountFileRepository(
             playlists = playlists,
             history = history,
             affinities = affinities,
+            playEvents = playEvents,
             youtube = MystAccountYouTubeBackup(
                 playlists = ytPlaylists,
                 history = ytHistory,
@@ -403,6 +424,7 @@ class MystAccountFileRepository(
             AppLog.w(AppLog.TAG_AUTH, "Backup com histórico demais; importando o mais recente")
         }
         val affinities = file.affinities.take(MAX_IMPORT_AFFINITIES)
+        val playEvents = file.playEvents.take(MAX_IMPORT_PLAY_EVENTS)
         val ytPlaylists = file.youtube.playlists.take(MAX_IMPORT_YT_PLAYLISTS)
         if (file.youtube.playlists.size > MAX_IMPORT_YT_PLAYLISTS) {
             AppLog.w(
@@ -419,6 +441,7 @@ class MystAccountFileRepository(
         var created = false
         var importedTracks = 0
         var importedHistory = 0
+        var importedPlayEvents = 0
         var importedYtPlaylists = 0
         var importedYtTracks = 0
         var importedYtHistory = 0
@@ -484,10 +507,12 @@ class MystAccountFileRepository(
                     if (videoId.isBlank() || !knownTracks.add(videoId)) return@forEach
                     val inserted = playlistDao.insertTrack(
                         PlaylistTrackEntity(
+                            userId = userId,
                             playlistId = playlistId,
                             videoId = videoId,
                             title = track.title.trim().take(MAX_TITLE_LENGTH),
                             artist = track.artist.trim().take(MAX_ARTIST_LENGTH),
+                            album = track.album.trim().take(MAX_ALBUM_LENGTH),
                             thumbnailUrl = track.thumbnailUrl?.take(MAX_URL_LENGTH),
                             durationMs = track.durationMs.coerceAtLeast(0L),
                             position = position,
@@ -514,6 +539,7 @@ class MystAccountFileRepository(
                         videoId = videoId,
                         title = item.title.trim().take(MAX_TITLE_LENGTH),
                         artist = item.artist.trim().take(MAX_ARTIST_LENGTH),
+                        album = item.album.trim().take(MAX_ALBUM_LENGTH),
                         thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
                         durationMs = item.durationMs.coerceAtLeast(0L),
                         playedMs = item.playedMs.coerceAtLeast(0L),
@@ -539,6 +565,32 @@ class MystAccountFileRepository(
                         updatedAt = maxOf(previous?.updatedAt ?: 0L, item.updatedAt),
                     ),
                 )
+            }
+
+            val playEventDao = database.playEventDao()
+            val playEventKeys = playEventDao.keys(userId).toMutableSet()
+            playEvents.forEach { item ->
+                val videoId = item.videoId.trim().take(MAX_ID_LENGTH)
+                if (videoId.isBlank() || item.playedMs <= 0L) return@forEach
+                val startedAt = item.startedAt.takeIf { it in 1..now } ?: now
+                val key = "$videoId|$startedAt"
+                if (!playEventKeys.add(key)) return@forEach
+                playEventDao.insert(
+                    PlayEventEntity(
+                        userId = userId,
+                        videoId = videoId,
+                        title = item.title.trim().take(MAX_TITLE_LENGTH),
+                        artist = item.artist.trim().take(MAX_ARTIST_LENGTH),
+                        album = item.album.trim().take(MAX_ALBUM_LENGTH),
+                        thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
+                        startedAt = startedAt,
+                        playedMs = item.playedMs.coerceAtMost(MAX_PLAYED_MS),
+                        durationMs = item.durationMs.coerceIn(0L, MAX_DURATION_MS),
+                        completed = item.completed,
+                        source = item.source.trim().take(MAX_SOURCE_LENGTH).ifBlank { "import" },
+                    ),
+                )
+                importedPlayEvents++
             }
 
             // A biblioteca do YouTube é somente leitura no app, mas o cache
@@ -588,6 +640,7 @@ class MystAccountFileRepository(
                             videoId = videoId,
                             title = track.title.trim().take(MAX_TITLE_LENGTH),
                             artist = track.artist.trim().take(MAX_ARTIST_LENGTH),
+                            album = track.album.trim().take(MAX_ALBUM_LENGTH),
                             thumbnailUrl = track.thumbnailUrl?.take(MAX_URL_LENGTH),
                             durationMs = track.durationMs.coerceAtLeast(0L),
                             position = tracks.size,
@@ -625,6 +678,7 @@ class MystAccountFileRepository(
                     videoId = videoId,
                     title = item.title.trim().take(MAX_TITLE_LENGTH),
                     artist = item.artist.trim().take(MAX_ARTIST_LENGTH),
+                    album = item.album.trim().take(MAX_ALBUM_LENGTH),
                     thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
                     durationMs = item.durationMs.coerceAtLeast(0L),
                     playedAt = normalizedPlayedAt,
@@ -692,8 +746,9 @@ class MystAccountFileRepository(
             AppLog.TAG_AUTH,
             "Mystaccount.json importado: usuário=$userId novo=$created " +
                 "playlists=${playlists.size} faixas=$importedTracks histórico=$importedHistory " +
-                "ytPlaylists=$importedYtPlaylists ytFaixas=$importedYtTracks " +
-                "ytHistórico=$importedYtHistory aparência=${restoredAppearance != null}",
+                "eventos=$importedPlayEvents ytPlaylists=$importedYtPlaylists " +
+                "ytFaixas=$importedYtTracks ytHistórico=$importedYtHistory " +
+                "aparência=${restoredAppearance != null}",
         )
         RestoredAccount(
             user = user,
@@ -704,6 +759,7 @@ class MystAccountFileRepository(
             youtubePlaylists = importedYtPlaylists,
             youtubeTracks = importedYtTracks,
             youtubeHistory = importedYtHistory,
+            playEvents = importedPlayEvents,
             appearance = restoredAppearance,
         )
     }
@@ -929,7 +985,7 @@ class MystAccountFileRepository(
 
         private const val APP_NAME = "MystMusic"
         private const val KIND = "MystAccount"
-        private const val SCHEMA_VERSION = 2
+        private const val SCHEMA_VERSION = 3
         private const val PREFS_NAME = "myst_account_file"
         private const val ACCOUNT_DIR = "account"
         private const val COVERS_DIR = "covers"
@@ -941,6 +997,10 @@ class MystAccountFileRepository(
         private const val MAX_IMPORT_HISTORY = 20_000
         private const val MAX_EXPORT_AFFINITIES = 5_000
         private const val MAX_IMPORT_AFFINITIES = 5_000
+        private const val MAX_EXPORT_PLAY_EVENTS = 20_000
+        private const val MAX_IMPORT_PLAY_EVENTS = 20_000
+        private const val MAX_PLAYED_MS = 24L * 60L * 60L * 1000L
+        private const val MAX_DURATION_MS = 24L * 60L * 60L * 1000L
         private const val MAX_EXPORT_TRACKS_TOTAL = 30_000
         private const val MAX_IMPORT_PLAYLISTS = 2_000
         private const val MAX_IMPORT_TRACKS = 10_000
@@ -957,6 +1017,8 @@ class MystAccountFileRepository(
         private const val MAX_ID_LENGTH = 128
         private const val MAX_TITLE_LENGTH = 300
         private const val MAX_ARTIST_LENGTH = 200
+        private const val MAX_ALBUM_LENGTH = 200
+        private const val MAX_SOURCE_LENGTH = 32
         private const val MAX_NAME_LENGTH = 60
         private const val MAX_URL_LENGTH = 2_000
 
@@ -968,6 +1030,7 @@ class MystAccountFileRepository(
             "playlist_tracks",
             "history",
             "artist_affinity",
+            "play_events",
             "yt_playlists",
             "yt_playlist_tracks",
             "yt_history",
@@ -1002,6 +1065,7 @@ data class RestoredAccount(
     val youtubePlaylists: Int = 0,
     val youtubeTracks: Int = 0,
     val youtubeHistory: Int = 0,
+    val playEvents: Int = 0,
     val appearance: AppearanceSettings? = null,
 )
 
@@ -1021,13 +1085,15 @@ class AccountFileException(
 data class MystAccountBackup(
     val app: String = "MystMusic",
     val kind: String = "MystAccount",
-    val schemaVersion: Int = 2,
+    val schemaVersion: Int = 3,
     val appVersion: String = "",
     val generatedAt: Long = 0L,
     val account: MystAccountProfileBackup,
     val playlists: List<MystAccountPlaylistBackup> = emptyList(),
     val history: List<MystAccountHistoryBackup> = emptyList(),
     val affinities: List<MystAccountAffinityBackup> = emptyList(),
+    /** Eventos de reprodução que alimentam as Estatísticas da conta. */
+    val playEvents: List<MystAccountPlayEventBackup> = emptyList(),
     /** Cache da biblioteca do YouTube Music (somente leitura no app). */
     val youtube: MystAccountYouTubeBackup = MystAccountYouTubeBackup(),
     /** Preferências do aparelho que o usuário quer recuperar junto da conta. */
@@ -1065,6 +1131,7 @@ data class MystAccountYtTrackBackup(
     val videoId: String,
     val title: String,
     val artist: String,
+    val album: String = "",
     val thumbnailUrl: String? = null,
     val durationMs: Long = 0L,
     val syncedAt: Long = 0L,
@@ -1075,6 +1142,7 @@ data class MystAccountYtHistoryBackup(
     val videoId: String,
     val title: String,
     val artist: String,
+    val album: String = "",
     val thumbnailUrl: String? = null,
     val durationMs: Long = 0L,
     val playedAt: Long = 0L,
@@ -1112,6 +1180,7 @@ data class MystAccountTrackBackup(
     val videoId: String,
     val title: String,
     val artist: String,
+    val album: String = "",
     val thumbnailUrl: String? = null,
     val durationMs: Long = 0L,
 )
@@ -1121,6 +1190,7 @@ data class MystAccountHistoryBackup(
     val videoId: String,
     val title: String,
     val artist: String,
+    val album: String = "",
     val thumbnailUrl: String? = null,
     val durationMs: Long = 0L,
     val playedMs: Long = 0L,
@@ -1133,4 +1203,18 @@ data class MystAccountAffinityBackup(
     val artist: String,
     val score: Double = 0.0,
     val updatedAt: Long = 0L,
+)
+
+@Serializable
+data class MystAccountPlayEventBackup(
+    val videoId: String,
+    val title: String,
+    val artist: String,
+    val album: String = "",
+    val thumbnailUrl: String? = null,
+    val startedAt: Long = 0L,
+    val playedMs: Long = 0L,
+    val durationMs: Long = 0L,
+    val completed: Boolean = false,
+    val source: String = "",
 )

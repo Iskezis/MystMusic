@@ -32,6 +32,7 @@ sealed interface HomeItem {
 class HomeAdapter(
     private val onSearch: () -> Unit,
     private val onAvatar: () -> Unit,
+    private val onStats: () -> Unit,
     private val onPlay: (List<Track>, Int) -> Unit,
     private val onMore: (Track) -> Unit,
     private val onRetryRecent: () -> Unit,
@@ -68,7 +69,7 @@ class HomeAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (val item = getItem(position)) {
-            is HomeItem.Greeting -> (holder as GreetingHolder).bind(item, onAvatar)
+            is HomeItem.Greeting -> (holder as GreetingHolder).bind(item, onAvatar, onStats)
             is HomeItem.Search -> (holder as SearchHolder).bind(onSearch)
             is HomeItem.Header -> (holder as HeaderHolder).bind(item)
             is HomeItem.Carousel -> (holder as CarouselHolder).bind(item)
@@ -78,7 +79,7 @@ class HomeAdapter(
     private class GreetingHolder(private val binding: ItemHomeHeaderBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(item: HomeItem.Greeting, onAvatar: () -> Unit) {
+        fun bind(item: HomeItem.Greeting, onAvatar: () -> Unit, onStats: () -> Unit) {
             val context = binding.root.context
             val name = item.name.trim()
             binding.homeGreeting.text = if (name.isBlank()) {
@@ -107,6 +108,7 @@ class HomeAdapter(
                 binding.homeHeaderInitial.isVisible = true
             }
             binding.homeHeaderAvatarFrame.setOnClickListener { onAvatar() }
+            binding.homeStatsButton.setOnClickListener { onStats() }
         }
     }
 

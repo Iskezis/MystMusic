@@ -355,4 +355,58 @@
     <string name="content_cover">Capa de %1$s</string>
     <string name="content_song">Música: %1$s</string>
     <string name="loading">Carregando</string>
+
+    <string name="stats_open">Ver estatísticas</string>
+    <string name="stats_title">Estatísticas</string>
+    <string name="stats_subtitle">Seu tempo, suas músicas e seus artistas favoritos.</string>
+    <string name="stats_period_week">Semana</string>
+    <string name="stats_period_month">Mês</string>
+    <string name="stats_period_year">Ano</string>
+    <string name="stats_period_all">Sempre</string>
+    <string name="stats_time_label">Tempo ouvido</string>
+    <string name="stats_plays_label">Reproduções</string>
+    <string name="stats_plays_hint">A partir de 30 s ou 50% da faixa</string>
+    <string name="stats_compare_all">Todo o período da conta</string>
+    <string name="stats_compare_none">Sem dados no período anterior</string>
+    <string name="stats_compare_new">Novo neste período</string>
+    <string name="stats_compare_up">↑ %1$d%% vs. período anterior</string>
+    <string name="stats_compare_down">↓ %1$d%% vs. período anterior</string>
+    <string name="stats_compare_same">→ Sem alteração vs. período anterior</string>
+    <string name="stats_top_songs">Top músicas</string>
+    <string name="stats_top_artists">Top artistas</string>
+    <string name="stats_top_albums">Top álbuns</string>
+    <string name="stats_empty_songs">Nenhuma música contou como reprodução neste período.</string>
+    <string name="stats_empty_artists">Nenhum artista neste período.</string>
+    <string name="stats_empty_albums">O YouTube Music ainda não informou álbuns para estas músicas.</string>
+    <string name="stats_hour_title">Ouvido por horário do dia</string>
+    <string name="stats_hour_subtitle">Quando você mais ouve música</string>
+    <string name="stats_activity_title">Atividade por dia</string>
+    <string name="stats_activity_week">Últimos 7 dias</string>
+    <string name="stats_activity_month">Últimos 30 dias</string>
+    <string name="stats_streak_title">Sequência de dias</string>
+    <string name="stats_streak_current">Sequência atual</string>
+    <string name="stats_streak_record">Recorde</string>
+    <string name="stats_empty_title">Ouça algumas músicas para ver suas estatísticas</string>
+    <string name="stats_empty_subtitle">O tempo ouvido, os artistas e a sequência aparecem aqui automaticamente.</string>
+    <string name="stats_error_subtitle">Não foi possível carregar suas estatísticas.</string>
+    <string name="stats_chart_hour_description">Gráfico de tempo ouvido por hora: pico às %1$d h, com %2$s.</string>
+    <string name="stats_chart_day_description">Gráfico de tempo ouvido nos últimos %1$d dias. Pico em %2$s com %3$s.</string>
+    <string name="stats_row_description">%1$d. %2$s, %3$s</string>
+    <string name="stats_hours_minutes">%1$d h %2$d min</string>
+    <string name="stats_minutes">%1$d min</string>
+    <string name="stats_less_minute">&lt; 1 min</string>
+    <string name="stats_unknown_artist">Artista desconhecido</string>
+    <string name="stats_unknown_track">Música desconhecida</string>
+    <string name="stats_unknown_album">Álbum desconhecido</string>
+    <string name="stats_chart_empty">Ainda sem tempo ouvido neste período.</string>
+
+    <plurals name="stats_plays">
+        <item quantity="one">%1$d reprodução</item>
+        <item quantity="other">%1$d reproduções</item>
+    </plurals>
+
+    <plurals name="stats_days">
+        <item quantity="one">%1$d dia</item>
+        <item quantity="other">%1$d dias</item>
+    </plurals>
 </resources>

@@ -1,5 +1,6 @@
 package com.iskezis.myst.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -53,14 +54,22 @@ data class PlaylistEntity(
             childColumns = ["playlistId"],
             onDelete = ForeignKey.CASCADE,
         ),
+        ForeignKey(
+            entity = UserEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["userId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
     ],
-    indices = [Index(value = ["playlistId", "position"])],
+    indices = [Index("userId"), Index(value = ["playlistId", "position"])],
 )
 data class PlaylistTrackEntity(
+    val userId: Long,
     val playlistId: Long,
     val videoId: String,
     val title: String,
     val artist: String,
+    @ColumnInfo(defaultValue = "''") val album: String = "",
     val thumbnailUrl: String?,
     val durationMs: Long,
     val position: Int,
@@ -68,6 +77,14 @@ data class PlaylistTrackEntity(
 
 @Entity(
     tableName = "history",
+    foreignKeys = [
+        ForeignKey(
+            entity = UserEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["userId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
     indices = [Index(value = ["userId", "playedAt"]), Index("videoId")],
 )
 data class HistoryEntity(
@@ -76,6 +93,7 @@ data class HistoryEntity(
     val videoId: String,
     val title: String,
     val artist: String,
+    @ColumnInfo(defaultValue = "''") val album: String = "",
     val thumbnailUrl: String?,
     val durationMs: Long,
     val playedMs: Long,
@@ -86,6 +104,14 @@ data class HistoryEntity(
 @Entity(
     tableName = "artist_affinity",
     primaryKeys = ["userId", "artist"],
+    foreignKeys = [
+        ForeignKey(
+            entity = UserEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["userId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
     indices = [Index("userId")],
 )
 data class ArtistAffinityEntity(
@@ -167,6 +193,7 @@ data class YtPlaylistTrackEntity(
     val videoId: String,
     val title: String,
     val artist: String,
+    @ColumnInfo(defaultValue = "''") val album: String = "",
     val thumbnailUrl: String?,
     val durationMs: Long,
     val position: Int,
@@ -196,6 +223,7 @@ data class YtHistoryEntity(
     val videoId: String,
     val title: String,
     val artist: String,
+    @ColumnInfo(defaultValue = "''") val album: String = "",
     val thumbnailUrl: String?,
     val durationMs: Long,
     val playedAt: Long,
@@ -219,4 +247,40 @@ data class YtSyncEntity(
     val userId: Long,
     val section: String,
     val syncedAt: Long,
+)
+
+/**
+ * Tempo realmente ouvido em uma faixa, base das Estatísticas. O evento é
+ * gravado ao trocar de música, terminar, pausar por mais de 30 s ou fechar o
+ * serviço. `playedMs` acumula apenas o tempo em reprodução (pausas e saltos
+ * não contam); "reprodução" é derivada de 30 s ou 50% da duração.
+ */
+@Entity(
+    tableName = "play_events",
+    foreignKeys = [
+        ForeignKey(
+            entity = UserEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["userId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [
+        Index(value = ["userId", "startedAt"]),
+        Index(value = ["userId", "artist"]),
+    ],
+)
+data class PlayEventEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0L,
+    val userId: Long,
+    val videoId: String,
+    val title: String,
+    val artist: String,
+    val album: String,
+    val thumbnailUrl: String?,
+    val startedAt: Long,
+    val playedMs: Long,
+    val durationMs: Long,
+    val completed: Boolean,
+    val source: String,
 )

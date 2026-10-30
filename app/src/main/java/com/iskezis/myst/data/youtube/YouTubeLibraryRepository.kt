@@ -48,6 +48,7 @@ class YouTubeLibraryRepository(
                     artist = entity.artist,
                     thumbnailUrl = entity.thumbnailUrl,
                     durationMs = entity.durationMs,
+                    album = entity.album,
                 )
             }
         }
@@ -107,6 +108,7 @@ class YouTubeLibraryRepository(
                     videoId = track.videoId,
                     title = track.title,
                     artist = track.artist,
+                    album = track.album,
                     thumbnailUrl = track.thumbnailUrl,
                     durationMs = track.durationMs,
                     // A API informa apenas o dia/seções. Espaçar a ordem
@@ -149,6 +151,7 @@ class YouTubeLibraryRepository(
                 videoId = track.videoId,
                 title = track.title,
                 artist = track.artist,
+                album = track.album,
                 thumbnailUrl = track.thumbnailUrl,
                 durationMs = track.durationMs,
                 position = index,
@@ -205,6 +208,7 @@ class YouTubeLibraryRepository(
                 artist = entity.artist,
                 thumbnailUrl = entity.thumbnailUrl,
                 durationMs = entity.durationMs,
+                album = entity.album,
             )
         }
 
