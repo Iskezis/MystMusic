@@ -205,6 +205,19 @@
         <item name="strokeWidth">1dp</item>
     </style>
 
+    <style name="Widget.MystMusic.Chip" parent="Widget.Material3.Chip.Filter">
+        <item name="android:textColor">?attr/mystOnSurface</item>
+        <item name="chipBackgroundColor">?attr/mystSurfaceAlt</item>
+        <item name="chipStrokeColor">?attr/mystStrokeStrong</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="checkedIconVisible">false</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">@dimen/text_small</item>
+        <item name="ensureMinTouchTargetSize">true</item>
+        <item name="chipMinHeight">@dimen/touch_target</item>
+        <item name="chipCornerRadius">@dimen/corner_pill</item>
+    </style>
+
     <style name="Widget.MystMusic.TextInput" parent="Widget.Material3.TextInputLayout.OutlinedBox">
         <item name="boxStrokeColor">@color/selector_text_input_stroke</item>
         <item name="boxCornerRadiusTopStart">@dimen/corner_medium</item>

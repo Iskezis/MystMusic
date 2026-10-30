@@ -9,7 +9,13 @@ import android.os.SystemClock
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.os.bundleOf
+import com.iskezis.myst.ui.browse.AlbumFragment
+import com.iskezis.myst.ui.browse.ArtistFragment
+import com.iskezis.myst.ui.browse.BrowseNavigation
+import com.iskezis.myst.ui.browse.PublicPlaylistFragment
 import com.iskezis.myst.ui.common.BaseActivity
+import com.iskezis.myst.ui.search.SearchFragment
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -144,6 +150,7 @@ class MainActivity : BaseActivity() {
             renderMiniPlayer()
         }
         updateSelection(navController.currentDestination?.id ?: R.id.homeFragment)
+        if (savedInstanceState == null) handleBrowseIntent(intent)
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -170,6 +177,94 @@ class MainActivity : BaseActivity() {
         requestNotificationPermissionIfNeeded {
             requestAccountBackupPermissionIfNeeded()
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        AppLog.d(AppLog.TAG_UI, "MainActivity.onNewIntent")
+        handleBrowseIntent(intent)
+    }
+
+    /**
+     * Abre artista, álbum, playlist ou busca a partir de um Intent disparado
+     * pelo player ou pelo menu de faixa. Os extras são consumidos para não
+     * repetir a navegação numa recriação da Activity.
+     */
+    private fun handleBrowseIntent(intent: Intent?) {
+        if (intent == null) return
+        val artistId = intent.getStringExtra(BrowseNavigation.EXTRA_ARTIST_ID)
+        val albumId = intent.getStringExtra(BrowseNavigation.EXTRA_ALBUM_ID)
+        val playlistId = intent.getStringExtra(BrowseNavigation.EXTRA_PLAYLIST_ID)
+        val searchQuery = intent.getStringExtra(BrowseNavigation.EXTRA_SEARCH_QUERY)
+        when {
+            !artistId.isNullOrBlank() -> navigateBrowse(
+                R.id.artistFragment,
+                bundleOf(
+                    ArtistFragment.ARG_ARTIST_ID to artistId,
+                    ArtistFragment.ARG_ARTIST_NAME to intent.getStringExtra(
+                        BrowseNavigation.EXTRA_ARTIST_NAME,
+                    ).orEmpty(),
+                    ArtistFragment.ARG_ARTIST_THUMBNAIL to intent.getStringExtra(
+                        BrowseNavigation.EXTRA_ARTIST_THUMBNAIL,
+                    ).orEmpty(),
+                ),
+            )
+            !albumId.isNullOrBlank() -> navigateBrowse(
+                R.id.albumFragment,
+                bundleOf(
+                    AlbumFragment.ARG_ALBUM_ID to albumId,
+                    AlbumFragment.ARG_ALBUM_TITLE to intent.getStringExtra(
+                        BrowseNavigation.EXTRA_ALBUM_TITLE,
+                    ).orEmpty(),
+                    AlbumFragment.ARG_ALBUM_ARTIST to intent.getStringExtra(
+                        BrowseNavigation.EXTRA_ALBUM_ARTIST,
+                    ).orEmpty(),
+                    AlbumFragment.ARG_ALBUM_THUMBNAIL to intent.getStringExtra(
+                        BrowseNavigation.EXTRA_ALBUM_THUMBNAIL,
+                    ).orEmpty(),
+                ),
+            )
+            !playlistId.isNullOrBlank() -> navigateBrowse(
+                R.id.publicPlaylistFragment,
+                bundleOf(
+                    PublicPlaylistFragment.ARG_PLAYLIST_ID to playlistId,
+                    PublicPlaylistFragment.ARG_PLAYLIST_TITLE to intent.getStringExtra(
+                        BrowseNavigation.EXTRA_PLAYLIST_TITLE,
+                    ).orEmpty(),
+                    PublicPlaylistFragment.ARG_PLAYLIST_THUMBNAIL to intent.getStringExtra(
+                        BrowseNavigation.EXTRA_PLAYLIST_THUMBNAIL,
+                    ).orEmpty(),
+                ),
+            )
+            !searchQuery.isNullOrBlank() -> navigateBrowse(
+                R.id.searchFragment,
+                bundleOf(SearchFragment.ARG_INITIAL_QUERY to searchQuery),
+            )
+            else -> return
+        }
+        intent.removeExtra(BrowseNavigation.EXTRA_ARTIST_ID)
+        intent.removeExtra(BrowseNavigation.EXTRA_ARTIST_NAME)
+        intent.removeExtra(BrowseNavigation.EXTRA_ARTIST_THUMBNAIL)
+        intent.removeExtra(BrowseNavigation.EXTRA_ALBUM_ID)
+        intent.removeExtra(BrowseNavigation.EXTRA_ALBUM_TITLE)
+        intent.removeExtra(BrowseNavigation.EXTRA_ALBUM_ARTIST)
+        intent.removeExtra(BrowseNavigation.EXTRA_ALBUM_THUMBNAIL)
+        intent.removeExtra(BrowseNavigation.EXTRA_PLAYLIST_ID)
+        intent.removeExtra(BrowseNavigation.EXTRA_PLAYLIST_TITLE)
+        intent.removeExtra(BrowseNavigation.EXTRA_PLAYLIST_THUMBNAIL)
+        intent.removeExtra(BrowseNavigation.EXTRA_SEARCH_QUERY)
+    }
+
+    private fun navigateBrowse(destinationId: Int, args: Bundle) {
+        runCatching { navController.navigate(destinationId, args) }
+            .onFailure { t ->
+                AppLog.failure(
+                    AppLog.TAG_UI,
+                    "Falha navegando para o destino $destinationId",
+                    t,
+                )
+            }
     }
 
     /**
@@ -346,7 +441,12 @@ class MainActivity : BaseActivity() {
 
     private fun updateSelection(destinationId: Int) {
         binding.navBar.navHome.isSelected =
-            destinationId == R.id.homeFragment || destinationId == R.id.statsFragment
+            destinationId == R.id.homeFragment ||
+                destinationId == R.id.statsFragment ||
+                destinationId == R.id.searchFragment ||
+                destinationId == R.id.artistFragment ||
+                destinationId == R.id.albumFragment ||
+                destinationId == R.id.publicPlaylistFragment
         binding.navBar.navPlaylists.isSelected = destinationId == R.id.playlistsFragment
         binding.navBar.navSettings.isSelected =
             destinationId == R.id.settingsFragment || destinationId == R.id.appearanceFragment

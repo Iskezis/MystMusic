@@ -5,8 +5,10 @@ import com.iskezis.myst.util.AppLog
 class YouTubeRepository(private val source: MusicSource) {
 
     private data class Cached(val at: Long, val tracks: List<Track>)
+    private data class CachedPage<T>(val at: Long, val value: T)
 
     private val cache = HashMap<String, Cached>()
+    private val pageCache = HashMap<String, CachedPage<Any>>()
     private val lock = Any()
 
     suspend fun search(query: String, limit: Int = 30): List<Track> {
@@ -59,6 +61,40 @@ class YouTubeRepository(private val source: MusicSource) {
         return source.playlistTracks(playlistId, limit)
     }
 
+    suspend fun searchPage(
+        query: String,
+        filter: SearchFilter = SearchFilter.ALL,
+        params: String? = null,
+        continuation: String? = null,
+    ): SearchPage {
+        if (!continuation.isNullOrBlank()) {
+            return source.searchPage(query, filter, params, continuation)
+        }
+        val key = "search-page:${query.trim().lowercase()}:${filter.name}:${params.orEmpty()}"
+        AppLog.d(AppLog.TAG_TUBE, "Busca completa solicitada: \"$query\" filtro=${filter.name}")
+        return cachedPage(key) { source.searchPage(query, filter, params, null) }
+    }
+
+    suspend fun artistPage(browseId: String): ArtistPage {
+        AppLog.d(AppLog.TAG_TUBE, "Artista solicitado: $browseId")
+        return cachedPage("artist:$browseId") { source.artistPage(browseId) }
+    }
+
+    suspend fun albumPage(browseId: String): AlbumPage {
+        AppLog.d(AppLog.TAG_TUBE, "Álbum solicitado: $browseId")
+        return cachedPage("album:$browseId") { source.albumPage(browseId) }
+    }
+
+    suspend fun publicPlaylistPage(browseId: String): PlaylistPage {
+        AppLog.d(AppLog.TAG_TUBE, "Playlist pública solicitada: $browseId")
+        return cachedPage("public-playlist:$browseId") { source.publicPlaylistPage(browseId) }
+    }
+
+    suspend fun browseContinuation(continuation: String): TrackPage {
+        AppLog.d(AppLog.TAG_TUBE, "Continuação de browse solicitada")
+        return source.browseContinuation(continuation)
+    }
+
     suspend fun accountName(): String? = source.accountName()
 
     fun streamUrlBlocking(videoId: String): String {
@@ -77,8 +113,26 @@ class YouTubeRepository(private val source: MusicSource) {
     }
 
     fun invalidate() {
-        synchronized(lock) { cache.clear() }
+        synchronized(lock) {
+            cache.clear()
+            pageCache.clear()
+        }
         AppLog.d(AppLog.TAG_TUBE, "Cache de listas do YouTube limpo")
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private suspend fun <T> cachedPage(key: String, block: suspend () -> T): T {
+        synchronized(lock) {
+            val entry = pageCache[key] as? CachedPage<T>
+            if (entry != null && System.currentTimeMillis() - entry.at < CACHE_TTL_MS) {
+                AppLog.d(AppLog.TAG_TUBE, "Cache hit de página: $key")
+                return entry.value
+            }
+        }
+        AppLog.d(AppLog.TAG_TUBE, "Cache miss de página: $key")
+        val value = block()
+        synchronized(lock) { pageCache[key] = CachedPage(System.currentTimeMillis(), value as Any) }
+        return value
     }
 
     private suspend fun cached(key: String, block: suspend () -> List<Track>): List<Track> {

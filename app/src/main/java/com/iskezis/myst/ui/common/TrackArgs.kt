@@ -9,6 +9,8 @@ private const val KEY_ARTIST = "track_artist"
 private const val KEY_ALBUM = "track_album"
 private const val KEY_THUMB = "track_thumb"
 private const val KEY_DURATION = "track_duration"
+private const val KEY_ARTIST_ID = "track_artist_id"
+private const val KEY_ALBUM_ID = "track_album_id"
 
 fun Track.toBundle(): Bundle = Bundle().apply {
     putString(KEY_VIDEO_ID, videoId)
@@ -17,6 +19,8 @@ fun Track.toBundle(): Bundle = Bundle().apply {
     putString(KEY_ALBUM, album)
     putString(KEY_THUMB, thumbnailUrl)
     putLong(KEY_DURATION, durationMs)
+    putString(KEY_ARTIST_ID, artistId)
+    putString(KEY_ALBUM_ID, albumId)
 }
 
 fun Bundle.toTrack(): Track? {
@@ -28,5 +32,7 @@ fun Bundle.toTrack(): Track? {
         thumbnailUrl = getString(KEY_THUMB),
         durationMs = getLong(KEY_DURATION, 0L),
         album = getString(KEY_ALBUM).orEmpty(),
+        artistId = getString(KEY_ARTIST_ID),
+        albumId = getString(KEY_ALBUM_ID),
     )
 }

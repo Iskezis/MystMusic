@@ -143,4 +143,56 @@
             android:textColor="?attr/mystOnSurface"
             android:textSize="@dimen/text_body" />
     </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/menuGoArtist"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_person"
+            app:tint="?attr/mystAccentText" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/space_m"
+            android:text="@string/track_menu_go_artist"
+            android:textColor="?attr/mystOnSurface"
+            android:textSize="@dimen/text_body" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/menuGoAlbum"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_music"
+            app:tint="?attr/mystAccentText" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/space_m"
+            android:text="@string/track_menu_go_album"
+            android:textColor="?attr/mystOnSurface"
+            android:textSize="@dimen/text_body" />
+    </LinearLayout>
 </LinearLayout>

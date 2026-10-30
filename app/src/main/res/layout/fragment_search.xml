@@ -48,13 +48,78 @@
         </com.google.android.material.textfield.TextInputLayout>
     </LinearLayout>
 
+    <HorizontalScrollView
+        android:id="@+id/searchChipsScroll"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:clipToPadding="false"
+        android:overScrollMode="never"
+        android:paddingStart="@dimen/screen_margin_small"
+        android:paddingEnd="@dimen/screen_margin_small"
+        android:scrollbars="none"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/searchBar">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/searchChips"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:chipSpacingHorizontal="@dimen/space_s"
+            app:selectionRequired="true"
+            app:singleLine="true"
+            app:singleSelection="true">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/searchChipAll"
+                style="@style/Widget.MystMusic.Chip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checkable="true"
+                android:checked="true"
+                android:text="@string/search_filter_all" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/searchChipSongs"
+                style="@style/Widget.MystMusic.Chip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checkable="true"
+                android:text="@string/search_filter_songs" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/searchChipArtists"
+                style="@style/Widget.MystMusic.Chip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checkable="true"
+                android:text="@string/search_filter_artists" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/searchChipAlbums"
+                style="@style/Widget.MystMusic.Chip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checkable="true"
+                android:text="@string/search_filter_albums" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/searchChipPlaylists"
+                style="@style/Widget.MystMusic.Chip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checkable="true"
+                android:text="@string/search_filter_playlists" />
+        </com.google.android.material.chip.ChipGroup>
+    </HorizontalScrollView>
+
     <FrameLayout
         android:layout_width="0dp"
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/searchBar">
+        app:layout_constraintTop_toBottomOf="@id/searchChipsScroll">
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/searchList"

@@ -32,7 +32,12 @@
     <fragment
         android:id="@+id/searchFragment"
         android:name="com.iskezis.myst.ui.search.SearchFragment"
-        android:label="@string/search_title" />
+        android:label="@string/search_title">
+        <argument
+            android:name="initialQuery"
+            android:defaultValue=""
+            app:argType="string" />
+    </fragment>
 
     <fragment
         android:id="@+id/playerFragment"
@@ -61,6 +66,61 @@
             app:argType="string" />
         <argument
             android:name="ytThumbnail"
+            android:defaultValue=""
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/artistFragment"
+        android:name="com.iskezis.myst.ui.browse.ArtistFragment"
+        android:label="@string/browse_artist">
+        <argument
+            android:name="artistId"
+            app:argType="string" />
+        <argument
+            android:name="artistName"
+            android:defaultValue=""
+            app:argType="string" />
+        <argument
+            android:name="artistThumbnail"
+            android:defaultValue=""
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/albumFragment"
+        android:name="com.iskezis.myst.ui.browse.AlbumFragment"
+        android:label="@string/browse_album">
+        <argument
+            android:name="albumId"
+            app:argType="string" />
+        <argument
+            android:name="albumTitle"
+            android:defaultValue=""
+            app:argType="string" />
+        <argument
+            android:name="albumArtist"
+            android:defaultValue=""
+            app:argType="string" />
+        <argument
+            android:name="albumThumbnail"
+            android:defaultValue=""
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/publicPlaylistFragment"
+        android:name="com.iskezis.myst.ui.browse.PublicPlaylistFragment"
+        android:label="@string/browse_playlist">
+        <argument
+            android:name="playlistId"
+            app:argType="string" />
+        <argument
+            android:name="playlistTitle"
+            android:defaultValue=""
+            app:argType="string" />
+        <argument
+            android:name="playlistThumbnail"
             android:defaultValue=""
             app:argType="string" />
     </fragment>

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0-dev.15 — 30/10/2026
+
+Busca ampliada e telas de artista, álbum e playlist.
+
+### Adicionado
+- **Busca completa:** chips Tudo / Músicas / Artistas / Álbuns / Playlists, debounce de 350 ms, resultados mistos com layout próprio para faixa, artista, álbum e playlist, paginação por continuação e estados de carregando, vazio e erro.
+- **Perfil do artista:** cabeçalho com foto, nome e ouvintes mensais; Tocar/Embaralhar; músicas populares com "Ver todas"; carrosséis de álbuns, singles/EPs, playlists e artistas semelhantes; seção Sobre.
+- **Álbum:** capa grande, título, artista, ano, contagem, duração, lista de faixas e Tocar/Embaralhar.
+- **Playlist pública:** cabeçalho, lista paginada, Tocar/Embaralhar e **Copiar para Myst**.
+- **Navegação:** artista, álbum e playlist abrem por Navigation Component com argumentos, inclusive a partir do player e do menu de faixa (CLEAR_TOP + SINGLE_TOP).
+- **Menu de faixa:** Ir para o artista e Ir para o álbum, com fallback para a busca quando o ID não está disponível.
+- **Player:** nome do artista e do álbum clicáveis.
+- **Modelo:** IDs de artista e álbum preservados em `Track`, na fila do Media3 e nos argumentos de faixa; busca com cache de página de 5 minutos.
+
 ## 0.2.0-dev.14 — 30/10/2026
 
 Correção do Discord ao desconectar a TV.

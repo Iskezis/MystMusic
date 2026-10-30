@@ -422,7 +422,15 @@ class PlayerController(context: Context) {
     )
 
     private fun Track.toMediaItem(): MediaItem {
-        val extras = Bundle().apply { putLong(PlaybackService.EXTRA_DURATION, durationMs) }
+        val extras = Bundle().apply {
+            putLong(PlaybackService.EXTRA_DURATION, durationMs)
+            artistId?.takeIf { it.isNotBlank() }?.let {
+                putString(PlaybackService.EXTRA_ARTIST_ID, it)
+            }
+            albumId?.takeIf { it.isNotBlank() }?.let {
+                putString(PlaybackService.EXTRA_ALBUM_ID, it)
+            }
+        }
         val metadata = MediaMetadata.Builder()
             .setTitle(title.ifBlank { "MystMusic" })
             .setArtist(artist)
@@ -446,6 +454,8 @@ class PlayerController(context: Context) {
             thumbnailUrl = mediaMetadata.artworkUri?.toString(),
             durationMs = extras?.getLong(PlaybackService.EXTRA_DURATION, 0L) ?: 0L,
             album = mediaMetadata.albumTitle?.toString().orEmpty(),
+            artistId = extras?.getString(PlaybackService.EXTRA_ARTIST_ID),
+            albumId = extras?.getString(PlaybackService.EXTRA_ALBUM_ID),
         )
     }
 }

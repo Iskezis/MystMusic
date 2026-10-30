@@ -229,6 +229,8 @@ class PlaybackService : MediaSessionService() {
                 thumbnailUrl = item.mediaMetadata.artworkUri?.toString(),
                 durationMs = item.mediaMetadata.extras?.getLong(EXTRA_DURATION, 0L) ?: 0L,
                 album = item.mediaMetadata.albumTitle?.toString().orEmpty(),
+                artistId = item.mediaMetadata.extras?.getString(EXTRA_ARTIST_ID),
+                albumId = item.mediaMetadata.extras?.getString(EXTRA_ALBUM_ID),
             )
         }
         currentPosition = 0L
@@ -444,6 +446,8 @@ class PlaybackService : MediaSessionService() {
 
     companion object {
         const val EXTRA_DURATION = "extra_duration"
+        const val EXTRA_ARTIST_ID = "extra_artist_id"
+        const val EXTRA_ALBUM_ID = "extra_album_id"
 
         /** Só entra nas estatísticas depois dos primeiros 10 s, mesmo parcial. */
         private const val MIN_PLAY_MS = 10_000L

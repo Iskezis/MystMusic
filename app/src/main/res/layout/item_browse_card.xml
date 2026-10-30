@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/browseCardRoot"
+    android:layout_width="@dimen/card_cover"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="@dimen/space_m"
+    android:background="@drawable/bg_track_row"
+    android:clickable="true"
+    android:focusable="true"
+    android:orientation="vertical"
+    android:padding="@dimen/space_xs">
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/browseCardCover"
+        android:layout_width="@dimen/browse_card_cover"
+        android:layout_height="@dimen/browse_card_cover"
+        android:background="@drawable/bg_cover_placeholder"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.Cover" />
+
+    <TextView
+        android:id="@+id/browseCardTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_s"
+        android:ellipsize="end"
+        android:fontFamily="sans-serif-medium"
+        android:maxLines="1"
+        android:textColor="?attr/mystOnSurface"
+        android:textSize="@dimen/text_body" />
+
+    <TextView
+        android:id="@+id/browseCardSubtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="?attr/mystOnSurfaceDim"
+        android:textSize="@dimen/text_small" />
+</LinearLayout>

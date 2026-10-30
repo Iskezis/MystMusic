@@ -17,6 +17,11 @@
     <dimen name="corner_pill">28dp</dimen>
     <dimen name="card_cover">140dp</dimen>
     <dimen name="card_cover_small">112dp</dimen>
+    <dimen name="browse_cover">180dp</dimen>
+    <dimen name="browse_card_cover">120dp</dimen>
+    <dimen name="artist_cover">152dp</dimen>
+    <dimen name="search_avatar">64dp</dimen>
+    <dimen name="search_cover">56dp</dimen>
     <dimen name="track_thumb">56dp</dimen>
     <dimen name="track_row_height">72dp</dimen>
     <dimen name="mini_cover">44dp</dimen>

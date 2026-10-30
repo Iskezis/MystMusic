@@ -11,6 +11,7 @@ import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.databinding.SheetTrackMenuBinding
+import com.iskezis.myst.ui.browse.BrowseNavigation
 import com.iskezis.myst.ui.common.toBundle
 import com.iskezis.myst.ui.common.toTrack
 import com.iskezis.myst.ui.playlists.AddToPlaylistSheet
@@ -65,6 +66,48 @@ class TrackMenuSheet : BottomSheetDialogFragment() {
             dismiss()
             AddToPlaylistSheet.newInstance(track)
                 .show(parentFragmentManager, AddToPlaylistSheet.TAG)
+        }
+        binding.menuGoArtist.setOnClickListener {
+            val opened = BrowseNavigation.openArtistOrSearch(
+                requireContext(),
+                track.artistId,
+                track.artist,
+            )
+            if (opened) {
+                dismiss()
+            } else {
+                Toast.makeText(
+                    requireContext(),
+                    R.string.track_menu_artist_unavailable,
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+        binding.menuGoAlbum.setOnClickListener {
+            val albumId = track.albumId
+            val albumName = track.album
+            if (albumId.isNullOrBlank() && albumName.isBlank()) {
+                Toast.makeText(
+                    requireContext(),
+                    R.string.track_menu_album_unavailable,
+                    Toast.LENGTH_SHORT,
+                ).show()
+                return@setOnClickListener
+            }
+            val opened = BrowseNavigation.openAlbumOrSearch(
+                requireContext(),
+                albumId,
+                albumName,
+            )
+            if (opened) {
+                dismiss()
+            } else {
+                Toast.makeText(
+                    requireContext(),
+                    R.string.track_menu_album_unavailable,
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
         }
     }
 

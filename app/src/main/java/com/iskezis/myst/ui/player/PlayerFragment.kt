@@ -22,10 +22,12 @@ import androidx.navigation.fragment.findNavController
 import coil.load
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
+import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.databinding.FragmentPlayerBinding
 import com.iskezis.myst.player.PlayerController
 import com.iskezis.myst.player.PlayerState
 import com.iskezis.myst.ui.auth.YouTubeLoginActivity
+import com.iskezis.myst.ui.browse.BrowseNavigation
 import com.iskezis.myst.ui.playlists.AddToPlaylistSheet
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.animatePlayIcon
@@ -180,6 +182,30 @@ class PlayerFragment : Fragment() {
         val artist = track?.artist?.ifBlank { getString(R.string.player_unknown_artist) }
         binding.playerTitle.text = title ?: getString(R.string.player_unknown_title)
         binding.playerArtist.text = artist ?: getString(R.string.player_unknown_artist)
+        val album = track?.album.orEmpty()
+        binding.playerAlbum.text = album
+        binding.playerAlbum.isVisible = album.isNotBlank()
+        val currentTrack = track
+        val artistClickable = currentTrack != null && currentTrack.artist.isNotBlank()
+        binding.playerArtist.isClickable = artistClickable
+        binding.playerArtist.isFocusable = artistClickable
+        binding.playerArtist.setOnClickListener(
+            if (artistClickable && currentTrack != null) {
+                View.OnClickListener { openArtist(currentTrack) }
+            } else {
+                null
+            },
+        )
+        val albumClickable = currentTrack != null && album.isNotBlank()
+        binding.playerAlbum.isClickable = albumClickable
+        binding.playerAlbum.isFocusable = albumClickable
+        binding.playerAlbum.setOnClickListener(
+            if (albumClickable && currentTrack != null) {
+                View.OnClickListener { openAlbum(currentTrack) }
+            } else {
+                null
+            },
+        )
         binding.playerCover.contentDescription = getString(
             R.string.content_cover,
             title ?: getString(R.string.player_unknown_title),
@@ -252,6 +278,32 @@ class PlayerFragment : Fragment() {
         if (state.isPlaying != lastLoggedPlaying) {
             lastLoggedPlaying = state.isPlaying
             AppLog.i(AppLog.TAG_PLAYER, "Player isPlaying=${state.isPlaying}")
+        }
+    }
+
+    private fun openArtist(track: Track) {
+        val context = context ?: return
+        val opened = BrowseNavigation.openArtistOrSearch(
+            context,
+            track.artistId,
+            track.artist,
+        )
+        if (!opened) {
+            Toast.makeText(context, R.string.track_menu_artist_unavailable, Toast.LENGTH_SHORT)
+                .show()
+        }
+    }
+
+    private fun openAlbum(track: Track) {
+        val context = context ?: return
+        val opened = BrowseNavigation.openAlbumOrSearch(
+            context,
+            track.albumId,
+            track.album,
+        )
+        if (!opened) {
+            Toast.makeText(context, R.string.track_menu_album_unavailable, Toast.LENGTH_SHORT)
+                .show()
         }
     }
 

@@ -9,10 +9,110 @@ data class Track(
     val thumbnailUrl: String? = null,
     val durationMs: Long = 0L,
     val album: String = "",
+    /** Canal do artista no YouTube Music, quando a resposta informa. */
+    val artistId: String? = null,
+    /** Álbum do YouTube Music, quando a resposta informa. */
+    val albumId: String? = null,
 ) {
     /** Melhor arte disponível, mesmo para faixas antigas salvas com URL pequena. */
     fun artworkUrl(): String? = Thumbnails.best(thumbnailUrl, videoId)
 }
+
+/** Resultado resumido de artista na busca e nos carrosséis. */
+data class ArtistSummary(
+    val browseId: String,
+    val name: String,
+    val thumbnailUrl: String? = null,
+    val subtitle: String = "",
+)
+
+/** Resultado resumido de álbum na busca e nos carrosséis. */
+data class AlbumSummary(
+    val browseId: String,
+    val title: String,
+    val artist: String = "",
+    val artistId: String? = null,
+    val year: String = "",
+    val thumbnailUrl: String? = null,
+)
+
+/** Resultado resumido de playlist pública ou da comunidade. */
+data class PlaylistSummary(
+    val browseId: String,
+    val title: String,
+    val author: String = "",
+    val trackCount: Int = 0,
+    val thumbnailUrl: String? = null,
+)
+
+enum class SearchFilter {
+    ALL,
+    SONGS,
+    ARTISTS,
+    ALBUMS,
+    PLAYLISTS,
+}
+
+/** Chip devolvido pelo YouTube; os params viram o filtro da próxima busca. */
+data class SearchChip(
+    val filter: SearchFilter,
+    val label: String,
+    val params: String?,
+)
+
+data class SearchPage(
+    val tracks: List<Track> = emptyList(),
+    val artists: List<ArtistSummary> = emptyList(),
+    val albums: List<AlbumSummary> = emptyList(),
+    val playlists: List<PlaylistSummary> = emptyList(),
+    val chips: List<SearchChip> = emptyList(),
+    val continuation: String? = null,
+)
+
+data class ArtistPage(
+    val browseId: String,
+    val name: String,
+    val thumbnailUrl: String? = null,
+    val description: String = "",
+    val monthlyListeners: String = "",
+    val topTracks: List<Track> = emptyList(),
+    val songsContinuation: String? = null,
+    /** Playlist "Músicas em alta" que o YouTube abre pelo botão "Ver todas". */
+    val topSongsBrowseId: String? = null,
+    val albums: List<AlbumSummary> = emptyList(),
+    val singles: List<AlbumSummary> = emptyList(),
+    val playlists: List<PlaylistSummary> = emptyList(),
+    val relatedArtists: List<ArtistSummary> = emptyList(),
+)
+
+data class AlbumPage(
+    val browseId: String,
+    val title: String,
+    val artist: String = "",
+    val artistId: String? = null,
+    val year: String = "",
+    val description: String = "",
+    val thumbnailUrl: String? = null,
+    val tracks: List<Track> = emptyList(),
+    val continuation: String? = null,
+)
+
+data class PlaylistPage(
+    val browseId: String,
+    val title: String,
+    val author: String = "",
+    val description: String = "",
+    val thumbnailUrl: String? = null,
+    val trackCount: Int = 0,
+    val tracks: List<Track> = emptyList(),
+    val continuation: String? = null,
+)
+
+/** Página de faixas carregada por continuação (álbum, playlist ou artista). */
+data class TrackPage(
+    val tracks: List<Track> = emptyList(),
+    val continuation: String? = null,
+)
 
 /**
  * URLs de telemetria do player. O YouTube usa esses endereços para registrar
@@ -85,4 +185,24 @@ interface MusicSource {
     suspend fun markWatched(videoId: String, playedMs: Long = 0L): Boolean = false
 
     suspend fun accountName(): String?
+
+    /**
+     * Busca completa com filtro e continuação. `params` vem dos chips do
+     * YouTube; quando nulo o cliente usa o filtro conhecido.
+     */
+    suspend fun searchPage(
+        query: String,
+        filter: SearchFilter = SearchFilter.ALL,
+        params: String? = null,
+        continuation: String? = null,
+    ): SearchPage
+
+    suspend fun artistPage(browseId: String): ArtistPage
+
+    suspend fun albumPage(browseId: String): AlbumPage
+
+    suspend fun publicPlaylistPage(browseId: String): PlaylistPage
+
+    /** Carrega mais faixas de uma continuação do browse (artista/playlist). */
+    suspend fun browseContinuation(continuation: String): TrackPage
 }
