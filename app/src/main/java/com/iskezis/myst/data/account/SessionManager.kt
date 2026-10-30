@@ -5,6 +5,9 @@ import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.iskezis.myst.util.AppLog
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 
 /**
@@ -35,6 +38,14 @@ class SessionManager(context: Context) {
     )
 
     private val prefs: SharedPreferences = createPrefs(context.applicationContext)
+
+    /**
+     * Emite sempre que o pareamento celular↔TV muda. A tela de Configurações
+     * observa este fluxo para esconder "Desconectar TV" na hora em que o
+     * celular recebe o aviso de despareamento, sem depender de onResume.
+     */
+    private val _tvPairingVersion = MutableStateFlow(0)
+    val tvPairingVersion: StateFlow<Int> = _tvPairingVersion.asStateFlow()
 
     init {
         migrateLegacySession()
@@ -127,6 +138,16 @@ class SessionManager(context: Context) {
     val tvPairSecret: String?
         get() = prefs.getString(KEY_TV_PAIR_SECRET, null)?.takeIf { it.isNotBlank() }
 
+    /**
+     * Último par que existiu neste aparelho. Não é apagado junto com o
+     * pareamento: a TV em modo de espera responde `/hello` com ele para o
+     * celular confirmar que o par foi desfeito mesmo quando o aviso em tempo
+     * real não chegou (TV desligada ou celular com o processo encerrado).
+     */
+    val lastTvPairId: String?
+        get() = (prefs.getString(KEY_LAST_TV_PAIR_ID, null) ?: tvPairId)
+            ?.takeIf { it.isNotBlank() }
+
     val tvName: String
         get() = prefs.getString(KEY_TV_NAME, "").orEmpty()
 
@@ -173,6 +194,7 @@ class SessionManager(context: Context) {
         prefs.edit()
             .putString(KEY_TV_PAIR_ID, pairId)
             .putString(KEY_TV_PAIR_SECRET, secret)
+            .putString(KEY_LAST_TV_PAIR_ID, pairId)
             .putString(KEY_TV_NAME, name)
             .putString(KEY_TV_HOST, host)
             .putInt(KEY_TV_PORT, port)
@@ -182,6 +204,7 @@ class SessionManager(context: Context) {
             .putLong(KEY_TV_LAST_SYNC, 0L)
             .putBoolean(KEY_TV_PAIRED, true)
             .apply()
+        notifyTvPairingChanged()
     }
 
     fun updateTvEndpoint(host: String?, port: Int) {
@@ -192,7 +215,16 @@ class SessionManager(context: Context) {
     }
 
     fun clearTvPairing() {
-        prefs.edit()
+        // Guarda o par que está sendo desfeito. A TV na tela de código usa
+        // esse id em `/hello` para o celular confirmar que o pareamento
+        // acabou; sem isso, aparelhos pareados antes desta versão ficariam
+        // com "Desconectar TV" para sempre.
+        val lastPairId = tvPairId
+        val editor = prefs.edit()
+        if (!lastPairId.isNullOrBlank()) {
+            editor.putString(KEY_LAST_TV_PAIR_ID, lastPairId)
+        }
+        editor
             .remove(KEY_TV_PAIR_ID)
             .remove(KEY_TV_PAIR_SECRET)
             .remove(KEY_TV_NAME)
@@ -204,6 +236,13 @@ class SessionManager(context: Context) {
             .remove(KEY_PHONE_PORT)
             .putBoolean(KEY_TV_PAIRED, false)
             .apply()
+        // KEY_LAST_TV_PAIR_ID permanece de propósito: é a lápide consultada
+        // pelo celular para confirmar que a TV não está mais pareada.
+        notifyTvPairingChanged()
+    }
+
+    private fun notifyTvPairingChanged() {
+        _tvPairingVersion.value = _tvPairingVersion.value + 1
     }
 
     fun saveMyst(userId: Long, name: String) {
@@ -293,6 +332,7 @@ class SessionManager(context: Context) {
             .remove(KEY_PHONE_HOST)
             .remove(KEY_PHONE_PORT)
             .apply()
+        notifyTvPairingChanged()
     }
 
     fun clearDiscord() {
@@ -426,6 +466,7 @@ class SessionManager(context: Context) {
         private const val KEY_DISCORD_NAME = "discord_name"
         private const val KEY_TV_PAIRED = "tv_paired"
         private const val KEY_TV_PAIR_ID = "tv_pair_id"
+        private const val KEY_LAST_TV_PAIR_ID = "tv_last_pair_id"
         private const val KEY_TV_PAIR_SECRET = "tv_pair_secret"
         private const val KEY_TV_NAME = "tv_name"
         private const val KEY_TV_HOST = "tv_host"

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0-dev.17 — 30/10/2026
+
+Correções de persistência do Recentes e do cancelamento de pareamento.
+
+### Corrigido
+- **Recentes após atualizar o app:** a sincronização do histórico do YouTube Music reescrevia o horário de todas as faixas a cada consulta. Como o cache vence a cada 15 minutos, o Recentes inteiro "pulava" para o topo depois de uma atualização. Agora o horário já conhecido de cada `videoId` é preservado e só as faixas novas recebem uma âncora; a ordem local (histórico e estatísticas) continua intacta no Room.
+- **Estatísticas e dados da conta:** reforço de que `play_events`, histórico local, gostos, playlists e preferências são gravados por conta Myst e sobrevivem a atualizações do APK (assinatura estável + migrações Room não destrutivas). O `Mystaccount.json` continua sendo a cópia portátil.
+- **Desconectar TV depois de cancelar na TV:** o celular esconde "Desconectar TV" imediatamente quando recebe o aviso de despareamento. Se o aviso não chegar (app fechado ou rede fora do ar), ao abrir Configurações o celular consulta o `/hello` da TV — inclusive a tela de código, que responde com o id do último par e `paired=false` — e remove o pareamento. Pareamentos antigos ganharam a lápide `tv_last_pair_id` no momento em que são desfeitos.
+- **Entrega do aviso de despareamento:** os tempos de espera do retrato final e do aviso TV→celular foram ampliados para redes locais lentas, reduzindo o caso em que a TV desfaz o par mas o celular não fica sabendo.
+
 ## 0.2.0-dev.16 — 30/10/2026
 
 Correção das capas dentro dos álbuns.

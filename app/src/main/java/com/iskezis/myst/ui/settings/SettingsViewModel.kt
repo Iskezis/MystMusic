@@ -55,6 +55,11 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
     init {
         viewModelScope.launch { refresh() }
         viewModelScope.launch {
+            // A TV pode desfazer o pareamento enquanto esta tela está aberta.
+            // O fluxo da sessão esconde "Desconectar TV" imediatamente.
+            app.session.tvPairingVersion.collect { updatePairingState() }
+        }
+        viewModelScope.launch {
             app.accountFiles.status.collect { status ->
                 _state.value = _state.value.copy(
                     accountFileStatus = statusForCurrentUser(status),
@@ -72,6 +77,17 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
 
     /** Atualiza o status da TV ao voltar do pareamento ou de outra tela. */
     fun refreshPairing() {
+        updatePairingState()
+        if (!app.session.hasTvPairing) return
+        // Se o aviso de despareamento da TV não chegou (app do celular estava
+        // fechado), confere com a TV. A chamada é assíncrona e tem throttle.
+        viewModelScope.launch {
+            app.pairedSync.verifyTvPairing()
+            updatePairingState()
+        }
+    }
+
+    private fun updatePairingState() {
         _state.value = _state.value.copy(
             pairedTv = app.session.hasTvPairing,
             pairedTvName = app.session.tvName,

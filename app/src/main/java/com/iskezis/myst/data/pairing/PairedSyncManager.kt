@@ -77,6 +77,10 @@ class PairedSyncManager(private val app: MystApp) {
     @Volatile
     private var pairingEpoch = 0L
 
+    /** Evita repetir a conferência de rede a cada onResume das Configurações. */
+    @Volatile
+    private var lastVerifyAt = 0L
+
     private val isTv: Boolean
         get() = BuildConfig.FLAVOR == "tv"
 
@@ -229,6 +233,112 @@ class PairedSyncManager(private val app: MystApp) {
         changeJob?.cancel()
         changeJob = null
         AppLog.i(AppLog.TAG_PAIRING, "Pareamento removido localmente no celular")
+    }
+
+    /**
+     * Confere com a TV se o pareamento ainda existe. Recupera o caso em que o
+     * aviso `unpair` não chega (celular com o processo encerrado, rede fora do
+     * ar na hora): a tela de código da TV responde `/hello` com o parId da
+     * última sessão e `paired=false`, então o celular remove o pareamento e o
+     * botão "Desconectar TV" desaparece.
+     */
+    suspend fun verifyTvPairing(): Boolean {
+        if (isTv) return false
+        val session = app.session
+        val pairId = session.tvPairId ?: return false
+        if (!session.hasTvPairing) return false
+        val now = System.currentTimeMillis()
+        if (now - lastVerifyAt < VERIFY_THROTTLE_MS) return true
+        lastVerifyAt = now
+        val cachedHost = session.tvHost
+        if (!cachedHost.isNullOrBlank()) {
+            val ports = linkedSetOf<Int>()
+            if (session.tvPort in 1..65535) ports += session.tvPort
+            ports += TV_PORT
+            ports.forEach { port ->
+                val hello = readHello(
+                    PairingNsd.Target(
+                        name = session.tvName.ifBlank { "MystMusic TV" },
+                        host = cachedHost,
+                        port = port,
+                    ),
+                ) ?: return@forEach
+                when {
+                    hello.pairId == pairId && hello.paired -> return true
+                    hello.pairId == pairId -> {
+                        AppLog.i(
+                            AppLog.TAG_PAIRING,
+                            "TV respondeu sem pareamento em $cachedHost:$port; limpando o celular",
+                        )
+                        clearPairingLocally()
+                        return false
+                    }
+                    hello.pairId.isNotBlank() && hello.pairId != pairId -> {
+                        AppLog.i(
+                            AppLog.TAG_PAIRING,
+                            "A TV em $cachedHost:$port agora pertence a outro celular",
+                        )
+                        clearPairingLocally()
+                        return false
+                    }
+                }
+            }
+        }
+        if (discoverTvPairing(pairId) == false) {
+            AppLog.i(
+                AppLog.TAG_PAIRING,
+                "TV encontrada no modo de código; o pareamento antigo não existe mais",
+            )
+            clearPairingLocally()
+            return false
+        }
+        return true
+    }
+
+    private suspend fun readHello(target: PairingNsd.Target): PairHello? = runCatching {
+        val text = PairingHttp.getJson(
+            PairingHttp.url(target.host, target.port, "/hello"),
+            connectTimeoutMs = 1_500,
+            readTimeoutMs = 2_000,
+        )
+        PairingSync.json.decodeFromString(PairHello.serializer(), text)
+    }.getOrNull()
+
+    /**
+     * Procura a TV na rede quando o endereço em cache não responde. Retorna
+     * `null` se nenhuma TV for encontrada (não dá para concluir nada) e
+     * `false` quando a TV daquele parId está na tela de código.
+     */
+    private suspend fun discoverTvPairing(pairId: String): Boolean? = coroutineScope {
+        val nsd = PairingNsd(app)
+        val result = CompletableDeferred<Boolean?>()
+        val probed = mutableSetOf<String>()
+        nsd.discover(
+            onFound = { target ->
+                val key = "${target.host}:${target.port}"
+                val added = synchronized(probed) { probed.add(key) }
+                if (added) {
+                    launch {
+                        val hello = readHello(target) ?: return@launch
+                        if (hello.role == "phone") return@launch
+                        if (hello.pairId == pairId) result.complete(hello.paired)
+                    }
+                }
+            },
+            onLost = { },
+            onError = { error ->
+                AppLog.w(
+                    AppLog.TAG_PAIRING,
+                    "Descoberta da TV para conferir o pareamento falhou: $error",
+                )
+                result.complete(null)
+            },
+        )
+        try {
+            withTimeoutOrNull(VERIFY_DISCOVERY_TIMEOUT_MS) { result.await() }
+        } finally {
+            runCatching { nsd.close() }
+        }
     }
 
     /**
@@ -640,9 +750,11 @@ class PairedSyncManager(private val app: MystApp) {
         private const val SUPPRESS_CHANGES_MS = 2_500L
         private const val SERVER_RETRY_MS = 5_000L
         private const val DISCOVERY_TIMEOUT_MS = 5_000L
-        private const val NOTIFY_TIMEOUT_MS = 3_000L
-        private const val FINAL_PUSH_TIMEOUT_MS = 8_000L
+        private const val NOTIFY_TIMEOUT_MS = 12_000L
+        private const val FINAL_PUSH_TIMEOUT_MS = 15_000L
         private const val DISCONNECT_WAIT_MS = 2_000L
+        private const val VERIFY_THROTTLE_MS = 5_000L
+        private const val VERIFY_DISCOVERY_TIMEOUT_MS = 4_000L
 
         private val PAIRING_TABLES = arrayOf(
             "playlists",

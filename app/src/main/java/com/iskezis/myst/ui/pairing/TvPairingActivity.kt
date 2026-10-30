@@ -11,10 +11,12 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.iskezis.myst.MainActivity
 import com.iskezis.myst.MystApp
+import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.R
 import com.iskezis.myst.data.pairing.LocalPairingServer
 import com.iskezis.myst.data.pairing.PairAck
 import com.iskezis.myst.data.pairing.PairConfirm
+import com.iskezis.myst.data.pairing.PairHello
 import com.iskezis.myst.data.pairing.PairPayload
 import com.iskezis.myst.data.pairing.PairRequest
 import com.iskezis.myst.data.pairing.PairingCrypto
@@ -88,13 +90,13 @@ class TvPairingActivity : BaseActivity() {
 
     private fun startServer() {
         val pairingServer = LocalPairingServer { path, body, remote ->
-            if (path != "/request") {
-                LocalPairingServer.HttpResult(
+            when (path) {
+                "/hello" -> hello()
+                "/request" -> handleRequest(body, remote)
+                else -> LocalPairingServer.HttpResult(
                     404,
                     json.encodeToString(PairAck.serializer(), PairAck(false, "not_found")),
                 )
-            } else {
-                handleRequest(body, remote)
             }
         }
         runCatching {
@@ -120,6 +122,27 @@ class TvPairingActivity : BaseActivity() {
             binding.tvPairStatus.setText(R.string.pairing_tv_error)
             binding.tvPairRetry.isVisible = true
         }
+    }
+
+    /**
+     * Responde ao celular mesmo sem pareamento ativo. O parId da última sessão
+     * funciona como lápide: o celular que ainda acha que está pareado descobre
+     * a TV na rede, vê `paired=false` e remove o botão "Desconectar TV".
+     */
+    private fun hello(): LocalPairingServer.HttpResult {
+        val hello = PairHello(
+            pairId = app.session.lastTvPairId.orEmpty(),
+            deviceName = Build.MODEL.orEmpty().ifBlank { "MystMusic TV" },
+            appVersion = BuildConfig.VERSION_NAME,
+            // Se esta tela abriu por engano com um pareamento ativo, não pode
+            // dizer ao celular que a TV foi desfeita.
+            paired = app.session.hasTvPairing,
+            role = "tv",
+        )
+        return LocalPairingServer.HttpResult(
+            200,
+            json.encodeToString(PairHello.serializer(), hello),
+        )
     }
 
     private fun handleRequest(body: String, remoteHost: String): LocalPairingServer.HttpResult {

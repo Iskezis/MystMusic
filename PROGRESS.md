@@ -54,9 +54,17 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
   - [x] AMOLED reaplicado a cada sync e NSD com retentativas/desregistro
 - [x] Correção do Discord na desconexão da TV (0.2.0-dev.14)
   - [x] Presença vazia enviada antes de fechar o WebSocket; fechamento gracioso sem `cancel()` imediato
-- [ ] 15. Busca: artistas, álbuns e playlists
-  - [ ] Chips Tudo / Músicas / Artistas / Álbuns / Playlists
-  - [ ] Perfil do artista, tela do álbum, tela da playlist
+- [x] Correções de persistência e pareamento (0.2.0-dev.17)
+  - [x] Recentes: horário das faixas do YouTube Music preservado entre sincronizações (sem "pular" tudo para o topo após atualizar)
+  - [x] Estatísticas, histórico local, gostos, playlists e preferências permanecem no Room por conta Myst
+  - [x] Celular esconde "Desconectar TV" na hora com o aviso de despareamento
+  - [x] Verificação `/hello` ao abrir Configurações pega o caso de app fechado/aviso perdido, inclusive na tela de código da TV
+  - [x] Lápide `tv_last_pair_id` gravada também para pareamentos que existiam antes da atualização
+- [x] 15. Busca: artistas, álbuns e playlists
+  - [x] Chips Tudo / Músicas / Artistas / Álbuns / Playlists
+  - [x] Perfil do artista, tela do álbum, tela da playlist
+  - [x] Faixas do álbum usam a capa oficial do álbum (não a thumbnail do vídeo)
+  - [x] Copiar playlist pública para Myst, menu de faixa e artista/álbum clicáveis no player
 - [ ] 16. Downloads offline
   - [ ] Toque longo na música → Baixar
   - [ ] Baixar tudo em álbum/playlist
@@ -79,7 +87,9 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - API de atualização do GitHub só funciona sem token se o repositório for público.
 
 ## Release
-- **0.2.0-dev.15** (`versionCode 24`, `versionName "0.2.0-dev.15"`): busca completa com chips e resultados mistos, perfil de artista, telas de álbum e playlist pública com paginação, copiar playlist para Myst, menu de faixa com ir para artista/álbum e nomes clicáveis no player; run pendente. APKs em `apks/app.apk` e `apks/app-tv.apk`.
+- **0.2.0-dev.17** (`versionCode 26`, `versionName "0.2.0-dev.17"`): correções de persistência do Recentes (horário das faixas do YouTube Music preservado entre sincronizações) e do cancelamento de pareamento na TV (celular remove "Desconectar TV" pelo aviso em tempo real ou pela verificação `/hello` ao abrir Configurações); run pendente. APKs em `apks/app.apk` e `apks/app-tv.apk`.
+- **0.2.0-dev.16** (`versionCode 25`, `versionName "0.2.0-dev.16"`): correção das capas dentro do álbum — as faixas passam a usar a capa oficial do álbum (inclusive nas páginas seguintes, no player, no mini player e nas playlists Myst), em vez da thumbnail 16:9 do vídeo do YouTube; run `41127188346`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
+- **0.2.0-dev.15** (`versionCode 24`, `versionName "0.2.0-dev.15"`): busca completa com chips e resultados mistos, perfil de artista, telas de álbum e playlist pública com paginação, copiar playlist para Myst, menu de faixa com ir para artista/álbum e nomes clicáveis no player; run `41125684699`. APKs substituídos pelos do dev.16.
 - **0.2.0-dev.14** (`versionCode 23`, `versionName "0.2.0-dev.14"`): ao desconectar a TV, o Discord limpa a presença e fecha o socket de forma graciosa, sem deixar o card da última música no perfil; run `41117041024`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.13** (`versionCode 22`, `versionName "0.2.0-dev.13"`): correção emergencial de reprodução — VISIONOS 1.02 com contexto/UA atual, validação de um bloco real de 256 KiB a partir de 1 MiB para rejeitar URLs do ANDROID_VR que só entregam o primeiro MiB, renovação do visitorData anônimo e nova tentativa no VISIONOS; run `41113703977`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.12** (`versionCode 21`, `versionName "0.2.0-dev.12"`): correções da fase 14 — renovação do visitorData no áudio, telemetria de reprodução no YouTube Music após 10 s, evento de estatística atualizado na mesma linha, `Mystaccount.json` v4 com Discord, Discord em tempo real, `/push` da TV para o celular com lápides de faixas, desconexão confiável e NSD/AMOLED reaplicados; run `41103446681`. APKs em `apks/app.apk` e `apks/app-tv.apk`.

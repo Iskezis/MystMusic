@@ -102,7 +102,17 @@ class YouTubeLibraryRepository(
             val startedAt = System.currentTimeMillis()
             val tracks = youtube.accountHistory(HISTORY_LIMIT)
             val now = System.currentTimeMillis()
+            // O YouTube informa apenas a ordem, não o horário. Reatribuir um
+            // timestamp novo a cada sincronização fazia o Recentes inteiro
+            // "pular" para o topo depois de uma atualização do app (o cache
+            // vence em 15 min). Mantém o instante já conhecido para cada
+            // videoId e só ancora os que aparecem pela primeira vez.
+            val previous = dao.history(userId, maxOf(HISTORY_LIMIT, tracks.size))
+                .associateBy { it.videoId }
+            var preserved = 0
             val entities = tracks.mapIndexed { index, track ->
+                val knownAt = previous[track.videoId]?.playedAt
+                if (knownAt != null) preserved++
                 YtHistoryEntity(
                     userId = userId,
                     videoId = track.videoId,
@@ -113,7 +123,7 @@ class YouTubeLibraryRepository(
                     durationMs = track.durationMs,
                     // A API informa apenas o dia/seções. Espaçar a ordem
                     // relativa permite intercalar com o playedAt local.
-                    playedAt = now - index * HISTORY_STEP_MS,
+                    playedAt = knownAt ?: (now - index * HISTORY_STEP_MS),
                 )
             }
             database.withTransaction {
@@ -123,7 +133,8 @@ class YouTubeLibraryRepository(
             }
             AppLog.i(
                 AppLog.TAG_TUBE,
-                "Histórico do YouTube: ${entities.size} faixas em " +
+                "Histórico do YouTube: ${entities.size} faixas " +
+                    "($preserved com data preservada) em " +
                     "${System.currentTimeMillis() - startedAt}ms",
             )
         }
