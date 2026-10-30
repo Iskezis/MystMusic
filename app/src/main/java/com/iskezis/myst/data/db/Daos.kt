@@ -362,6 +362,7 @@ interface PlayEventDao {
         SELECT videoId,
                MIN(title) AS title,
                MIN(artist) AS artist,
+               MAX(album) AS album,
                MAX(thumbnailUrl) AS thumbnailUrl,
                COUNT(*) AS plays,
                SUM(playedMs) AS playedMs
@@ -480,6 +481,7 @@ data class PlayEventTrackStat(
     @ColumnInfo(name = "videoId") val videoId: String,
     @ColumnInfo(name = "title") val title: String,
     @ColumnInfo(name = "artist") val artist: String,
+    @ColumnInfo(name = "album") val album: String,
     @ColumnInfo(name = "thumbnailUrl") val thumbnailUrl: String?,
     @ColumnInfo(name = "plays") val plays: Int,
     @ColumnInfo(name = "playedMs") val playedMs: Long,

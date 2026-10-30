@@ -454,6 +454,13 @@
     <string name="stats_chart_hour_description">Gráfico de tempo ouvido por hora: pico às %1$d h, com %2$s.</string>
     <string name="stats_chart_day_description">Gráfico de tempo ouvido nos últimos %1$d dias. Pico em %2$s com %3$s.</string>
     <string name="stats_row_description">%1$d. %2$s, %3$s</string>
+    <string name="stats_row_action_description">%1$d. %2$s, %3$s. %4$s</string>
+    <string name="stats_action_play">Reproduzir</string>
+    <string name="stats_action_open_artist">Abrir perfil do artista</string>
+    <string name="stats_action_open_album">Abrir álbum</string>
+    <string name="stats_artist_fallback">Não foi possível abrir o perfil agora. Abrindo a busca.</string>
+    <string name="stats_album_fallback">Não foi possível abrir o álbum agora. Abrindo a busca.</string>
+    <string name="stats_open_error">Não foi possível abrir esta tela. Tente novamente.</string>
     <string name="stats_hours_minutes">%1$d h %2$d min</string>
     <string name="stats_minutes">%1$d min</string>
     <string name="stats_less_minute">&lt; 1 min</string>

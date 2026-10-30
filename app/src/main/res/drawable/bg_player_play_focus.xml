@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <layer-list>
+            <item android:drawable="@drawable/bg_gradient_circle" />
+            <item>
+                <shape android:shape="oval">
+                    <solid android:color="@color/transparent" />
+                    <stroke
+                        android:width="4dp"
+                        android:color="?attr/mystOnSurface" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+    <item android:state_pressed="true">
+        <layer-list>
+            <item android:drawable="@drawable/bg_gradient_circle" />
+            <item>
+                <shape android:shape="oval">
+                    <solid android:color="@color/transparent" />
+                    <stroke
+                        android:width="3dp"
+                        android:color="?attr/mystOnSurface" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+    <item android:drawable="@drawable/bg_gradient_circle" />
+</selector>

@@ -60,6 +60,14 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
   - [x] Celular esconde "Desconectar TV" na hora com o aviso de despareamento
   - [x] Verificação `/hello` ao abrir Configurações pega o caso de app fechado/aviso perdido, inclusive na tela de código da TV
   - [x] Lápide `tv_last_pair_id` gravada também para pareamentos que existiam antes da atualização
+- [ ] Melhorias de navegação e interação (0.2.0-dev.18)
+  - [ ] Estatísticas: tocar em uma música do Top Músicas inicia a reprodução na posição tocada
+  - [ ] Estatísticas: tocar em um artista abre o perfil; tocar em um álbum abre a tela do álbum
+  - [ ] Estatísticas: identificadores ausentes são resolvidos via busca do YouTube Music, com indicador de carregamento
+  - [ ] Top Artistas exibe a foto oficial do perfil em recorte circular, com fallback e cache em memória
+  - [ ] TV: anel/borda de foco visível em todos os controles do player, incluindo play/pause, artista, álbum, seek e botões de erro
+  - [ ] TV: foco inicial no play/pause e ordem de foco explícita entre todos os controles
+  - [ ] Falha de busca/navegação nunca deixa a linha sem resposta; abre a busca pelo nome como fallback
 - [x] 15. Busca: artistas, álbuns e playlists
   - [x] Chips Tudo / Músicas / Artistas / Álbuns / Playlists
   - [x] Perfil do artista, tela do álbum, tela da playlist

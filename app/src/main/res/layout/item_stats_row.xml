@@ -3,11 +3,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:layout_marginStart="@dimen/space_s"
+    android:layout_marginEnd="@dimen/space_s"
+    android:background="@drawable/bg_track_row"
     android:gravity="center_vertical"
-    android:minHeight="64dp"
+    android:minHeight="@dimen/track_row_height"
     android:orientation="horizontal"
-    android:paddingTop="@dimen/space_xs"
-    android:paddingBottom="@dimen/space_xs">
+    android:padding="@dimen/space_s">
 
     <TextView
         android:id="@+id/statsRowRank"
@@ -19,8 +21,9 @@
 
     <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/statsRowCover"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
+        android:layout_width="@dimen/track_thumb"
+        android:layout_height="@dimen/track_thumb"
+        android:background="@drawable/bg_cover_placeholder"
         android:contentDescription="@null"
         android:scaleType="centerCrop"
         android:src="@drawable/bg_cover_placeholder"
@@ -62,4 +65,26 @@
         android:gravity="end"
         android:textColor="?attr/mystAccentText"
         android:textSize="@dimen/text_small" />
+
+    <ProgressBar
+        android:id="@+id/statsRowProgress"
+        style="?android:attr/progressBarStyleSmall"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="@dimen/space_xs"
+        android:importantForAccessibility="no"
+        android:indeterminate="true"
+        android:indeterminateTint="?attr/mystAccentText"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/statsRowAction"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="@dimen/space_xs"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
+        android:src="@drawable/ic_chevron_right"
+        android:visibility="gone"
+        app:tint="?attr/mystAccentText" />
 </LinearLayout>

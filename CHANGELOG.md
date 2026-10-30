@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0-dev.18 — 30/10/2026
+
+Estatísticas interativas, fotos de artistas e navegação por D-pad no player de TV.
+
+### Adicionado
+- **Estatísticas clicáveis:** as músicas do Top Músicas agora iniciam a reprodução na hora, a partir daquela posição da lista. As linhas de artistas abrem o perfil do artista e as de álbuns abrem a tela do álbum, com indicador de carregamento enquanto o identificador é resolvido.
+- **Fotos de perfil nos artistas:** o Top Artistas passa a buscar a foto oficial de cada artista no YouTube Music e exibi-la em recorte circular. As fotos são atualizadas no lugar, sem reconstruir a lista nem perder o foco da TV, e ficam em cache enquanto a tela de Estatísticas estiver aberta.
+- **Fallback seguro:** se a busca do artista/álbum falhar ou não encontrar o perfil, o app abre a busca pelo nome em vez de deixar a linha sem resposta. A thumbnail da faixa continua aparecendo enquanto a foto oficial não chega.
+- **Foco visível no player de TV:** todos os controles interativos (voltar, adicionar à playlist, artista, álbum, barra de progresso, aleatório, anterior, play/pause, próxima, repetir e botões de erro) ganharam anel/borda de foco, mudança de cor do ícone/texto e, quando não conflita com a animação do play, leve escala.
+- **Ordem de foco do D-pad:** ao abrir o player na TV, o foco começa no play/pause. As ligações entre topo, artista, álbum, seek, controles e botões de erro são explícitas, inclusive quando o álbum não existe ou um controle está desabilitado.
+
+### Corrigido
+- **Linhas de estatística sem foco:** as linhas agora usam o mesmo fundo de foco das faixas, com a borda de foco tendo prioridade sobre o estado "selecionado" para nunca desaparecer no D-pad.
+- **Player de TV sem estado de erro consistente:** ao faltar o controlador, os controles de reprodução ficam desabilitados e o foco inicial vai para "Tentar novamente", em vez de um play que não faria nada.
+- **Acessibilidade:** as linhas clicáveis de Estatísticas anunciam a ação (reproduzir, abrir artista ou abrir álbum) além do rank, nome e contagem.
+
 ## 0.2.0-dev.17 — 30/10/2026
 
 Correções de persistência do Recentes e do cancelamento de pareamento.

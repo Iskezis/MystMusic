@@ -53,12 +53,15 @@
 
                 <ImageButton
                     android:id="@+id/playerBack"
-                    android:layout_width="@dimen/touch_target"
-                    android:layout_height="@dimen/touch_target"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:background="@drawable/bg_player_focus_control"
                     android:contentDescription="@string/auth_back"
+                    android:focusable="true"
+                    android:nextFocusDown="@id/playerArtist"
+                    android:nextFocusRight="@id/playerMore"
                     android:src="@drawable/ic_back"
-                    app:tint="?attr/mystOnSurface" />
+                    app:tint="@color/selector_player_control_tint" />
 
                 <TextView
                     android:layout_width="0dp"
@@ -71,12 +74,15 @@
 
                 <ImageButton
                     android:id="@+id/playerMore"
-                    android:layout_width="@dimen/touch_target"
-                    android:layout_height="@dimen/touch_target"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:background="@drawable/bg_player_focus_control"
                     android:contentDescription="@string/player_add_playlist"
+                    android:focusable="true"
+                    android:nextFocusDown="@id/playerArtist"
+                    android:nextFocusLeft="@id/playerBack"
                     android:src="@drawable/ic_add_to_playlist"
-                    app:tint="?attr/mystOnSurface" />
+                    app:tint="@color/selector_player_control_tint" />
             </LinearLayout>
 
             <TextView
@@ -95,12 +101,15 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/space_xs"
-                android:background="?attr/selectableItemBackgroundBorderless"
+                android:background="@drawable/bg_player_focus_text"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:paddingStart="@dimen/space_s"
-                android:paddingEnd="@dimen/space_s"
-                android:textColor="?attr/mystOnSurfaceDim"
+                android:nextFocusDown="@id/playerSeek"
+                android:nextFocusUp="@id/playerBack"
+                android:padding="@dimen/space_s"
+                android:paddingStart="@dimen/space_m"
+                android:paddingEnd="@dimen/space_m"
+                android:textColor="@color/selector_player_artist_text"
                 android:textSize="24sp" />
 
             <TextView
@@ -108,12 +117,15 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
+                android:background="@drawable/bg_player_focus_text"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:paddingStart="@dimen/space_s"
-                android:paddingEnd="@dimen/space_s"
-                android:textColor="?attr/mystAccentText"
+                android:nextFocusDown="@id/playerSeek"
+                android:nextFocusUp="@id/playerArtist"
+                android:padding="@dimen/space_xs"
+                android:paddingStart="@dimen/space_m"
+                android:paddingEnd="@dimen/space_m"
+                android:textColor="@color/selector_player_album_text"
                 android:textSize="@dimen/text_body"
                 android:visibility="gone" />
 
@@ -122,8 +134,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/space_l"
+                android:background="@drawable/bg_player_focus_text"
+                android:focusable="true"
                 android:max="1000"
                 android:minHeight="40dp"
+                android:nextFocusDown="@id/playerPlay"
+                android:nextFocusUp="@id/playerArtist"
+                android:paddingTop="@dimen/space_s"
+                android:paddingBottom="@dimen/space_s"
                 android:progressBackgroundTint="?attr/mystStrokeStrong"
                 android:progressTint="?attr/mystAccentText"
                 android:thumbTint="?attr/mystAccentText" />
@@ -158,10 +176,13 @@
 
                 <ImageButton
                     android:id="@+id/playerShuffle"
-                    android:layout_width="@dimen/touch_target"
-                    android:layout_height="@dimen/touch_target"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:background="@drawable/bg_player_focus_control"
                     android:contentDescription="@string/player_shuffle"
+                    android:focusable="true"
+                    android:nextFocusRight="@id/playerPrevious"
+                    android:nextFocusUp="@id/playerSeek"
                     android:src="@drawable/ic_shuffle"
                     app:tint="@color/selector_player_tint" />
 
@@ -170,10 +191,14 @@
                     android:layout_width="64dp"
                     android:layout_height="64dp"
                     android:layout_marginStart="@dimen/space_s"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:background="@drawable/bg_player_focus_control"
                     android:contentDescription="@string/player_previous"
+                    android:focusable="true"
+                    android:nextFocusLeft="@id/playerShuffle"
+                    android:nextFocusRight="@id/playerPlay"
+                    android:nextFocusUp="@id/playerSeek"
                     android:src="@drawable/ic_previous"
-                    app:tint="?attr/mystOnSurface" />
+                    app:tint="@color/selector_player_control_tint" />
 
                 <ImageButton
                     android:id="@+id/playerPlay"
@@ -181,8 +206,12 @@
                     android:layout_height="84dp"
                     android:layout_marginStart="@dimen/space_s"
                     android:layout_marginEnd="@dimen/space_s"
-                    android:background="@drawable/bg_gradient_circle"
+                    android:background="@drawable/bg_player_play_focus"
                     android:contentDescription="@string/player_play"
+                    android:focusable="true"
+                    android:nextFocusLeft="@id/playerPrevious"
+                    android:nextFocusRight="@id/playerNext"
+                    android:nextFocusUp="@id/playerSeek"
                     android:padding="26dp"
                     android:src="@drawable/ic_play"
                     app:tint="?attr/mystOnAccent" />
@@ -191,18 +220,25 @@
                     android:id="@+id/playerNext"
                     android:layout_width="64dp"
                     android:layout_height="64dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:background="@drawable/bg_player_focus_control"
                     android:contentDescription="@string/player_next"
+                    android:focusable="true"
+                    android:nextFocusLeft="@id/playerPlay"
+                    android:nextFocusRight="@id/playerRepeat"
+                    android:nextFocusUp="@id/playerSeek"
                     android:src="@drawable/ic_next"
-                    app:tint="?attr/mystOnSurface" />
+                    app:tint="@color/selector_player_control_tint" />
 
                 <ImageButton
                     android:id="@+id/playerRepeat"
-                    android:layout_width="@dimen/touch_target"
-                    android:layout_height="@dimen/touch_target"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
                     android:layout_marginStart="@dimen/space_s"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:background="@drawable/bg_player_focus_control"
                     android:contentDescription="@string/player_repeat"
+                    android:focusable="true"
+                    android:nextFocusLeft="@id/playerNext"
+                    android:nextFocusUp="@id/playerSeek"
                     android:src="@drawable/ic_repeat"
                     app:tint="@color/selector_player_tint" />
             </LinearLayout>
@@ -225,8 +261,12 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="@dimen/space_s"
+                android:focusable="true"
+                android:nextFocusUp="@id/playerPlay"
                 android:text="@string/state_retry"
-                android:visibility="gone" />
+                android:visibility="gone"
+                app:strokeColor="@color/selector_player_secondary_stroke"
+                app:strokeWidth="2dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/playerYouTubeLogin"
@@ -235,8 +275,12 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="@dimen/space_s"
+                android:focusable="true"
+                android:nextFocusUp="@id/playerPlay"
                 android:text="@string/player_login_youtube"
-                android:visibility="gone" />
+                android:visibility="gone"
+                app:strokeColor="@color/selector_player_primary_stroke"
+                app:strokeWidth="2dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/playerCopyLogs"
@@ -245,8 +289,12 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="@dimen/space_s"
+                android:focusable="true"
+                android:nextFocusUp="@id/playerPlay"
                 android:text="@string/player_copy_logs"
-                android:visibility="gone" />
+                android:visibility="gone"
+                app:strokeColor="@color/selector_player_secondary_stroke"
+                app:strokeWidth="2dp" />
         </LinearLayout>
     </LinearLayout>
 </FrameLayout>

@@ -55,6 +55,22 @@ object UiAnimations {
         }
     }
 
+    /**
+     * Dá um realce imediato ao foco por D-pad/teclado. O fundo/borda de foco é
+     * definido no layout; a escala é só um reforço visual curto e barato.
+     */
+    fun View.focusScale(focusedScale: Float = 1.08f) {
+        if (!UiAnimations.enabled(context)) return
+        setOnFocusChangeListener { view, hasFocus ->
+            view.animate()
+                .scaleX(if (hasFocus) focusedScale else 1f)
+                .scaleY(if (hasFocus) focusedScale else 1f)
+                .setDuration(if (hasFocus) 120L else 160L)
+                .setInterpolator(FastOutSlowInInterpolator())
+                .start()
+        }
+    }
+
     fun View.shake() {
         if (!UiAnimations.enabled(context)) return
         translationX = 0f

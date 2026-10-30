@@ -20,6 +20,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.media3.common.Player
 import androidx.navigation.fragment.findNavController
 import coil.load
+import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.data.youtube.Track
@@ -31,6 +32,7 @@ import com.iskezis.myst.ui.browse.BrowseNavigation
 import com.iskezis.myst.ui.playlists.AddToPlaylistSheet
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.animatePlayIcon
+import com.iskezis.myst.util.UiAnimations.focusScale
 import com.iskezis.myst.util.UiAnimations.pressScale
 import com.iskezis.myst.util.formatDuration
 import kotlinx.coroutines.CancellationException
@@ -47,6 +49,7 @@ class PlayerFragment : Fragment() {
     private var loadedArtworkFor: String? = null
     private var lastLoggedTrack: String? = null
     private var lastLoggedPlaying: Boolean? = null
+    private var initialFocusApplied = false
 
     private val youtubeLogin = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -126,9 +129,11 @@ class PlayerFragment : Fragment() {
             binding.playerPrevious,
             binding.playerShuffle,
             binding.playerRepeat,
+            binding.playerRetry,
             binding.playerYouTubeLogin,
             binding.playerCopyLogs,
         ).forEach { it.pressScale() }
+        setupTvFocus()
         animateCoverEntrance()
         binding.playerSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -279,6 +284,95 @@ class PlayerFragment : Fragment() {
             lastLoggedPlaying = state.isPlaying
             AppLog.i(AppLog.TAG_PLAYER, "Player isPlaying=${state.isPlaying}")
         }
+        updateTvFocusOrder()
+        applyInitialFocus()
+    }
+
+    private fun isTv(): Boolean = BuildConfig.FLAVOR == "tv"
+
+    private fun setupTvFocus() {
+        if (!isTv()) return
+        // O play/pause troca de ícone com uma animação de alpha; escalá-lo no
+        // foco cancelaria essa animação. Ele usa apenas o anel de foco bem
+        // visível definido em bg_player_play_focus.
+        listOf(
+            binding.playerBack,
+            binding.playerMore,
+            binding.playerShuffle,
+            binding.playerPrevious,
+            binding.playerNext,
+            binding.playerRepeat,
+        ).forEach { it.focusScale() }
+        binding.playerArtist.focusScale(1.03f)
+        binding.playerAlbum.focusScale(1.03f)
+        listOf(
+            binding.playerRetry,
+            binding.playerYouTubeLogin,
+            binding.playerCopyLogs,
+        ).forEach { it.focusScale(1.04f) }
+    }
+
+    /**
+     * O foco espacial padrão do Android se perde quando o álbum some ou quando
+     * o seek está desabilitado. Estas ligações mantêm o D-pad previsível.
+     */
+    private fun updateTvFocusOrder() {
+        if (!isTv()) return
+        val afterTop = when {
+            binding.playerArtist.isFocusable -> R.id.playerArtist
+            binding.playerAlbum.isFocusable -> R.id.playerAlbum
+            binding.playerSeek.isEnabled -> R.id.playerSeek
+            binding.playerPlay.isEnabled -> R.id.playerPlay
+            binding.playerRetry.isVisible -> R.id.playerRetry
+            binding.playerYouTubeLogin.isVisible -> R.id.playerYouTubeLogin
+            binding.playerCopyLogs.isVisible -> R.id.playerCopyLogs
+            else -> R.id.playerBack
+        }
+        binding.playerBack.nextFocusDownId = afterTop
+        binding.playerMore.nextFocusDownId = afterTop
+        binding.playerAlbum.nextFocusUpId =
+            if (binding.playerArtist.isFocusable) R.id.playerArtist else R.id.playerBack
+        binding.playerArtist.nextFocusDownId = when {
+            binding.playerAlbum.isFocusable -> R.id.playerAlbum
+            binding.playerSeek.isEnabled -> R.id.playerSeek
+            else -> R.id.playerPlay
+        }
+        binding.playerAlbum.nextFocusDownId =
+            if (binding.playerSeek.isEnabled) R.id.playerSeek else R.id.playerPlay
+        binding.playerSeek.nextFocusUpId = when {
+            binding.playerAlbum.isFocusable -> R.id.playerAlbum
+            binding.playerArtist.isFocusable -> R.id.playerArtist
+            else -> R.id.playerBack
+        }
+        val errorUp = when {
+            binding.playerSeek.isEnabled -> R.id.playerSeek
+            binding.playerPlay.isEnabled -> R.id.playerPlay
+            else -> R.id.playerBack
+        }
+        binding.playerRetry.nextFocusUpId = errorUp
+        binding.playerYouTubeLogin.nextFocusUpId = errorUp
+        binding.playerCopyLogs.nextFocusUpId = errorUp
+        binding.playerPlay.nextFocusDownId = when {
+            binding.playerRetry.isVisible -> R.id.playerRetry
+            binding.playerYouTubeLogin.isVisible -> R.id.playerYouTubeLogin
+            binding.playerCopyLogs.isVisible -> R.id.playerCopyLogs
+            else -> View.NO_ID
+        }
+    }
+
+    private fun applyInitialFocus() {
+        if (!isTv() || initialFocusApplied) return
+        initialFocusApplied = true
+        val target = when {
+            binding.playerPlay.isEnabled -> binding.playerPlay
+            binding.playerRetry.isVisible -> binding.playerRetry
+            binding.playerYouTubeLogin.isVisible -> binding.playerYouTubeLogin
+            binding.playerCopyLogs.isVisible -> binding.playerCopyLogs
+            else -> binding.playerBack
+        }
+        binding.root.post {
+            if (isAdded) target.requestFocus()
+        }
     }
 
     private fun openArtist(track: Track) {
@@ -309,11 +403,21 @@ class PlayerFragment : Fragment() {
 
     private fun showConnectionError() {
         val binding = _binding ?: return
+        val playerController = controller
         binding.playerError.isVisible = true
         binding.playerError.text = getString(R.string.player_connection_error)
         binding.playerRetry.isVisible = true
         binding.playerYouTubeLogin.isVisible = false
         binding.playerCopyLogs.isVisible = true
+        binding.playerPlay.isEnabled = playerController != null && latest.track != null
+        binding.playerNext.isEnabled =
+            playerController != null && (latest.hasNext || latest.track != null)
+        binding.playerPrevious.isEnabled = playerController != null && latest.track != null
+        binding.playerShuffle.isEnabled = playerController != null
+        binding.playerRepeat.isEnabled = playerController != null
+        binding.playerSeek.isEnabled = playerController != null && latest.durationMs > 0
+        updateTvFocusOrder()
+        applyInitialFocus()
     }
 
     private fun retry() {
