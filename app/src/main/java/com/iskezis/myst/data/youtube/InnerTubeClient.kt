@@ -583,6 +583,12 @@ class InnerTubeClient(
      * Requisição mínima para confirmar que o googlevideo aceita a URL e o UA.
      * 200/206 são sucesso; 3xx são seguidos pelo OkHttp. Qualquer outro código
      * faz o cliente ser descartado.
+     *
+     * Além dos dois primeiros bytes, testamos um bloco real no meio do arquivo.
+     * Algumas URLs do fallback ANDROID_VR passam no teste de 2 bytes mas só
+     * entregam o primeiro MiB; o ExoPlayer pede o restante e recebe 403. Esse
+     * segundo teste rejeita a URL antes de o player falhar, permitindo que a
+     * renovação do visitorData e o retry no VISIONOS aconteçam.
      */
     private fun validateAudioUrl(
         videoId: String,
@@ -590,6 +596,8 @@ class InnerTubeClient(
         info: StreamInfo,
     ): Boolean {
         return try {
+            var firstCode = 0
+            var contentType = ""
             val requestHeaders = Headers.Builder().apply {
                 add("Range", "bytes=0-1")
                 info.headers.forEach { (name, value) -> add(name, value) }
@@ -599,23 +607,25 @@ class InnerTubeClient(
                 .headers(requestHeaders)
                 .build()
             probeHttp.newCall(request).execute().use { response ->
-                val contentType = response.header("Content-Type").orEmpty()
-                val ok = (response.code == 206 || response.code == 200) &&
-                    !contentType.startsWith("text/", ignoreCase = true)
-                AppLog.d(
-                    AppLog.TAG_STREAM,
-                    "Validação $clientName/$videoId: HTTP ${response.code} " +
-                        "| tipo=${contentType.ifBlank { "?" }}",
-                )
-                if (!ok) {
-                    AppLog.w(
-                        AppLog.TAG_STREAM,
-                        "URL rejeitada ($clientName/$videoId): HTTP ${response.code} " +
-                            "tipo=$contentType",
-                    )
-                }
-                ok
+                firstCode = response.code
+                contentType = response.header("Content-Type").orEmpty()
             }
+            val firstOk = (firstCode == 206 || firstCode == 200) &&
+                !contentType.startsWith("text/", ignoreCase = true)
+            AppLog.d(
+                AppLog.TAG_STREAM,
+                "Validação $clientName/$videoId: HTTP $firstCode " +
+                    "| tipo=${contentType.ifBlank { "?" }}",
+            )
+            if (!firstOk) {
+                AppLog.w(
+                    AppLog.TAG_STREAM,
+                    "URL rejeitada ($clientName/$videoId): HTTP $firstCode " +
+                        "tipo=$contentType",
+                )
+                return false
+            }
+            validateRangeBeyondFirstChunk(videoId, clientName, info)
         } catch (t: Throwable) {
             AppLog.failure(
                 AppLog.TAG_STREAM,
@@ -623,6 +633,50 @@ class InnerTubeClient(
                 t,
             )
             false
+        }
+    }
+
+    /**
+     * Confirma que o servidor entrega um bloco grande depois do primeiro MiB.
+     * O VISIONOS aceita; o ANDROID_VR costuma responder 403 para blocos acima
+     * de ~16 KiB nessa posição. Faixas curtas (sem bytes suficientes depois do
+     * primeiro MiB) são aceitas, pois o bloco inicial já contém o arquivo todo.
+     */
+    private fun validateRangeBeyondFirstChunk(
+        videoId: String,
+        clientName: String,
+        info: StreamInfo,
+    ): Boolean {
+        val total = Uri.parse(info.url).getQueryParameter("clen")?.toLongOrNull()
+            ?: return true
+        val offset = PLAYBACK_PROBE_OFFSET
+        if (total <= offset + PLAYBACK_PROBE_MIN_BYTES) return true
+        val end = minOf(total - 1L, offset + PLAYBACK_PROBE_SIZE - 1L)
+        val size = end - offset + 1L
+        if (size <= PLAYBACK_PROBE_MIN_BYTES) return true
+        val headers = Headers.Builder().apply {
+            add("Range", "bytes=$offset-$end")
+            info.headers.forEach { (name, value) -> add(name, value) }
+        }.build()
+        val request = Request.Builder()
+            .url(info.url)
+            .headers(headers)
+            .build()
+        probeHttp.newCall(request).execute().use { response ->
+            val ok = response.code == 206
+            AppLog.d(
+                AppLog.TAG_STREAM,
+                "Validação de alcance $clientName/$videoId: HTTP ${response.code} " +
+                    "($size bytes em $offset)",
+            )
+            if (!ok) {
+                AppLog.w(
+                    AppLog.TAG_STREAM,
+                    "URL rejeitada ($clientName/$videoId): sem suporte a bloco " +
+                        "além do primeiro MiB (HTTP ${response.code})",
+                )
+            }
+            return ok
         }
     }
 
@@ -1216,10 +1270,10 @@ class InnerTubeClient(
             put("gl", "BR")
             when (clientName) {
                 VISIONOS -> {
-                    put("osName", "VISION_OS")
-                    put("osVersion", "1.3")
+                    put("osName", "visionOS")
+                    put("osVersion", "26.5.23O471")
                     put("deviceMake", "Apple")
-                    put("deviceModel", "RealityDevice14,1")
+                    put("deviceModel", "RealityDevice17,1")
                     put("platform", "MOBILE")
                     put("userAgent", userAgent(VISIONOS))
                 }
@@ -1269,7 +1323,7 @@ class InnerTubeClient(
     }
 
     private fun clientVersion(clientName: String): String = when (clientName) {
-        VISIONOS -> "0.1"
+        VISIONOS -> "1.02"
         WEB_REMIX -> "1.20260707.12.00"
         TVHTML5 -> "7.20260707.07.00"
         WEB_EMBEDDED_PLAYER -> "2.20260708.00.00"
@@ -1281,7 +1335,7 @@ class InnerTubeClient(
     }
 
     private fun userAgent(clientName: String): String = when (clientName) {
-        VISIONOS -> "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"
+        VISIONOS -> "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15"
         WEB_REMIX -> "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
         TVHTML5 -> "Mozilla/5.0 (ChromiumStylePlatform) Cobalt/25.lts.30.1034943-gold (unlike Gecko), Unknown_TV_Unknown_0/Unknown (Unknown, Unknown)"
         WEB_EMBEDDED_PLAYER -> "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.5 Safari/605.1.15,gzip(gfe)"
@@ -1308,6 +1362,9 @@ class InnerTubeClient(
         private const val SONGS_FILTER = "EgWKAQIIAWoKEAkQBRAKEAMQBA=="
         private const val URL_TTL_MS = 30 * 60 * 1000L
         private const val LIKED_PLAYLIST_ID = "VLLM"
+        private const val PLAYBACK_PROBE_OFFSET = 1048576L
+        private const val PLAYBACK_PROBE_SIZE = 262144L
+        private const val PLAYBACK_PROBE_MIN_BYTES = 32768L
         private const val MAX_LIBRARY_PAGES = 8
         private const val MAX_HISTORY_PAGES = 4
         private const val MAX_HOME_PAGES = 3

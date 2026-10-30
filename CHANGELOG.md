@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0-dev.13 — 30/10/2026
+
+Correção emergencial de reprodução.
+
+### Corrigido
+- **Áudio:** o VISIONOS 0.1 retornava HTTP 400 quando o visitorData da sessão não servia para o cliente anônimo, e o fallback ANDROID_VR devolvia URLs que passam no teste de 2 bytes mas recusam blocos grandes após o primeiro MiB (403). Agora a validação testa um bloco real de 256 KiB a partir de 1 MiB, rejeita essas URLs, renova o visitorData anônimo e repete a resolução no VISIONOS 1.02 (contexto, modelo e User-Agent atuais), cuja URL aceita Range aberto e intervalos arbitrários. Reprodução e seek restaurados.
+
 ## 0.2.0-dev.12 — 30/10/2026
 
 Correções de reprodução, estatísticas, conta e pareamento.
