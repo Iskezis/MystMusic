@@ -20,6 +20,7 @@ import com.iskezis.myst.data.pairing.PairRequest
 import com.iskezis.myst.data.pairing.PairingCrypto
 import com.iskezis.myst.data.pairing.PairingHttp
 import com.iskezis.myst.data.pairing.PairingNsd
+import com.iskezis.myst.data.pairing.PairedSyncManager
 import com.iskezis.myst.data.pairing.PairingSync
 import com.iskezis.myst.databinding.ActivityTvPairingBinding
 import com.iskezis.myst.util.AppLog
@@ -251,6 +252,10 @@ class TvPairingActivity : BaseActivity() {
                     plaintext,
                 )
                 PairingSync.apply(app, bundle)
+                // Atalho para a TV avisar o celular sem esperar o NSD; o
+                // servidor persistente do celular prefere esta porta.
+                app.session.phoneHost = host
+                app.session.phonePort = PairedSyncManager.PHONE_PORT
                 success = true
                 busy = false
                 binding.tvPairStatus.setText(R.string.pairing_tv_success)

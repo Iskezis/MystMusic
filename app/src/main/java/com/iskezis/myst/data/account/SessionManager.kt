@@ -138,6 +138,20 @@ class SessionManager(context: Context) {
         get() = prefs.getInt(KEY_TV_PORT, 0)
         set(value) = prefs.edit().putInt(KEY_TV_PORT, value).apply()
 
+    /**
+     * Endereço do servidor persistente do celular, guardado na TV. É usado
+     * para avisar o celular em tempo real quando a TV muda o histórico, as
+     * estatísticas ou as playlists. O NSD continua sendo o fallback quando o
+     * IP muda.
+     */
+    var phoneHost: String?
+        get() = prefs.getString(KEY_PHONE_HOST, null)?.takeIf { it.isNotBlank() }
+        set(value) = prefs.edit().putString(KEY_PHONE_HOST, value).apply()
+
+    var phonePort: Int
+        get() = prefs.getInt(KEY_PHONE_PORT, 0)
+        set(value) = prefs.edit().putInt(KEY_PHONE_PORT, value).apply()
+
     val tvPairedAt: Long
         get() = prefs.getLong(KEY_TV_PAIRED_AT, 0L)
 
@@ -162,6 +176,8 @@ class SessionManager(context: Context) {
             .putString(KEY_TV_NAME, name)
             .putString(KEY_TV_HOST, host)
             .putInt(KEY_TV_PORT, port)
+            .remove(KEY_PHONE_HOST)
+            .remove(KEY_PHONE_PORT)
             .putLong(KEY_TV_PAIRED_AT, System.currentTimeMillis())
             .putLong(KEY_TV_LAST_SYNC, 0L)
             .putBoolean(KEY_TV_PAIRED, true)
@@ -184,6 +200,8 @@ class SessionManager(context: Context) {
             .remove(KEY_TV_PORT)
             .remove(KEY_TV_PAIRED_AT)
             .remove(KEY_TV_LAST_SYNC)
+            .remove(KEY_PHONE_HOST)
+            .remove(KEY_PHONE_PORT)
             .putBoolean(KEY_TV_PAIRED, false)
             .apply()
     }
@@ -272,6 +290,8 @@ class SessionManager(context: Context) {
             .remove(KEY_TV_PORT)
             .remove(KEY_TV_PAIRED_AT)
             .remove(KEY_TV_LAST_SYNC)
+            .remove(KEY_PHONE_HOST)
+            .remove(KEY_PHONE_PORT)
             .apply()
     }
 
@@ -412,5 +432,7 @@ class SessionManager(context: Context) {
         private const val KEY_TV_PORT = "tv_port"
         private const val KEY_TV_PAIRED_AT = "tv_paired_at"
         private const val KEY_TV_LAST_SYNC = "tv_last_sync"
+        private const val KEY_PHONE_HOST = "phone_host"
+        private const val KEY_PHONE_PORT = "phone_port"
     }
 }

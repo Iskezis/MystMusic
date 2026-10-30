@@ -44,13 +44,17 @@ class LocalPairingServer(
     val port: Int
         get() = serverSocket?.localPort ?: 0
 
+    /**
+     * Abre o servidor. `preferredPort` mantém o canal persistente no mesmo
+     * endereço depois de reiniciar o processo, para o outro aparelho conseguir
+     * reconectar mesmo quando o NSD demora; se a porta estiver ocupada, cai
+     * para uma porta livre.
+     */
     @Synchronized
-    fun start(): Int {
+    fun start(preferredPort: Int = 0): Int {
         if (closed) throw IllegalStateException("Servidor de pareamento já encerrado")
         serverSocket?.let { return it.localPort }
-        val socket = ServerSocket()
-        socket.reuseAddress = true
-        socket.bind(InetSocketAddress(0))
+        val socket = openSocket(preferredPort)
         serverSocket = socket
         AppLog.i(AppLog.TAG_PAIRING, "Servidor local do pareamento na porta ${socket.localPort}")
         acceptJob = scope.launch {
@@ -68,6 +72,28 @@ class LocalPairingServer(
             }
         }
         return socket.localPort
+    }
+
+    private fun openSocket(preferredPort: Int): ServerSocket {
+        if (preferredPort in 1..65535) {
+            val preferred = ServerSocket()
+            try {
+                preferred.reuseAddress = true
+                preferred.bind(InetSocketAddress(preferredPort))
+                AppLog.i(AppLog.TAG_PAIRING, "Servidor persistente na porta preferida $preferredPort")
+                return preferred
+            } catch (t: IOException) {
+                runCatching { preferred.close() }
+                AppLog.w(
+                    AppLog.TAG_PAIRING,
+                    "Porta $preferredPort ocupada; usando uma porta livre: ${t.message}",
+                )
+            }
+        }
+        val fallback = ServerSocket()
+        fallback.reuseAddress = true
+        fallback.bind(InetSocketAddress(0))
+        return fallback
     }
 
     private suspend fun serve(client: Socket) = withContext(Dispatchers.IO) {

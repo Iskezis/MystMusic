@@ -46,6 +46,10 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
     private val _message = MutableStateFlow<Int?>(null)
     val message: StateFlow<Int?> = _message.asStateFlow()
 
+    /** A TV não respondeu; a tela oferece remover o pareamento só no celular. */
+    private val _forceDisconnectPrompt = MutableStateFlow(false)
+    val forceDisconnectPrompt: StateFlow<Boolean> = _forceDisconnectPrompt.asStateFlow()
+
     val discord: StateFlow<DiscordState> = app.discord.state
 
     init {
@@ -76,7 +80,7 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
      * a descoberta na rede; se a TV não responder, o erro sobe e o pareamento
      * local permanece para uma nova tentativa.
      */
-    fun disconnectTv() {
+    fun disconnectTv(forceLocal: Boolean = false) {
         if (_state.value.tvDisconnecting) return
         if (!app.session.hasTvPairing) {
             refreshPairing()
@@ -85,11 +89,49 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
         viewModelScope.launch {
             _state.value = _state.value.copy(tvDisconnecting = true)
             try {
-                app.pairedSync.disconnect()
-                _message.value = R.string.settings_tv_disconnect_success
+                val notified = app.pairedSync.disconnect(forceLocal = forceLocal)
+                _message.value = if (forceLocal && !notified) {
+                    R.string.settings_tv_force_disconnect_success
+                } else {
+                    R.string.settings_tv_disconnect_success
+                }
                 AppLog.i(AppLog.TAG_PAIRING, "TV desconectada pelo botão das Configurações")
             } catch (t: Throwable) {
                 AppLog.failure(AppLog.TAG_PAIRING, "Falha desconectando a TV", t)
+                _error.value = R.string.settings_tv_disconnect_error
+                // O pareamento ainda está local; oferece removê-lo mesmo com a
+                // TV desligada/fora da rede, em vez de deixar o botão sem saída.
+                if (!forceLocal) _forceDisconnectPrompt.value = true
+            } finally {
+                _state.value = _state.value.copy(tvDisconnecting = false)
+                refreshPairing()
+            }
+        }
+    }
+
+    fun consumeForceDisconnectPrompt() {
+        _forceDisconnectPrompt.value = false
+    }
+
+    /**
+     * Botão exclusivo da TV. Tenta avisar o celular e sempre limpa os dados
+     * temporários locais, porque a TV é o terminal que precisa voltar ao
+     * código de 5 dígitos mesmo se o celular estiver desligado.
+     */
+    fun disconnectFromPhone() {
+        if (_state.value.tvDisconnecting) return
+        if (!app.session.hasTvPairing) {
+            refreshPairing()
+            return
+        }
+        viewModelScope.launch {
+            _state.value = _state.value.copy(tvDisconnecting = true)
+            try {
+                app.pairedSync.disconnectOnTv()
+                _message.value = R.string.settings_tv_phone_disconnect_success
+                AppLog.i(AppLog.TAG_PAIRING, "TV desconectada pelo próprio controle remoto")
+            } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_PAIRING, "Falha desconectando a TV pelo controle", t)
                 _error.value = R.string.settings_tv_disconnect_error
             } finally {
                 _state.value = _state.value.copy(tvDisconnecting = false)

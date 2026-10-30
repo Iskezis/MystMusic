@@ -45,7 +45,9 @@ class PairedTvServer(private val app: MystApp) : Closeable {
             handle(path, body)
         }
         return runCatching {
-            port = pairingServer.start()
+            // Endereço estável: se o processo da TV reiniciar e o NSD demorar,
+            // o celular ainda reconecta pelo último IP/porta conhecidos.
+            port = pairingServer.start(PairedSyncManager.TV_PORT)
             server = pairingServer
             val helper = PairingNsd(app)
             nsd = helper
@@ -92,6 +94,7 @@ class PairedTvServer(private val app: MystApp) : Closeable {
             deviceName = Build.MODEL.orEmpty().ifBlank { "MystMusic TV" },
             appVersion = BuildConfig.VERSION_NAME,
             paired = app.session.hasTvPairing,
+            role = "tv",
         )
         return LocalPairingServer.HttpResult(200, json(PairHello.serializer(), hello))
     }
@@ -126,7 +129,13 @@ class PairedTvServer(private val app: MystApp) : Closeable {
                 userId
             }
         if (effectiveUserId <= 0L) return unauthorized()
+        // Aparência/AMOLED e Discord são aplicados a cada sync para que uma
+        // mudança feita no celular depois do pareamento apareça na TV.
+        PairingSync.applyExtras(app, request.extras)
         PairingSync.mergeSnapshot(app, effectiveUserId, request.snapshot)
+        // O merge veio de fora; não trate as escritas resultantes como uma
+        // mudança local, senão a TV avisaria o celular em loop.
+        app.pairedSync.suppressLocalChanges()
         val response = PairSyncResponse(
             snapshot = PairingSync.exportSnapshot(app, effectiveUserId),
         )

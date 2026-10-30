@@ -144,8 +144,10 @@ class SettingsFragment : Fragment() {
                 }
         }
         binding.settingsAppearanceCard.pressScale()
-        binding.settingsTvCard.isVisible = BuildConfig.FLAVOR != "tv"
+        val isTv = BuildConfig.FLAVOR == "tv"
+        binding.settingsTvCard.isVisible = true
         binding.settingsTvCard.setOnClickListener {
+            if (isTv) return@setOnClickListener
             if (viewModel.state.value.pairedTv) return@setOnClickListener
             runCatching {
                 startActivity(Intent(requireContext(), PhonePairingActivity::class.java))
@@ -153,7 +155,9 @@ class SettingsFragment : Fragment() {
                 AppLog.failure(AppLog.TAG_PAIRING, "Falha abrindo pareamento", it)
             }
         }
-        binding.settingsTvDisconnect.setOnClickListener { showTvDisconnectDialog() }
+        binding.settingsTvDisconnect.setOnClickListener {
+            if (isTv) showTvPhoneDisconnectDialog() else showTvDisconnectDialog()
+        }
         binding.settingsTvDisconnect.pressScale()
         binding.settingsLogout.pressScale()
         binding.settingsDiscordAction.pressScale()
@@ -211,6 +215,14 @@ class SettingsFragment : Fragment() {
                                 Toast.LENGTH_LONG,
                             ).show()
                             viewModel.consumeMessage()
+                        }
+                    }
+                }
+                launch {
+                    viewModel.forceDisconnectPrompt.collect { prompt ->
+                        if (prompt) {
+                            showForceDisconnectDialog()
+                            viewModel.consumeForceDisconnectPrompt()
                         }
                     }
                 }
@@ -370,22 +382,42 @@ class SettingsFragment : Fragment() {
     }
 
     private fun renderTv(state: SettingsState) {
-        val connected = state.pairedTv && BuildConfig.FLAVOR != "tv"
+        val isTv = BuildConfig.FLAVOR == "tv"
+        val connected = state.pairedTv
+        binding.settingsTvTitle.setText(
+            if (isTv) R.string.settings_tv_phone_title else R.string.settings_tv,
+        )
+        binding.settingsTvSubtitle.setText(
+            if (isTv) R.string.settings_tv_phone_subtitle else R.string.settings_tv_subtitle,
+        )
         binding.settingsTvStatus.isVisible = connected
         binding.settingsTvDisconnect.isVisible = connected
-        binding.settingsTvCard.isClickable = !connected
-        binding.settingsTvCard.isFocusable = !connected
+        binding.settingsTvCard.isClickable = !isTv && !connected
+        binding.settingsTvCard.isFocusable = !isTv && !connected
         if (connected) {
             binding.settingsTvStatus.text = getString(
-                R.string.settings_tv_connected,
-                state.pairedTvName.ifBlank { getString(R.string.settings_tv_default_name) },
+                if (isTv) {
+                    R.string.settings_tv_phone_connected
+                } else {
+                    R.string.settings_tv_connected
+                },
+                state.pairedTvName.ifBlank {
+                    getString(
+                        if (isTv) {
+                            R.string.settings_tv_default_phone_name
+                        } else {
+                            R.string.settings_tv_default_name
+                        },
+                    )
+                },
             )
             binding.settingsTvDisconnect.isEnabled = !state.tvDisconnecting
             binding.settingsTvDisconnect.setText(
-                if (state.tvDisconnecting) {
-                    R.string.settings_tv_disconnecting
-                } else {
-                    R.string.settings_tv_disconnect
+                when {
+                    state.tvDisconnecting && isTv -> R.string.settings_tv_phone_disconnecting
+                    state.tvDisconnecting -> R.string.settings_tv_disconnecting
+                    isTv -> R.string.settings_tv_phone_disconnect
+                    else -> R.string.settings_tv_disconnect
                 },
             )
         }
@@ -399,6 +431,30 @@ class SettingsFragment : Fragment() {
             .setNegativeButton(R.string.common_cancel, null)
             .setPositiveButton(R.string.settings_tv_disconnect) { _, _ ->
                 viewModel.disconnectTv()
+            }
+            .show()
+    }
+
+    private fun showTvPhoneDisconnectDialog() {
+        if (viewModel.state.value.tvDisconnecting) return
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.settings_tv_phone_disconnect_confirm_title)
+            .setMessage(R.string.settings_tv_phone_disconnect_confirm_message)
+            .setNegativeButton(R.string.common_cancel, null)
+            .setPositiveButton(R.string.settings_tv_phone_disconnect) { _, _ ->
+                viewModel.disconnectFromPhone()
+            }
+            .show()
+    }
+
+    private fun showForceDisconnectDialog() {
+        if (!viewLifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) return
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.settings_tv_force_disconnect_title)
+            .setMessage(R.string.settings_tv_force_disconnect_message)
+            .setNegativeButton(R.string.common_cancel, null)
+            .setPositiveButton(R.string.settings_tv_force_disconnect_confirm) { _, _ ->
+                viewModel.disconnectTv(forceLocal = true)
             }
             .show()
     }

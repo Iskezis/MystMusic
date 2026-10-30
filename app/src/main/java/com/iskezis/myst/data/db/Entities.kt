@@ -253,7 +253,9 @@ data class YtSyncEntity(
  * Tempo realmente ouvido em uma faixa, base das Estatísticas. O evento é
  * gravado ao trocar de música, terminar, pausar por mais de 30 s ou fechar o
  * serviço. `playedMs` acumula apenas o tempo em reprodução (pausas e saltos
- * não contam); "reprodução" é derivada de 30 s ou 50% da duração.
+ * não contam). A música passa a contar nas Estatísticas depois dos primeiros
+ * 10 s ouvidos, inclusive quando a faixa é trocada no meio; o tempo gravado é
+ * o trecho exato escutado, não a duração inteira.
  */
 @Entity(
     tableName = "play_events",

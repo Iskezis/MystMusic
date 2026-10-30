@@ -188,6 +188,7 @@
     <string name="settings_tv">Conectar à TV</string>
     <string name="settings_tv_subtitle">Pareie pelo código de 5 dígitos na mesma rede Wi-Fi</string>
     <string name="settings_tv_default_name">MystMusic TV</string>
+    <string name="settings_tv_default_phone_name">Celular</string>
     <string name="settings_tv_connected">Conectado a %1$s. Playlists e histórico são sincronizados automaticamente.</string>
     <string name="settings_tv_disconnect">Desconectar TV</string>
     <string name="settings_tv_disconnecting">Desconectando…</string>
@@ -195,6 +196,18 @@
     <string name="settings_tv_disconnect_confirm_message">A TV vai parar a reprodução, apagar os dados temporários e voltar para a tela do código de 5 dígitos. Suas playlists continuam salvas no celular.</string>
     <string name="settings_tv_disconnect_success">TV desconectada. Ela voltou para a tela do código.</string>
     <string name="settings_tv_disconnect_error">Não foi possível desconectar a TV. Verifique se ela está ligada e na mesma rede Wi-Fi.</string>
+    <string name="settings_tv_force_disconnect_title">TV não respondeu</string>
+    <string name="settings_tv_force_disconnect_message">Não foi possível avisar a TV. Remover o pareamento só deste celular? A TV continuará com os dados temporários até você tocar em “Desconectar do celular” nela.</string>
+    <string name="settings_tv_force_disconnect_confirm">Desconectar só aqui</string>
+    <string name="settings_tv_force_disconnect_success">Pareamento removido deste celular. A TV pode ser desconectada nas Configurações dela.</string>
+    <string name="settings_tv_phone_title">Conexão com o celular</string>
+    <string name="settings_tv_phone_subtitle">Esta TV é temporária: os dados ficam apenas na memória enquanto o pareamento existir.</string>
+    <string name="settings_tv_phone_connected">Conectada a %1$s. Playlists, Recentes, estatísticas, aparência e Discord são atualizados em tempo real.</string>
+    <string name="settings_tv_phone_disconnect">Desconectar do celular</string>
+    <string name="settings_tv_phone_disconnecting">Desconectando…</string>
+    <string name="settings_tv_phone_disconnect_confirm_title">Desconectar o celular desta TV?</string>
+    <string name="settings_tv_phone_disconnect_confirm_message">A reprodução para, os dados temporários são apagados e a TV volta para a tela do código de 5 dígitos. O celular pode continuar pareado e ser desconectado nas Configurações dele.</string>
+    <string name="settings_tv_phone_disconnect_success">Pareamento encerrado nesta TV.</string>
     <string name="settings_logs">Logs e diagnóstico</string>
     <string name="settings_logs_subtitle">Ver, copiar e compartilhar os logs do app</string>
     <string name="logs_title">Logs e diagnóstico</string>
@@ -365,7 +378,7 @@
     <string name="stats_period_all">Sempre</string>
     <string name="stats_time_label">Tempo ouvido</string>
     <string name="stats_plays_label">Reproduções</string>
-    <string name="stats_plays_hint">A partir de 30 s ou 50% da faixa</string>
+    <string name="stats_plays_hint">A partir dos 10 primeiros segundos ouvidos, mesmo se você pular a faixa</string>
     <string name="stats_compare_all">Todo o período da conta</string>
     <string name="stats_compare_none">Sem dados no período anterior</string>
     <string name="stats_compare_new">Novo neste período</string>

@@ -29,7 +29,10 @@ class PairedSyncClient {
 
         val target = findTarget(app, pairId) ?: throw IOException("TV não encontrada na rede")
         val outgoing = PairingSync.exportSnapshot(app, userId)
-        val request = PairSyncRequest(snapshot = outgoing)
+        val request = PairSyncRequest(
+            snapshot = outgoing,
+            extras = PairingSync.exportExtras(app),
+        )
         val envelope = PairSecureEnvelope(
             pairId = pairId,
             payload = PairingCrypto.encryptSecret(
@@ -71,7 +74,9 @@ class PairedSyncClient {
         AppLog.i(
             AppLog.TAG_PAIRING,
             "Sincronização com a TV concluída: playlists=${response.snapshot.playlists.size} " +
-                "histórico=${response.snapshot.history.size}",
+                "histórico=${response.snapshot.history.size} " +
+                "yt_playlists=${response.snapshot.youtube.playlists.size} " +
+                "yt_histórico=${response.snapshot.youtube.history.size}",
         )
         SyncResult(
             tvName = session.tvName.ifBlank { target.name },
@@ -106,13 +111,20 @@ class PairedSyncClient {
     private suspend fun findTarget(app: MystApp, pairId: String): PairingNsd.Target? {
         val cachedHost = app.session.tvHost
         val cachedPort = app.session.tvPort
-        if (!cachedHost.isNullOrBlank() && cachedPort in 1..65535) {
-            val cached = PairingNsd.Target(
-                name = app.session.tvName.ifBlank { "MystMusic TV" },
-                host = cachedHost,
-                port = cachedPort,
-            )
-            if (matches(cached, pairId)) return cached
+        if (!cachedHost.isNullOrBlank()) {
+            val candidates = linkedSetOf<Int>()
+            if (cachedPort in 1..65535) candidates += cachedPort
+            // O servidor persistente usa esta porta fixa; tentar também cobre
+            // o caso de o NSD não estar disponível logo após reiniciar a TV.
+            candidates += PairedSyncManager.TV_PORT
+            candidates.forEach { port ->
+                val cached = PairingNsd.Target(
+                    name = app.session.tvName.ifBlank { "MystMusic TV" },
+                    host = cachedHost,
+                    port = port,
+                )
+                if (matches(cached, pairId)) return cached
+            }
         }
         return discover(app, pairId)
     }
@@ -155,7 +167,7 @@ class PairedSyncClient {
                 readTimeoutMs = 4_000,
             )
             val hello = PairingSync.json.decodeFromString(PairHello.serializer(), text)
-            hello.paired && hello.pairId == pairId
+            hello.paired && hello.pairId == pairId && hello.role != "phone"
         }.getOrDefault(false)
 
     data class SyncResult(

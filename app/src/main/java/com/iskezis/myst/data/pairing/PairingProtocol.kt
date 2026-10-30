@@ -35,13 +35,15 @@ data class PairAck(
     val error: String? = null,
 )
 
-/** Resposta de identificação do servidor persistente da TV. */
+/** Resposta de identificação dos servidores persistentes do celular/TV. */
 @Serializable
 data class PairHello(
     val pairId: String,
     val deviceName: String = "",
     val appVersion: String = "",
     val paired: Boolean = false,
+    /** "tv" ou "phone"; payloads antigos sem o campo são tratados como TV. */
+    val role: String = "tv",
 )
 
 /**
@@ -58,7 +60,21 @@ data class PairSecureEnvelope(
 @Serializable
 data class PairSyncRequest(
     val snapshot: PairSnapshot,
+    /**
+     * Estado "ao vivo" do celular que não pertence ao snapshot da conta.
+     * A TV aplica a aparência e a conexão do Discord a cada sincronização,
+     * para que uma mudança feita depois do pareamento também chegue nela.
+     */
+    val extras: PairExtras = PairExtras(),
     val sentAt: Long = System.currentTimeMillis(),
+)
+
+@Serializable
+data class PairExtras(
+    val appearance: PairAppearance? = null,
+    val discord: PairDiscord? = null,
+    /** true em clientes novos, inclusive quando o Discord está desconectado. */
+    val discordKnown: Boolean = false,
 )
 
 @Serializable
@@ -76,6 +92,58 @@ data class PairSnapshot(
     val affinities: List<PairAffinity> = emptyList(),
     /** Eventos de reprodução usados nas Estatísticas; a TV mantém só em memória. */
     val playEvents: List<PairPlayEvent> = emptyList(),
+    /**
+     * Cache da biblioteca do YouTube Music. Sem ele a TV recebia só o
+     * histórico local e a seção Recentes ficava incompleta depois do pareamento.
+     */
+    val youtube: PairYouTube = PairYouTube(),
+)
+
+@Serializable
+data class PairYouTube(
+    val playlists: List<PairYouTubePlaylist> = emptyList(),
+    val history: List<PairYouTubeHistory> = emptyList(),
+    val sync: List<PairYouTubeSync> = emptyList(),
+)
+
+@Serializable
+data class PairYouTubePlaylist(
+    val ytId: String,
+    val title: String,
+    val thumbnailUrl: String? = null,
+    val trackCount: Int = 0,
+    val liked: Boolean = false,
+    val syncedAt: Long = 0L,
+    val tracks: List<PairYouTubeTrack> = emptyList(),
+)
+
+@Serializable
+data class PairYouTubeTrack(
+    val videoId: String,
+    val title: String,
+    val artist: String,
+    val album: String = "",
+    val thumbnailUrl: String? = null,
+    val durationMs: Long = 0L,
+    val position: Int = 0,
+    val syncedAt: Long = 0L,
+)
+
+@Serializable
+data class PairYouTubeHistory(
+    val videoId: String,
+    val title: String,
+    val artist: String,
+    val album: String = "",
+    val thumbnailUrl: String? = null,
+    val durationMs: Long = 0L,
+    val playedAt: Long = 0L,
+)
+
+@Serializable
+data class PairYouTubeSync(
+    val section: String,
+    val syncedAt: Long = 0L,
 )
 
 /** Nome de playlist apagada/renomeada; impede que a sincronização a ressuscite. */
@@ -159,6 +227,23 @@ data class PairAppearance(
     /** "system", "light" ou "dark"; nulo em payloads antigos. */
     val themeMode: String? = null,
     val amoled: Boolean? = null,
+    /**
+     * Tema escuro efetivo no celular. Se o celular está no modo Sistema com o
+     * sistema escuro, o AMOLED precisa chegar ativo à TV mesmo que o sistema
+     * dela esteja claro. Nulo em payloads antigos.
+     */
+    val effectiveDark: Boolean? = null,
+)
+
+/**
+ * Conexão do Discord do celular. O token vai dentro do payload AES-GCM para a
+ * TV poder publicar a presença enquanto for um terminal pareado; ele é
+ * apagado da TV ao desconectar/logout.
+ */
+@Serializable
+data class PairDiscord(
+    val token: String? = null,
+    val name: String? = null,
 )
 
 @Serializable
@@ -175,6 +260,10 @@ data class PairBundle(
     val tombstones: List<PairTombstone> = emptyList(),
     /** Tema/AMOLED do celular, aplicados temporariamente na TV. */
     val appearance: PairAppearance? = null,
+    /** Discord do celular para a TV publicar a presença enquanto pareada. */
+    val discord: PairDiscord? = null,
+    /** Cache da biblioteca do YouTube Music; nulo em payloads antigos. */
+    val youtube: PairYouTube? = null,
     /** Identidade do canal celular↔TV criada junto com o primeiro pareamento. */
     val pairId: String? = null,
     val pairSecret: String? = null,

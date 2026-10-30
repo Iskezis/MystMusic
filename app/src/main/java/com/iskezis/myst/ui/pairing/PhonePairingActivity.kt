@@ -152,7 +152,10 @@ class PhonePairingActivity : BaseActivity() {
             port = 0,
         )
         paired = true
-        app.pairedSync.requestSync()
+        // Inicia já o canal celular→TV (avisos em tempo real) e puxa o
+        // primeiro snapshot. A porta fixa do servidor da TV é tentada mesmo
+        // antes de o NSD dela aparecer.
+        app.pairedSync.onPhonePaired()
         lifecycleScope.launch {
             if (isFinishing || isDestroyed) return@launch
             binding.phonePairProgress.isVisible = false

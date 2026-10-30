@@ -15,12 +15,17 @@ import com.iskezis.myst.data.db.PlaylistEntity
 import com.iskezis.myst.data.db.PlaylistRepository
 import com.iskezis.myst.data.db.PlaylistTrackEntity
 import com.iskezis.myst.data.db.UserEntity
+import com.iskezis.myst.data.db.YtHistoryEntity
+import com.iskezis.myst.data.db.YtPlaylistEntity
+import com.iskezis.myst.data.db.YtPlaylistTrackEntity
+import com.iskezis.myst.data.db.YtSyncEntity
 import com.iskezis.myst.data.settings.AppearanceSettings
 import com.iskezis.myst.data.settings.ThemeMode
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.sha256Hex
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -55,7 +60,7 @@ object PairingSync {
             ?: throw IllegalStateException("Conta Myst ausente")
         val user = app.accounts.currentUser()
         val avatarBase64 = AvatarStore.readBase64(user?.avatarPath)
-        val appearance = app.appearance.snapshot()
+        val extras = exportExtras(app)
         val account = PairAccount(
             type = session.type,
             username = user?.username ?: "paired_${sha256Hex(session.displayName).take(12)}",
@@ -72,7 +77,9 @@ object PairingSync {
             "Pareamento exportado: conta=${account.type} " +
                 "youtube=${!account.youtubeAccountId.isNullOrBlank()} " +
                 "avatar=${avatarBase64 != null} playlists=${snapshot.playlists.size} " +
-                "histórico=${snapshot.history.size} lápides=${snapshot.tombstones.size}",
+                "histórico=${snapshot.history.size} lápides=${snapshot.tombstones.size} " +
+                "yt_playlists=${snapshot.youtube.playlists.size} " +
+                "yt_histórico=${snapshot.youtube.history.size}",
         )
         PairBundle(
             account = account,
@@ -85,13 +92,34 @@ object PairingSync {
             affinities = snapshot.affinities,
             playEvents = snapshot.playEvents,
             tombstones = snapshot.tombstones,
-            appearance = PairAppearance(
-                themeMode = appearance.themeMode.storageValue,
-                amoled = appearance.amoled,
-            ),
+            appearance = extras.appearance,
+            discord = extras.discord,
+            youtube = snapshot.youtube,
             pairId = pairId,
             pairSecret = pairSecret,
             phoneName = phoneName,
+        )
+    }
+
+    /** Estado do celular que não faz parte da conta e é aplicado ao vivo na TV. */
+    fun exportExtras(app: MystApp): PairExtras {
+        val appearance = app.appearance.snapshot()
+        val discordToken = app.session.discordToken?.trim()?.takeIf { it.isNotBlank() }
+        return PairExtras(
+            appearance = PairAppearance(
+                themeMode = appearance.themeMode.storageValue,
+                amoled = appearance.amoled,
+                effectiveDark = app.appearance.isDarkEffective(app),
+            ),
+            discord = if (discordToken == null) {
+                null
+            } else {
+                PairDiscord(
+                    token = discordToken,
+                    name = app.session.discordName?.takeIf { it.isNotBlank() },
+                )
+            },
+            discordKnown = true,
         )
     }
 
@@ -180,8 +208,64 @@ object PairingSync {
                 history = history,
                 affinities = affinities,
                 playEvents = playEvents,
+                youtube = exportYouTube(app, userId),
             )
         }
+
+    /**
+     * Exporta a biblioteca do YouTube Music (playlists, faixas e histórico).
+     * Sem isso a seção Recentes da TV ficava só com o histórico local da conta
+     * Myst, enquanto no celular a lista combina as duas fontes.
+     */
+    private suspend fun exportYouTube(app: MystApp, userId: Long): PairYouTube {
+        val dao = app.database.youTubeLibraryDao()
+        val tracksByPlaylist = dao.allPlaylistTracks(userId).groupBy { it.ytId }
+        var trackBudget = MAX_YT_TRACKS_TOTAL
+        val playlists = dao.playlists(userId).take(MAX_YT_PLAYLISTS).map { summary ->
+            val available = tracksByPlaylist[summary.ytId].orEmpty()
+            val limit = minOf(MAX_YT_TRACKS_PER_PLAYLIST, trackBudget)
+            val tracks = if (limit > 0) available.take(limit) else emptyList()
+            trackBudget = (trackBudget - tracks.size).coerceAtLeast(0)
+            PairYouTubePlaylist(
+                ytId = summary.ytId.trim().take(MAX_ID_LENGTH),
+                title = summary.title.trim().take(MAX_TITLE_LENGTH),
+                thumbnailUrl = summary.thumbnailUrl?.take(MAX_URL_LENGTH),
+                trackCount = summary.trackCount.coerceAtLeast(tracks.size),
+                liked = summary.liked,
+                syncedAt = summary.syncedAt,
+                tracks = tracks.map { track ->
+                    PairYouTubeTrack(
+                        videoId = track.videoId.trim().take(MAX_ID_LENGTH),
+                        title = track.title.trim().take(MAX_TITLE_LENGTH),
+                        artist = track.artist.trim().take(MAX_ARTIST_LENGTH),
+                        album = track.album.trim().take(MAX_ALBUM_LENGTH),
+                        thumbnailUrl = track.thumbnailUrl?.take(MAX_URL_LENGTH),
+                        durationMs = track.durationMs.coerceAtLeast(0L),
+                        position = track.position,
+                        syncedAt = track.syncedAt,
+                    )
+                },
+            )
+        }.filter { it.ytId.isNotBlank() }
+        val history = dao.history(userId, MAX_YT_HISTORY).map { item ->
+            PairYouTubeHistory(
+                videoId = item.videoId.trim().take(MAX_ID_LENGTH),
+                title = item.title.trim().take(MAX_TITLE_LENGTH),
+                artist = item.artist.trim().take(MAX_ARTIST_LENGTH),
+                album = item.album.trim().take(MAX_ALBUM_LENGTH),
+                thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
+                durationMs = item.durationMs.coerceAtLeast(0L),
+                playedAt = item.playedAt,
+            )
+        }.filter { it.videoId.isNotBlank() }
+        val sync = dao.syncStates(userId).take(MAX_YT_SYNC_STATES).map { item ->
+            PairYouTubeSync(
+                section = item.section.trim().take(MAX_SYNC_SECTION_LENGTH),
+                syncedAt = item.syncedAt,
+            )
+        }.filter { it.section.isNotBlank() }
+        return PairYouTube(playlists = playlists, history = history, sync = sync)
+    }
 
     suspend fun apply(app: MystApp, bundle: PairBundle) = withContext(Dispatchers.IO) {
         val account = bundle.account
@@ -234,22 +318,8 @@ object PairingSync {
         // A TV é temporária: o tema/AMOLED do celular vale só enquanto o
         // pareamento existir. É gravado nas preferências do aparelho para
         // sobreviver a uma recriação de Activity e apagado na desconexão/logout.
-        val incomingAppearance = bundle.appearance
-        if (incomingAppearance != null) {
-            val current = app.appearance.snapshot()
-            val settings = AppearanceSettings(
-                themeMode = incomingAppearance.themeMode
-                    ?.let { ThemeMode.fromStorageOrNull(it) }
-                    ?: current.themeMode,
-                amoled = incomingAppearance.amoled ?: current.amoled,
-            )
-            app.appearance.apply(settings)
-            AppLog.i(
-                AppLog.TAG_PAIRING,
-                "Aparência do celular aplicada na TV: " +
-                    "modo=${settings.themeMode.storageValue} amoled=${settings.amoled}",
-            )
-        }
+        applyAppearance(app, bundle.appearance, immediate = false)
+        applyDiscord(app, bundle.discord, known = true)
 
         if (!account.avatarBase64.isNullOrBlank()) {
             val avatarPath = AvatarStore.saveBase64(app, userId, account.avatarBase64)
@@ -268,6 +338,7 @@ object PairingSync {
                 affinities = bundle.affinities,
                 playEvents = bundle.playEvents,
                 tombstones = bundle.tombstones,
+                youtube = bundle.youtube ?: PairYouTube(),
             ),
         )
 
@@ -287,6 +358,88 @@ object PairingSync {
     }
 
     /**
+     * Aplica o estado que o celular envia em cada sincronização. A TV usa isso
+     * para refletir AMOLED e Discord sem precisar de um novo pareamento.
+     */
+    fun applyExtras(app: MystApp, extras: PairExtras) {
+        applyAppearance(app, extras.appearance, immediate = true)
+        applyDiscord(app, extras.discord, known = extras.discordKnown)
+    }
+
+    /**
+     * O AMOLED só existe quando o tema efetivo é escuro. Se o celular está no
+     * modo Sistema com o sistema escuro, a TV pode estar no modo claro; nesse
+     * caso o modo é fixado em Escuro para o preto AMOLED chegar ativo. Se o
+     * celular está claro, o AMOLED é desativado na TV em vez de aparecer numa
+     * tela clara onde ele não teria efeito.
+     */
+    private fun applyAppearance(
+        app: MystApp,
+        incoming: PairAppearance?,
+        immediate: Boolean,
+    ) {
+        if (incoming == null) return
+        val current = app.appearance.snapshot()
+        var themeMode = incoming.themeMode
+            ?.let { ThemeMode.fromStorageOrNull(it) }
+            ?: current.themeMode
+        var amoled = incoming.amoled ?: current.amoled
+        val effectiveDark = incoming.effectiveDark
+        if (effectiveDark != null) {
+            // O modo Sistema depende do aparelho. Para a TV refletir o que o
+            // usuário está vendo no celular, envia-se o resultado efetivo, não
+            // apenas a preferência.
+            themeMode = if (effectiveDark) ThemeMode.DARK else ThemeMode.LIGHT
+        }
+        if (effectiveDark == false) {
+            amoled = false
+        }
+        if (amoled && effectiveDark != false && themeMode == ThemeMode.SYSTEM) {
+            themeMode = ThemeMode.DARK
+        }
+        val settings = AppearanceSettings(themeMode = themeMode, amoled = amoled)
+        if (settings == current) return
+        app.appearance.apply(settings)
+        AppLog.i(
+            AppLog.TAG_PAIRING,
+            "Aparência do celular aplicada na TV: " +
+                "modo=${settings.themeMode.storageValue} amoled=${settings.amoled} " +
+                "escuroEfetivo=${effectiveDark ?: "desconhecido"}",
+        )
+        if (immediate) {
+            // AppCompat recria as Activities abertas na thread principal. A
+            // próxima sincronização não repete porque as preferências já são
+            // iguais; isso evita recriações em loop.
+            app.backgroundScope.launch(Dispatchers.Main) {
+                runCatching { app.applyAppearanceNightMode() }.onFailure {
+                    AppLog.failure(AppLog.TAG_PAIRING, "Falha reaplicando tema da TV", it)
+                }
+            }
+        }
+    }
+
+    private fun applyDiscord(app: MystApp, incoming: PairDiscord?, known: Boolean) {
+        if (!known) return
+        val newToken = incoming?.token?.trim()?.takeIf { it.isNotBlank() }
+        val currentToken = app.session.discordToken
+        if (newToken == null) {
+            if (!currentToken.isNullOrBlank()) {
+                AppLog.i(AppLog.TAG_PAIRING, "Discord desconectado no celular; limpando na TV")
+                app.discord.disconnect()
+            } else {
+                app.session.clearDiscord()
+            }
+            return
+        }
+        val incomingName = incoming.name?.trim()?.takeIf { it.isNotBlank() }
+        if (incomingName != null) app.session.discordName = incomingName
+        if (newToken != currentToken) {
+            AppLog.i(AppLog.TAG_PAIRING, "Conexão do Discord recebida do celular")
+            app.discord.connect(newToken)
+        }
+    }
+
+    /**
      * Mescla um instantâneo na conta local. Deve ser chamada dentro de
      * `Dispatchers.IO`; abre uma única transação para não deixar a conta pela
      * metade se o processo morrer.
@@ -300,6 +453,9 @@ object PairingSync {
             var importedTracks = 0
             var importedHistory = 0
             var importedPlayEvents = 0
+            var importedYtPlaylists = 0
+            var importedYtTracks = 0
+            var importedYtHistory = 0
             val coverWrites = mutableListOf<Pair<Long, PairPlaylist>>()
 
             database.withTransaction {
@@ -457,6 +613,11 @@ object PairingSync {
                     )
                     importedPlayEvents++
                 }
+
+                val ytResult = mergeYouTube(app, userId, snapshot.youtube, now)
+                importedYtPlaylists = ytResult.first
+                importedYtTracks = ytResult.second
+                importedYtHistory = ytResult.third
             }
 
             if (coverWrites.isNotEmpty()) {
@@ -474,16 +635,139 @@ object PairingSync {
             }
 
             if (importedPlaylists > 0 || importedTracks > 0 || importedHistory > 0 ||
-                importedPlayEvents > 0
+                importedPlayEvents > 0 || importedYtPlaylists > 0 ||
+                importedYtTracks > 0 || importedYtHistory > 0
             ) {
                 AppLog.i(
                     AppLog.TAG_PAIRING,
                     "Sincronização mesclada: playlists=$importedPlaylists " +
                         "faixas=$importedTracks histórico=$importedHistory " +
-                        "eventos=$importedPlayEvents",
+                        "eventos=$importedPlayEvents yt_playlists=$importedYtPlaylists " +
+                        "yt_faixas=$importedYtTracks yt_histórico=$importedYtHistory",
                 )
             }
         }
+
+    /**
+     * Mescla o cache do YouTube Music. Playlists e histórico são somente
+     * leitura no app, então o celular é a fonte principal; a TV só mantém o que
+     * já tinha se vier mais recente. Retorna playlists/faixas/histórico novos.
+     */
+    private suspend fun mergeYouTube(
+        app: MystApp,
+        userId: Long,
+        incoming: PairYouTube,
+        now: Long,
+    ): Triple<Int, Int, Int> {
+        if (incoming.playlists.isEmpty() && incoming.history.isEmpty() &&
+            incoming.sync.isEmpty()
+        ) {
+            return Triple(0, 0, 0)
+        }
+        val dao = app.database.youTubeLibraryDao()
+        var newPlaylists = 0
+        var newTracks = 0
+        var newHistory = 0
+
+        if (incoming.playlists.isNotEmpty()) {
+            val existingPlaylists = dao.playlists(userId).associateBy { it.ytId }
+            val playlists = incoming.playlists.take(MAX_YT_PLAYLISTS).mapNotNull { item ->
+                val ytId = item.ytId.trim().take(MAX_ID_LENGTH)
+                if (ytId.isBlank()) return@mapNotNull null
+                val previous = existingPlaylists[ytId]
+                if (previous == null) newPlaylists++
+                YtPlaylistEntity(
+                    userId = userId,
+                    ytId = ytId,
+                    title = item.title.trim().take(MAX_TITLE_LENGTH).ifBlank {
+                        previous?.title.orEmpty()
+                    },
+                    thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH)
+                        ?: previous?.thumbnailUrl,
+                    trackCount = maxOf(previous?.trackCount ?: 0, item.trackCount),
+                    liked = previous?.liked == true || item.liked,
+                    syncedAt = maxOf(previous?.syncedAt ?: 0L, item.syncedAt),
+                )
+            }
+            if (playlists.isNotEmpty()) dao.upsertPlaylists(playlists)
+
+            val existingTracks = dao.allPlaylistTracks(userId)
+                .associateBy { "${it.ytId}|${it.videoId}" }
+                .toMutableMap()
+            val allTracks = mutableListOf<YtPlaylistTrackEntity>()
+            incoming.playlists.take(MAX_YT_PLAYLISTS).forEach { item ->
+                val ytId = item.ytId.trim().take(MAX_ID_LENGTH)
+                if (ytId.isBlank()) return@forEach
+                item.tracks.take(MAX_YT_TRACKS_PER_PLAYLIST).forEachIndexed { index, track ->
+                    val videoId = track.videoId.trim().take(MAX_ID_LENGTH)
+                    if (videoId.isBlank()) return@forEachIndexed
+                    val previous = existingTracks["$ytId|$videoId"]
+                    val incomingAt = track.syncedAt.takeIf { it > 0L } ?: item.syncedAt
+                    if (previous != null && previous.syncedAt > incomingAt) {
+                        return@forEachIndexed
+                    }
+                    if (previous == null) newTracks++
+                    val entity = YtPlaylistTrackEntity(
+                        userId = userId,
+                        ytId = ytId,
+                        videoId = videoId,
+                        title = track.title.trim().take(MAX_TITLE_LENGTH),
+                        artist = track.artist.trim().take(MAX_ARTIST_LENGTH),
+                        album = track.album.trim().take(MAX_ALBUM_LENGTH),
+                        thumbnailUrl = track.thumbnailUrl?.take(MAX_URL_LENGTH),
+                        durationMs = track.durationMs.coerceIn(0L, MAX_DURATION_MS),
+                        position = track.position.coerceAtLeast(index),
+                        syncedAt = maxOf(incomingAt, now),
+                    )
+                    existingTracks["$ytId|$videoId"] = entity
+                    allTracks += entity
+                }
+            }
+            if (allTracks.isNotEmpty()) dao.upsertPlaylistTracks(allTracks)
+            // Mantém o contador coerente com as faixas que chegaram no mesmo
+            // snapshot, sem apagar faixas antigas que a TV já tivesse.
+            playlists.forEach { playlist ->
+                val count = existingTracks.keys.count { it.startsWith("${playlist.ytId}|") }
+                if (count > playlist.trackCount) {
+                    dao.updatePlaylistCount(userId, playlist.ytId, count, now)
+                }
+            }
+        }
+
+        if (incoming.history.isNotEmpty()) {
+            val existingHistory = dao.history(userId, MAX_YT_HISTORY)
+                .associateBy { it.videoId }
+            val history = incoming.history.take(MAX_YT_HISTORY).mapNotNull { item ->
+                val videoId = item.videoId.trim().take(MAX_ID_LENGTH)
+                if (videoId.isBlank()) return@mapNotNull null
+                val playedAt = item.playedAt.takeIf { it > 0L } ?: now
+                val previous = existingHistory[videoId]
+                if (previous != null && previous.playedAt >= playedAt) return@mapNotNull null
+                if (previous == null) newHistory++
+                YtHistoryEntity(
+                    userId = userId,
+                    videoId = videoId,
+                    title = item.title.trim().take(MAX_TITLE_LENGTH),
+                    artist = item.artist.trim().take(MAX_ARTIST_LENGTH),
+                    album = item.album.trim().take(MAX_ALBUM_LENGTH),
+                    thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
+                    durationMs = item.durationMs.coerceIn(0L, MAX_DURATION_MS),
+                    playedAt = playedAt,
+                )
+            }
+            if (history.isNotEmpty()) dao.upsertHistory(history)
+        }
+
+        incoming.sync.take(MAX_YT_SYNC_STATES).forEach { item ->
+            val section = item.section.trim().take(MAX_SYNC_SECTION_LENGTH)
+            if (section.isBlank()) return@forEach
+            val previous = dao.sync(userId, section)
+            if (previous == null || item.syncedAt > previous.syncedAt) {
+                dao.upsertSync(YtSyncEntity(userId, section, item.syncedAt))
+            }
+        }
+        return Triple(newPlaylists, newTracks, newHistory)
+    }
 
     private fun readCoverBase64(coverUri: String?): Pair<String, Int>? {
         if (coverUri.isNullOrBlank() || !coverUri.startsWith("file:")) return null
@@ -543,6 +827,12 @@ object PairingSync {
     private const val MAX_HISTORY = 2_000
     private const val MAX_AFFINITIES = 500
     private const val MAX_PLAY_EVENTS = 5_000
+    private const val MAX_YT_PLAYLISTS = 500
+    private const val MAX_YT_TRACKS_PER_PLAYLIST = 10_000
+    private const val MAX_YT_TRACKS_TOTAL = 30_000
+    private const val MAX_YT_HISTORY = 2_000
+    private const val MAX_YT_SYNC_STATES = 500
+    private const val MAX_SYNC_SECTION_LENGTH = 200
     private const val MAX_PLAYED_MS = 24L * 60L * 60L * 1000L
     private const val MAX_DURATION_MS = 24L * 60L * 60L * 1000L
     private const val MAX_TOMBSTONES = 5_000

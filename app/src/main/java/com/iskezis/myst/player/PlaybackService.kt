@@ -206,9 +206,9 @@ class PlaybackService : MediaSessionService() {
         val previous = currentTrack
         flushEvent(app, completed = false)
         if (previous != null && !recordedCurrent) {
-            if (currentPosition >= 10_000L) {
+            if (currentPosition >= MIN_PLAY_MS) {
                 record(app, previous, currentPosition, completed = false)
-            } else if (currentPosition > 0 && previous.durationMs > 10_000L) {
+            } else if (currentPosition > 0 && previous.durationMs > MIN_PLAY_MS) {
                 scope.launch(Dispatchers.IO) {
                     app.session.session?.let { session ->
                         app.recommendations.recordSkip(session.userId, previous)
@@ -241,7 +241,7 @@ class PlaybackService : MediaSessionService() {
         val app = application as MystApp
         val track = currentTrack
         flushEvent(app, completed = true)
-        if (track != null && !recordedCurrent) {
+        if (track != null && !recordedCurrent && player.currentPosition >= MIN_PLAY_MS) {
             record(app, track, player.currentPosition, completed = true)
         }
     }
@@ -254,11 +254,13 @@ class PlaybackService : MediaSessionService() {
             val track = currentTrack ?: continue
             updateEvent(app, position)
             val duration = player.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: track.durationMs
-            if (!recordedCurrent) {
-                val threshold = minOf(20_000L, (duration * 0.3f).toLong().coerceAtLeast(5_000L))
-                if (position >= threshold) {
-                    record(app, track, position, completed = duration > 0 && position >= duration - 2_000)
-                }
+            if (!recordedCurrent && position >= MIN_PLAY_MS) {
+                record(
+                    app,
+                    track,
+                    position,
+                    completed = duration > 0 && position >= duration - 2_000,
+                )
             }
         }
     }
@@ -379,7 +381,9 @@ class PlaybackService : MediaSessionService() {
     companion object {
         const val EXTRA_DURATION = "extra_duration"
 
-        private const val MIN_EVENT_MS = 1_000L
+        /** Só entra nas estatísticas depois dos primeiros 10 s, mesmo parcial. */
+        private const val MIN_PLAY_MS = 10_000L
+        private const val MIN_EVENT_MS = MIN_PLAY_MS
         private const val PAUSE_FLUSH_MS = 30_000L
         private const val MAX_TICK_MS = 5_000L
         private const val SEEK_TOLERANCE_MS = 1_500L

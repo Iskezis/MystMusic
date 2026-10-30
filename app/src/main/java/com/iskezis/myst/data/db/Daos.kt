@@ -296,25 +296,33 @@ interface PlayEventDao {
     suspend fun keys(userId: Long): List<String>
 
     @Query(
-        "SELECT COUNT(*) FROM play_events WHERE userId = :userId " +
-            "AND startedAt >= :from AND startedAt < :to",
+        """
+        SELECT COUNT(*) FROM play_events
+        WHERE userId = :userId AND startedAt >= :from AND startedAt < :to
+          AND playedMs >= :minPlayedMs
+        """,
     )
-    suspend fun eventCount(userId: Long, from: Long, to: Long): Int
+    suspend fun eventCount(userId: Long, from: Long, to: Long, minPlayedMs: Long): Int
 
     @Query(
-        "SELECT COALESCE(SUM(playedMs), 0) FROM play_events WHERE userId = :userId " +
-            "AND startedAt >= :from AND startedAt < :to",
+        """
+        SELECT COALESCE(SUM(playedMs), 0) FROM play_events
+        WHERE userId = :userId AND startedAt >= :from AND startedAt < :to
+          AND playedMs >= :minPlayedMs
+        """,
     )
-    suspend fun totalPlayedMs(userId: Long, from: Long, to: Long): Long
+    suspend fun totalPlayedMs(
+        userId: Long,
+        from: Long,
+        to: Long,
+        minPlayedMs: Long,
+    ): Long
 
     @Query(
         """
         SELECT COUNT(*) FROM play_events
         WHERE userId = :userId AND startedAt >= :from AND startedAt < :to
-          AND (
-              playedMs >= :minPlayedMs
-              OR (durationMs > 0 AND playedMs * 2 >= durationMs)
-          )
+          AND playedMs >= :minPlayedMs
         """,
     )
     suspend fun playCount(userId: Long, from: Long, to: Long, minPlayedMs: Long): Int
@@ -329,10 +337,7 @@ interface PlayEventDao {
                SUM(playedMs) AS playedMs
         FROM play_events
         WHERE userId = :userId AND startedAt >= :from AND startedAt < :to
-          AND (
-              playedMs >= :minPlayedMs
-              OR (durationMs > 0 AND playedMs * 2 >= durationMs)
-          )
+          AND playedMs >= :minPlayedMs
         GROUP BY videoId
         ORDER BY plays DESC, playedMs DESC, title COLLATE NOCASE ASC
         LIMIT :limit
@@ -355,10 +360,7 @@ interface PlayEventDao {
         FROM play_events
         WHERE userId = :userId AND startedAt >= :from AND startedAt < :to
           AND TRIM(artist) != ''
-          AND (
-              playedMs >= :minPlayedMs
-              OR (durationMs > 0 AND playedMs * 2 >= durationMs)
-          )
+          AND playedMs >= :minPlayedMs
         GROUP BY LOWER(TRIM(artist))
         ORDER BY plays DESC, playedMs DESC, name COLLATE NOCASE ASC
         LIMIT :limit
@@ -382,10 +384,7 @@ interface PlayEventDao {
         FROM play_events
         WHERE userId = :userId AND startedAt >= :from AND startedAt < :to
           AND TRIM(album) != ''
-          AND (
-              playedMs >= :minPlayedMs
-              OR (durationMs > 0 AND playedMs * 2 >= durationMs)
-          )
+          AND playedMs >= :minPlayedMs
         GROUP BY LOWER(TRIM(album))
         ORDER BY plays DESC, playedMs DESC, name COLLATE NOCASE ASC
         LIMIT :limit
@@ -405,6 +404,7 @@ interface PlayEventDao {
                SUM(playedMs) AS playedMs
         FROM play_events
         WHERE userId = :userId AND startedAt >= :from AND startedAt < :to
+          AND playedMs >= :minPlayedMs
         GROUP BY day
         ORDER BY day ASC
         """,
@@ -413,6 +413,7 @@ interface PlayEventDao {
         userId: Long,
         from: Long,
         to: Long,
+        minPlayedMs: Long,
     ): List<PlayEventDayStat>
 
     @Query(
@@ -421,6 +422,7 @@ interface PlayEventDao {
                SUM(playedMs) AS playedMs
         FROM play_events
         WHERE userId = :userId AND startedAt >= :from AND startedAt < :to
+          AND playedMs >= :minPlayedMs
         GROUP BY hour
         ORDER BY hour ASC
         """,
@@ -429,6 +431,7 @@ interface PlayEventDao {
         userId: Long,
         from: Long,
         to: Long,
+        minPlayedMs: Long,
     ): List<PlayEventHourStat>
 
     @Query(
@@ -436,10 +439,11 @@ interface PlayEventDao {
         SELECT DISTINCT CAST(julianday(date(startedAt / 1000, 'unixepoch', 'localtime')) + 0.5 AS INTEGER) AS day
         FROM play_events
         WHERE userId = :userId
+          AND playedMs >= :minPlayedMs
         ORDER BY day DESC
         """,
     )
-    suspend fun listenedDays(userId: Long): List<Long>
+    suspend fun listenedDays(userId: Long, minPlayedMs: Long): List<Long>
 }
 
 data class PlayEventTrackStat(

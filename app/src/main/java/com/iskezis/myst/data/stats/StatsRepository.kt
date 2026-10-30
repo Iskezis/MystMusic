@@ -125,10 +125,20 @@ class StatsRepository(private val database: AppDatabase) {
 
             database.withTransaction {
                 val dao = database.playEventDao()
-                val eventCount = dao.eventCount(userId, rangeStart, now)
+                val eventCount = dao.eventCount(
+                    userId = userId,
+                    from = rangeStart,
+                    to = now,
+                    minPlayedMs = MIN_PLAY_MS,
+                )
                 if (eventCount == 0) return@withTransaction StatsData.empty(period)
 
-                val totalPlayedMs = dao.totalPlayedMs(userId, rangeStart, now)
+                val totalPlayedMs = dao.totalPlayedMs(
+                    userId = userId,
+                    from = rangeStart,
+                    to = now,
+                    minPlayedMs = MIN_PLAY_MS,
+                )
                 val previousPlayedMs = if (period == StatsPeriod.ALL) {
                     null
                 } else {
@@ -137,6 +147,7 @@ class StatsRepository(private val database: AppDatabase) {
                         userId = userId,
                         from = (rangeStart - elapsed).coerceAtLeast(0L),
                         to = rangeStart,
+                        minPlayedMs = MIN_PLAY_MS,
                     )
                 }
                 val playCount = dao.playCount(
@@ -192,14 +203,14 @@ class StatsRepository(private val database: AppDatabase) {
                 }
 
                 val hourlyValues = LongArray(24)
-                dao.hourlyPlayedMs(userId, rangeStart, now).forEach { item ->
+                dao.hourlyPlayedMs(userId, rangeStart, now, MIN_PLAY_MS).forEach { item ->
                     if (item.hour in 0..23) hourlyValues[item.hour] = item.playedMs
                 }
 
-                val dailyValues = dao.dailyPlayedMs(userId, chartStart, now)
+                val dailyValues = dao.dailyPlayedMs(userId, chartStart, now, MIN_PLAY_MS)
                     .associate { it.day to it.playedMs }
                 val daily = buildDailyBuckets(period, chartStart, chartDays, dailyValues)
-                val streak = calculateStreak(dao.listenedDays(userId), now)
+                val streak = calculateStreak(dao.listenedDays(userId, MIN_PLAY_MS), now)
 
                 StatsData(
                     period = period,
@@ -302,7 +313,7 @@ class StatsRepository(private val database: AppDatabase) {
 
     companion object {
         const val SOURCE_APP = "app"
-        private const val MIN_PLAY_MS = 30_000L
+        private const val MIN_PLAY_MS = 10_000L
         private const val TOP_LIMIT = 5
         private const val MAX_EVENT_MS = 24L * 60L * 60L * 1000L
         private const val MAX_SOURCE_LENGTH = 32
