@@ -54,16 +54,20 @@ import java.io.InputStream
  * mudam, e a cópia externa também é atualizada quando o provedor concede
  * permissão persistente de escrita.
  *
- * O arquivo NÃO contém cookies do YouTube nem token do Discord. Essas são
- * sessões, não dados da conta, e não devem viajar em um JSON legível. O hash
- * PBKDF2 da senha vai no arquivo para que o login por usuário/senha continue
- * funcionando depois de uma restauração; quem tiver o arquivo pode entrar na
- * conta, por isso a UI avisa que ele deve ser guardado como uma chave.
+ * O arquivo NÃO contém cookies do YouTube. Essas são sessões e não devem
+ * viajar em um JSON legível. O token do Discord é guardado porque o usuário
+ * pediu que a conta vinculada volte junto com o Mystaccount.json; ele também é
+ * uma credencial, então a UI avisa que o arquivo deve ser guardado como uma
+ * chave. O hash PBKDF2 da senha vai no arquivo para que o login por
+ * usuário/senha continue funcionando depois de uma restauração.
  */
 class MystAccountFileRepository(
     private val context: Context,
     private val database: AppDatabase,
     private val appearance: AppearancePreferences,
+    private val session: SessionManager,
+    /** Reconecta o Discord logo após a importação, sem esperar reiniciar o app. */
+    private val onDiscordRestored: (String?) -> Unit = {},
 ) {
 
     @OptIn(ExperimentalSerializationApi::class)
@@ -293,6 +297,12 @@ class MystAccountFileRepository(
             history = history,
             affinities = affinities,
             playEvents = playEvents,
+            discord = session.discordToken?.trim()?.takeIf { it.isNotBlank() }?.let { token ->
+                MystAccountDiscordBackup(
+                    token = token,
+                    name = session.discordName?.trim()?.takeIf { it.isNotBlank() },
+                )
+            },
             youtube = MystAccountYouTubeBackup(
                 playlists = ytPlaylists,
                 history = ytHistory,
@@ -573,8 +583,28 @@ class MystAccountFileRepository(
                 val videoId = item.videoId.trim().take(MAX_ID_LENGTH)
                 if (videoId.isBlank() || item.playedMs <= 0L) return@forEach
                 val startedAt = item.startedAt.takeIf { it in 1..now } ?: now
+                val incomingPlayedMs = item.playedMs.coerceAtMost(MAX_PLAYED_MS)
+                val incomingDurationMs = item.durationMs.coerceIn(0L, MAX_DURATION_MS)
                 val key = "$videoId|$startedAt"
-                if (!playEventKeys.add(key)) return@forEach
+                if (!playEventKeys.add(key)) {
+                    // Uma cópia do Mystaccount.json pode ter sido feita aos
+                    // 10 s e outra depois do fim da faixa. Importar a mais
+                    // recente não pode reduzir o tempo já ouvido no aparelho.
+                    val existing = playEventDao.find(userId, videoId, startedAt)
+                    if (existing != null &&
+                        (incomingPlayedMs > existing.playedMs ||
+                            (item.completed && !existing.completed))
+                    ) {
+                        playEventDao.updateProgress(
+                            id = existing.id,
+                            playedMs = maxOf(existing.playedMs, incomingPlayedMs),
+                            durationMs = maxOf(existing.durationMs, incomingDurationMs),
+                            completed = existing.completed || item.completed,
+                        )
+                        importedPlayEvents++
+                    }
+                    return@forEach
+                }
                 playEventDao.insert(
                     PlayEventEntity(
                         userId = userId,
@@ -584,8 +614,8 @@ class MystAccountFileRepository(
                         album = item.album.trim().take(MAX_ALBUM_LENGTH),
                         thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
                         startedAt = startedAt,
-                        playedMs = item.playedMs.coerceAtMost(MAX_PLAYED_MS),
-                        durationMs = item.durationMs.coerceIn(0L, MAX_DURATION_MS),
+                        playedMs = incomingPlayedMs,
+                        durationMs = incomingDurationMs,
                         completed = item.completed,
                         source = item.source.trim().take(MAX_SOURCE_LENGTH).ifBlank { "import" },
                     ),
@@ -706,6 +736,20 @@ class MystAccountFileRepository(
                     )
                 }
             }
+        }
+
+        // A conta do Discord vinculada volta junto com o arquivo. Arquivos
+        // antigos (sem o campo) não desconectam a sessão atual.
+        val restoredDiscord = file.discord?.token?.trim()?.takeIf { it.isNotBlank() }
+        if (restoredDiscord != null) {
+            session.discordToken = restoredDiscord
+            session.discordName = file.discord.name?.trim()?.takeIf { it.isNotBlank() }
+            onDiscordRestored(restoredDiscord)
+            AppLog.i(
+                AppLog.TAG_AUTH,
+                "Discord restaurado do Mystaccount.json " +
+                    "(token=${restoredDiscord.length} caracteres)",
+            )
         }
 
         if (!file.account.avatarBase64.isNullOrBlank()) {
@@ -985,7 +1029,7 @@ class MystAccountFileRepository(
 
         private const val APP_NAME = "MystMusic"
         private const val KIND = "MystAccount"
-        private const val SCHEMA_VERSION = 3
+        private const val SCHEMA_VERSION = 4
         private const val PREFS_NAME = "myst_account_file"
         private const val ACCOUNT_DIR = "account"
         private const val COVERS_DIR = "covers"
@@ -1085,7 +1129,7 @@ class AccountFileException(
 data class MystAccountBackup(
     val app: String = "MystMusic",
     val kind: String = "MystAccount",
-    val schemaVersion: Int = 3,
+    val schemaVersion: Int = 4,
     val appVersion: String = "",
     val generatedAt: Long = 0L,
     val account: MystAccountProfileBackup,
@@ -1094,12 +1138,20 @@ data class MystAccountBackup(
     val affinities: List<MystAccountAffinityBackup> = emptyList(),
     /** Eventos de reprodução que alimentam as Estatísticas da conta. */
     val playEvents: List<MystAccountPlayEventBackup> = emptyList(),
+    /** Conta do Discord vinculada; ausente em arquivos v1–v3. */
+    val discord: MystAccountDiscordBackup? = null,
     /** Cache da biblioteca do YouTube Music (somente leitura no app). */
     val youtube: MystAccountYouTubeBackup = MystAccountYouTubeBackup(),
     /** Preferências do aparelho que o usuário quer recuperar junto da conta. */
     val settings: MystAccountSettingsBackup? = null,
     /** Campo reservado para dados que versões futuras adicionarem ao arquivo. */
     val extras: JsonObject = JsonObject(emptyMap()),
+)
+
+@Serializable
+data class MystAccountDiscordBackup(
+    val token: String? = null,
+    val name: String? = null,
 )
 
 @Serializable

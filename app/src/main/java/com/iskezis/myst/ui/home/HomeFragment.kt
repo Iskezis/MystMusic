@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -11,6 +12,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.databinding.FragmentHomeBinding
@@ -71,6 +74,8 @@ class HomeFragment : YouTubeLoginFragment() {
         binding.homeRefresh.setOnRefreshListener { viewModel.refresh() }
         binding.homeList.setHasFixedSize(false)
         binding.homeYtBanner.ytBannerAction.setOnClickListener { requestYouTubeLogin() }
+        binding.homeTvDisconnect.setOnClickListener { confirmTvDisconnect() }
+        updateTvDisconnectVisibility()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -89,6 +94,50 @@ class HomeFragment : YouTubeLoginFragment() {
         super.onResume()
         // Foto e nome podem ter mudado nas Configurações.
         viewModel.refreshAccount()
+        updateTvDisconnectVisibility()
+    }
+
+    private fun updateTvDisconnectVisibility() {
+        if (BuildConfig.FLAVOR != "tv") {
+            binding.homeTvDisconnect.isVisible = false
+            return
+        }
+        val paired = (requireActivity().application as MystApp).session.hasTvPairing
+        binding.homeTvDisconnect.isVisible = paired
+        binding.homeTvDisconnect.isEnabled = paired
+    }
+
+    /**
+     * Desconexão explícita na própria TV. O botão fica no topo da tela inicial
+     * justamente para não depender de o usuário achar Configurações ou de o
+     * celular estar na mesma rede.
+     */
+    private fun confirmTvDisconnect() {
+        val app = requireActivity().application as MystApp
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.settings_tv_phone_disconnect_confirm_title)
+            .setMessage(R.string.settings_tv_phone_disconnect_confirm_message)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.settings_tv_phone_disconnect) { _, _ ->
+                binding.homeTvDisconnect.isEnabled = false
+                viewLifecycleOwner.lifecycleScope.launch {
+                    runCatching { app.pairedSync.disconnectOnTv() }
+                        .onFailure {
+                            AppLog.failure(
+                                AppLog.TAG_PAIRING,
+                                "Falha desconectando a TV pela tela inicial",
+                                it,
+                            )
+                            Toast.makeText(
+                                requireContext(),
+                                R.string.settings_tv_disconnect_error,
+                                Toast.LENGTH_LONG,
+                            ).show()
+                            binding.homeTvDisconnect.isEnabled = true
+                        }
+                }
+            }
+            .show()
     }
 
     private fun render(state: HomeUiState) {

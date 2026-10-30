@@ -80,8 +80,9 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
 
     /**
      * Pede para a TV encerrar o pareamento. O botão fica desabilitado durante
-     * a descoberta na rede; se a TV não responder, o erro sobe e o pareamento
-     * local permanece para uma nova tentativa.
+     * a descoberta na rede, mas a remoção local nunca fica refém da TV: se ela
+     * não responder, o pareamento deste celular é removido e o usuário pode
+     * parear de novo na hora.
      */
     fun disconnectTv(forceLocal: Boolean = false) {
         if (_state.value.tvDisconnecting) return
@@ -93,18 +94,18 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
             _state.value = _state.value.copy(tvDisconnecting = true)
             try {
                 val notified = app.pairedSync.disconnect(forceLocal = forceLocal)
-                _message.value = if (forceLocal && !notified) {
+                _message.value = if (!notified) {
                     R.string.settings_tv_force_disconnect_success
                 } else {
                     R.string.settings_tv_disconnect_success
                 }
-                AppLog.i(AppLog.TAG_PAIRING, "TV desconectada pelo botão das Configurações")
+                AppLog.i(
+                    AppLog.TAG_PAIRING,
+                    "TV desconectada pelo botão das Configurações (remota=$notified)",
+                )
             } catch (t: Throwable) {
                 AppLog.failure(AppLog.TAG_PAIRING, "Falha desconectando a TV", t)
                 _error.value = R.string.settings_tv_disconnect_error
-                // O pareamento ainda está local; oferece removê-lo mesmo com a
-                // TV desligada/fora da rede, em vez de deixar o botão sem saída.
-                if (!forceLocal) _forceDisconnectPrompt.value = true
             } finally {
                 _state.value = _state.value.copy(tvDisconnecting = false)
                 refreshPairing()

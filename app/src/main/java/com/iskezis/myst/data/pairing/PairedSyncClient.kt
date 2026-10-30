@@ -98,12 +98,49 @@ class PairedSyncClient {
             url = PairingHttp.url(target.host, target.port, "/disconnect"),
             body = PairingSync.json.encodeToString(PairSecureEnvelope.serializer(), envelope),
             connectTimeoutMs = 5_000,
-            readTimeoutMs = 12_000,
+            // A resposta pode carregar o retrato final da TV (histórico,
+            // estatísticas e playlists), então merece mais folga que um ack.
+            readTimeoutMs = 30_000,
         )
-        val ack = runCatching {
-            PairingSync.json.decodeFromString(PairAck.serializer(), responseText)
+        // A TV nova devolve um envelope cifrado com o retrato final. A TV
+        // antiga devolvia um PairAck em texto puro; aceitar os dois formatos
+        // evita que atualizar só um dos aparelhos quebre a desconexão.
+        val responseEnvelope = runCatching {
+            PairingSync.json.decodeFromString(PairSecureEnvelope.serializer(), responseText)
         }.getOrNull()
-        if (ack?.ok != true) throw IOException("A TV recusou a desconexão")
+        if (responseEnvelope != null) {
+            if (responseEnvelope.pairId != pairId) {
+                throw IOException("TV respondeu outro pareamento")
+            }
+            val plaintext = runCatching {
+                PairingCrypto.decryptSecret(secret, responseEnvelope.payload)
+            }.getOrElse {
+                throw IOException("Não foi possível validar a desconexão", it)
+            }
+            val response = runCatching {
+                PairingSync.json.decodeFromString(PairDisconnectResponse.serializer(), plaintext)
+            }.getOrElse {
+                throw IOException("Resposta de desconexão inválida", it)
+            }
+            if (!response.ok) throw IOException("A TV recusou a desconexão")
+            val accepted = runCatching {
+                app.pairedSync.acceptTvSnapshot(response.snapshot)
+            }.getOrElse {
+                AppLog.failure(AppLog.TAG_PAIRING, "Falha gravando o retrato final da TV", it)
+                false
+            }
+            AppLog.i(
+                AppLog.TAG_PAIRING,
+                "Último retrato da TV gravado antes de desconectar: $accepted " +
+                    "(histórico=${response.snapshot.history.size} " +
+                    "eventos=${response.snapshot.playEvents.size})",
+            )
+        } else {
+            val ack = runCatching {
+                PairingSync.json.decodeFromString(PairAck.serializer(), responseText)
+            }.getOrNull()
+            if (ack?.ok != true) throw IOException("A TV recusou a desconexão")
+        }
         session.clearTvPairing()
         AppLog.i(AppLog.TAG_PAIRING, "TV desconectada pelo celular")
     }

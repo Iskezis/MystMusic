@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.net.wifi.WifiManager
+import android.os.Handler
+import android.os.Looper
 import com.iskezis.myst.util.AppLog
 
 /**
@@ -27,7 +29,10 @@ class PairingNsd(context: Context) {
         runCatching { acquire() }
     }
 
+    private val handler = Handler(Looper.getMainLooper())
     private var registered = false
+    private var registrationPending = false
+    private var discoveryPending = false
     private var discoveryListener: NsdManager.DiscoveryListener? = null
     private var registrationListener: NsdManager.RegistrationListener? = null
 
@@ -38,13 +43,27 @@ class PairingNsd(context: Context) {
         onError: (String) -> Unit,
     ) {
         stop()
+        registrationPending = true
+        startRegistration(serviceName.take(60), port, onRegistered, onError, attempt = 0)
+    }
+
+    private fun startRegistration(
+        serviceName: String,
+        port: Int,
+        onRegistered: (String) -> Unit,
+        onError: (String) -> Unit,
+        attempt: Int,
+    ) {
+        if (!registrationPending) return
         val info = NsdServiceInfo().apply {
-            this.serviceName = serviceName.take(60)
+            this.serviceName = serviceName
             serviceType = SERVICE_TYPE
             setPort(port)
         }
         val listener = object : NsdManager.RegistrationListener {
             override fun onServiceRegistered(serviceInfo: NsdServiceInfo) {
+                if (registrationListener !== this) return
+                registrationPending = false
                 registered = true
                 AppLog.i(
                     AppLog.TAG_PAIRING,
@@ -54,16 +73,39 @@ class PairingNsd(context: Context) {
             }
 
             override fun onRegistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+                if (registrationListener !== this) return
                 registered = false
-                AppLog.w(AppLog.TAG_PAIRING, "Falha registrando NSD: $errorCode")
-                onError("nsd_register_$errorCode")
+                AppLog.w(
+                    AppLog.TAG_PAIRING,
+                    "Falha registrando NSD (tentativa ${attempt + 1}): $errorCode",
+                )
+                // Reiniciar o canal persistente logo após o anterior pode
+                // encontrar o NsdManager ainda com o registro antigo ativo.
+                if (registrationPending && attempt < MAX_NSD_RETRIES &&
+                    errorCode == NsdManager.FAILURE_ALREADY_ACTIVE
+                ) {
+                    handler.postDelayed({
+                        startRegistration(
+                            serviceName,
+                            port,
+                            onRegistered,
+                            onError,
+                            attempt + 1,
+                        )
+                    }, NSD_RETRY_MS)
+                } else {
+                    registrationPending = false
+                    onError("nsd_register_$errorCode")
+                }
             }
 
             override fun onServiceUnregistered(serviceInfo: NsdServiceInfo) {
+                if (registrationListener !== this) return
                 registered = false
             }
 
             override fun onUnregistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+                if (registrationListener !== this) return
                 registered = false
                 AppLog.w(AppLog.TAG_PAIRING, "Falha removendo NSD: $errorCode")
             }
@@ -73,7 +115,14 @@ class PairingNsd(context: Context) {
             nsd.registerService(info, NsdManager.PROTOCOL_DNS_SD, listener)
         }.onFailure {
             AppLog.failure(AppLog.TAG_PAIRING, "Não foi possível registrar o NSD", it)
-            onError("nsd_register")
+            if (registrationPending && attempt < MAX_NSD_RETRIES) {
+                handler.postDelayed({
+                    startRegistration(serviceName, port, onRegistered, onError, attempt + 1)
+                }, NSD_RETRY_MS)
+            } else {
+                registrationPending = false
+                onError("nsd_register")
+            }
         }
     }
 
@@ -83,12 +132,26 @@ class PairingNsd(context: Context) {
         onError: (String) -> Unit,
     ) {
         stopDiscovery()
+        discoveryPending = true
+        startDiscovery(onFound, onLost, onError, attempt = 0)
+    }
+
+    private fun startDiscovery(
+        onFound: (Target) -> Unit,
+        onLost: (String) -> Unit,
+        onError: (String) -> Unit,
+        attempt: Int,
+    ) {
+        if (!discoveryPending) return
         val listener = object : NsdManager.DiscoveryListener {
             override fun onDiscoveryStarted(serviceType: String) {
+                if (discoveryListener !== this) return
+                discoveryPending = false
                 AppLog.i(AppLog.TAG_PAIRING, "NSD procurando $serviceType")
             }
 
             override fun onServiceFound(serviceInfo: NsdServiceInfo) {
+                if (discoveryListener !== this) return
                 if (!isOurService(serviceInfo.serviceType)) return
                 runCatching {
                     nsd.resolveService(
@@ -133,19 +196,35 @@ class PairingNsd(context: Context) {
             }
 
             override fun onServiceLost(serviceInfo: NsdServiceInfo) {
+                if (discoveryListener !== this) return
                 onLost(serviceInfo.serviceName)
             }
 
             override fun onDiscoveryStopped(serviceType: String) {
+                if (discoveryListener !== this) return
                 AppLog.i(AppLog.TAG_PAIRING, "NSD descoberta encerrada")
             }
 
             override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
-                AppLog.w(AppLog.TAG_PAIRING, "Falha iniciando NSD: $errorCode")
-                onError("nsd_discovery_$errorCode")
+                if (discoveryListener !== this) return
+                AppLog.w(
+                    AppLog.TAG_PAIRING,
+                    "Falha iniciando NSD (tentativa ${attempt + 1}): $errorCode",
+                )
+                if (discoveryPending && attempt < MAX_NSD_RETRIES &&
+                    errorCode == NsdManager.FAILURE_ALREADY_ACTIVE
+                ) {
+                    handler.postDelayed({
+                        startDiscovery(onFound, onLost, onError, attempt + 1)
+                    }, NSD_RETRY_MS)
+                } else {
+                    discoveryPending = false
+                    onError("nsd_discovery_$errorCode")
+                }
             }
 
             override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
+                if (discoveryListener !== this) return
                 AppLog.w(AppLog.TAG_PAIRING, "Falha encerrando NSD: $errorCode")
             }
         }
@@ -154,11 +233,19 @@ class PairingNsd(context: Context) {
             nsd.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, listener)
         }.onFailure {
             AppLog.failure(AppLog.TAG_PAIRING, "Não foi possível iniciar descoberta NSD", it)
-            onError("nsd_discovery")
+            if (discoveryPending && attempt < MAX_NSD_RETRIES) {
+                handler.postDelayed({
+                    startDiscovery(onFound, onLost, onError, attempt + 1)
+                }, NSD_RETRY_MS)
+            } else {
+                discoveryPending = false
+                onError("nsd_discovery")
+            }
         }
     }
 
     fun stopDiscovery() {
+        discoveryPending = false
         val listener = discoveryListener ?: return
         discoveryListener = null
         runCatching { nsd.stopServiceDiscovery(listener) }
@@ -167,12 +254,14 @@ class PairingNsd(context: Context) {
 
     fun stop() {
         stopDiscovery()
+        registrationPending = false
         val listener = registrationListener ?: return
         registrationListener = null
-        if (registered) {
-            runCatching { nsd.unregisterService(listener) }
-                .onFailure { AppLog.w(AppLog.TAG_PAIRING, "NSD já estava removido") }
-        }
+        // Tenta remover mesmo se o callback de sucesso ainda não chegou: um
+        // registro pendente deixado para trás faz o próximo pareamento falhar
+        // com FAILURE_ALREADY_ACTIVE.
+        runCatching { nsd.unregisterService(listener) }
+            .onFailure { AppLog.w(AppLog.TAG_PAIRING, "NSD já estava removido") }
         registered = false
     }
 
@@ -185,6 +274,8 @@ class PairingNsd(context: Context) {
 
     companion object {
         const val SERVICE_TYPE = "_mystmusic._tcp."
+        private const val MAX_NSD_RETRIES = 3
+        private const val NSD_RETRY_MS = 450L
 
         /**
          * Alguns fabricantes devolvem o tipo sem o ponto final (ou com domínio

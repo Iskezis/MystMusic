@@ -15,6 +15,18 @@ data class Track(
 }
 
 /**
+ * URLs de telemetria do player. O YouTube usa esses endereços para registrar
+ * que o vídeo foi assistido; enviá-los com os cookies da conta faz a faixa
+ * tocada no MystMusic aparecer nos Recentes do YouTube Music.
+ */
+data class PlaybackTracking(
+    val playbackUrl: String? = null,
+    val watchtimeUrl: String? = null,
+    /** Cliente que emitiu as URLs; define User-Agent/Origin da telemetria. */
+    val clientName: String = "",
+)
+
+/**
  * URL de áudio resolvida e os headers que devem acompanhar a requisição.
  * Os headers incluem o User-Agent do cliente InnerTube que emitiu a URL; alguns
  * servidores do googlevideo rejeitam a URL quando o agente muda no download.
@@ -22,6 +34,7 @@ data class Track(
 data class StreamInfo(
     val url: String,
     val headers: Map<String, String> = emptyMap(),
+    val tracking: PlaybackTracking? = null,
 )
 
 /** Resumo de uma playlist da biblioteca do YouTube Music. */
@@ -64,5 +77,12 @@ interface MusicSource {
     fun streamUrlBlocking(videoId: String): String
     fun streamInfoBlocking(videoId: String): StreamInfo = StreamInfo(streamUrlBlocking(videoId))
     fun invalidateStream(videoId: String)
+
+    /**
+     * Registra no YouTube que a faixa foi ouvida. É opcional: sem cookies ou
+     * sem telemetria disponível o app continua funcionando normalmente.
+     */
+    suspend fun markWatched(videoId: String, playedMs: Long = 0L): Boolean = false
+
     suspend fun accountName(): String?
 }

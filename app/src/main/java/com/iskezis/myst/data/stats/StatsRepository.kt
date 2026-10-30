@@ -86,6 +86,11 @@ data class StatsData(
  */
 class StatsRepository(private val database: AppDatabase) {
 
+    /**
+     * Cria o evento de reprodução e devolve o id. O player chama isto assim que
+     * a faixa passa dos 10 s e depois atualiza a mesma linha com o tempo total
+     * ouvido; por isso o id é importante.
+     */
     suspend fun record(
         userId: Long,
         track: Track,
@@ -94,8 +99,8 @@ class StatsRepository(private val database: AppDatabase) {
         durationMs: Long,
         completed: Boolean,
         source: String = SOURCE_APP,
-    ) = withContext(Dispatchers.IO) {
-        if (userId <= 0L || track.videoId.isBlank() || playedMs <= 0L) return@withContext
+    ): Long = withContext(Dispatchers.IO) {
+        if (userId <= 0L || track.videoId.isBlank() || playedMs <= 0L) return@withContext 0L
         database.withTransaction {
             database.playEventDao().insert(
                 PlayEventEntity(
@@ -113,6 +118,22 @@ class StatsRepository(private val database: AppDatabase) {
                 ),
             )
         }
+    }
+
+    /** Atualiza o tempo realmente ouvido do evento criado aos 10 s. */
+    suspend fun updateProgress(
+        id: Long,
+        playedMs: Long,
+        durationMs: Long,
+        completed: Boolean,
+    ) = withContext(Dispatchers.IO) {
+        if (id <= 0L || playedMs <= 0L) return@withContext
+        database.playEventDao().updateProgress(
+            id = id,
+            playedMs = playedMs.coerceAtMost(MAX_EVENT_MS),
+            durationMs = durationMs.coerceIn(0L, MAX_EVENT_MS),
+            completed = completed,
+        )
     }
 
     suspend fun load(userId: Long, period: StatsPeriod): StatsData =

@@ -20,6 +20,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import okhttp3.Headers
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -240,7 +241,16 @@ class InnerTubeClient(
      * mesmo User-Agent antes de ser devolvida. Assim uma URL expirada/bloqueada
      * não chega ao ExoPlayer e o próximo cliente pode ser tentado.
      */
-    fun resolveStreamInfo(videoId: String): StreamInfo {
+    fun resolveStreamInfo(videoId: String): StreamInfo =
+        resolveStreamInternal(videoId, allowVisitorRefresh = true)
+
+    /**
+     * Uma sessão anônima pode receber `LOGIN_REQUIRED` (verificação de bot)
+     * quando o visitorData guardado expirou. Nesse caso renovamos o visitante
+     * uma vez e repetimos todos os clientes; a segunda tentativa costuma
+     * devolver as URLs diretas do VISIONOS/ANDROID_VR novamente.
+     */
+    private fun resolveStreamInternal(videoId: String, allowVisitorRefresh: Boolean): StreamInfo {
         val cached = urlCache[videoId]
         if (cached != null && cached.expiresAt > System.currentTimeMillis()) {
             AppLog.d(AppLog.TAG_STREAM, "Stream em cache: $videoId (${AppLog.urlForLog(cached.info.url)})")
@@ -250,27 +260,15 @@ class InnerTubeClient(
         val startedAt = System.currentTimeMillis()
         var lastError: Throwable? = null
         var sawLoginRequired = false
+        var networkFailure = false
         ensureVisitorData()
         val clients = if (!session.youtubeCookies.isNullOrBlank()) CLIENTS_WITH_COOKIES else CLIENTS_GUEST
         for (clientName in clients) {
             try {
                 AppLog.d(AppLog.TAG_STREAM, "Resolvendo $videoId com cliente $clientName")
-                val body = buildJsonObject {
-                    put("context", clientContext(clientName))
-                    put("videoId", videoId)
-                    put("contentCheckOk", true)
-                    put("racyCheckOk", true)
-                    if (clientNeedsPlaybackContext(clientName)) {
-                        put("playbackContext", buildJsonObject {
-                            put("contentPlaybackContext", buildJsonObject {
-                                put("html5Preference", "HTML5_PREF_WANTS")
-                            })
-                        })
-                    }
-                }
                 val response = post(
                     endpoint = "player",
-                    body = body,
+                    body = playerBody(clientName, videoId),
                     requestHeaders = headers(clientName),
                     baseUrl = if (usesMusicEndpoint(clientName)) BASE_URL else YOUTUBE_BASE_URL,
                 )
@@ -310,6 +308,7 @@ class InnerTubeClient(
                     )
                     continue
                 }
+                val tracking = playbackTracking(response, clientName)
                 var accepted: StreamInfo? = null
                 for (format in formats) {
                     val url = playableUrl(format) ?: continue
@@ -320,7 +319,7 @@ class InnerTubeClient(
                         AppLog.TAG_STREAM,
                         "Candidato $clientName/$videoId: itag=$itag mime=$mime bitrate=$bitrate",
                     )
-                    val candidate = StreamInfo(url, streamHeaders(clientName))
+                    val candidate = StreamInfo(url, streamHeaders(clientName), tracking)
                     if (validateAudioUrl(videoId, clientName, candidate)) {
                         accepted = candidate
                         break
@@ -345,11 +344,24 @@ class InnerTubeClient(
                 lastError = t
                 AppLog.failure(AppLog.TAG_STREAM, "Falha resolvendo $videoId com $clientName", t)
                 if (t is IOException || t.cause is IOException) {
+                    networkFailure = true
                     AppLog.w(AppLog.TAG_STREAM, "Erro de rede; interrompendo tentativas de cliente")
                     break
                 }
             }
         }
+
+        // O VISIONOS passou a responder "faça login para confirmar que você
+        // não é um bot" quando o visitante anônimo envelhece. Renovar só o
+        // visitorData (sem deslogar a conta) resolve a maioria dos casos.
+        if (allowVisitorRefresh && !networkFailure) {
+            AppLog.w(AppLog.TAG_STREAM, "Renovando visitorData e tentando $videoId de novo")
+            val refreshed = ensureVisitorData(forceRefresh = true)
+            if (!refreshed.isNullOrBlank()) {
+                return resolveStreamInternal(videoId, allowVisitorRefresh = false)
+            }
+        }
+
         val elapsed = System.currentTimeMillis() - startedAt
         AppLog.e(
             AppLog.TAG_STREAM,
@@ -366,6 +378,20 @@ class InnerTubeClient(
         throw MusicException("Não foi possível obter o áudio desta faixa.", lastError)
     }
 
+    private fun playerBody(clientName: String, videoId: String): JsonObject = buildJsonObject {
+        put("context", clientContext(clientName))
+        put("videoId", videoId)
+        put("contentCheckOk", true)
+        put("racyCheckOk", true)
+        if (clientNeedsPlaybackContext(clientName)) {
+            put("playbackContext", buildJsonObject {
+                put("contentPlaybackContext", buildJsonObject {
+                    put("html5Preference", "HTML5_PREF_WANTS")
+                })
+            })
+        }
+    }
+
     private fun countCipheredAudio(root: JsonObject): Int {
         val streaming = root["streamingData"] as? JsonObject ?: return 0
         var count = 0
@@ -378,6 +404,179 @@ class InnerTubeClient(
             if (!cipher.isNullOrBlank()) count++
         }
         return count
+    }
+
+    private fun playbackTracking(root: JsonObject, clientName: String): PlaybackTracking? {
+        val tracking = root["playbackTracking"] as? JsonObject ?: return null
+        fun baseUrl(key: String): String? =
+            ((tracking[key] as? JsonObject)?.get("baseUrl") as? JsonPrimitive)
+                ?.contentOrNull
+                ?.takeIf { it.startsWith("http") }
+        val playback = baseUrl("videostatsPlaybackUrl")
+        val watchtime = baseUrl("videostatsWatchtimeUrl")
+        if (playback.isNullOrBlank() && watchtime.isNullOrBlank()) return null
+        return PlaybackTracking(
+            playbackUrl = playback,
+            watchtimeUrl = watchtime,
+            clientName = clientName,
+        )
+    }
+
+    /**
+     * Marca a faixa como assistida no YouTube. O endpoint de telemetria do
+     * player é o mesmo usado pelo site quando o vídeo toca; com os cookies da
+     * conta ele alimenta o histórico/Recentes do YouTube Music. Falhas aqui
+     * são silenciosas: a reprodução local nunca depende disso.
+     */
+    override suspend fun markWatched(videoId: String, playedMs: Long): Boolean =
+        withContext(Dispatchers.IO) {
+            if (session.youtubeCookies.isNullOrBlank()) return@withContext false
+            // Prefere a telemetria emitida pelo WEB_REMIX (cliente da conta)
+            // em vez da URL anônima do VISIONOS usada para baixar o áudio. O
+            // WEB_REMIX carrega os parâmetros de histórico do YouTube Music.
+            val tracking = fetchPlaybackTracking(videoId)
+                ?: urlCache[videoId]?.info?.tracking
+            if (tracking == null) {
+                AppLog.w(AppLog.TAG_STREAM, "Sem telemetria do YouTube para marcar $videoId")
+                return@withContext false
+            }
+            sendPlaybackStats(videoId, tracking, playedMs)
+        }
+
+    private fun fetchPlaybackTracking(videoId: String): PlaybackTracking? {
+        ensureVisitorData()
+        // WEB_REMIX é o cliente da conta; VISIONOS/ANDROID_VR entram como
+        // reserva quando o vídeo não está disponível no catálogo de música.
+        val clients = listOf(WEB_REMIX, VISIONOS, ANDROID_VR, IOS)
+        for (clientName in clients) {
+            try {
+                val response = post(
+                    endpoint = "player",
+                    body = playerBody(clientName, videoId),
+                    requestHeaders = headers(clientName),
+                    baseUrl = if (usesMusicEndpoint(clientName)) BASE_URL else YOUTUBE_BASE_URL,
+                )
+                val status = (response["playabilityStatus"] as? JsonObject)
+                    ?.get("status")
+                    ?.let { (it as? JsonPrimitive)?.contentOrNull }
+                if (status != null && status != "OK" && status != "LIVE_STREAM_OFFLINE") {
+                    continue
+                }
+                playbackTracking(response, clientName)?.let { return it }
+            } catch (t: Throwable) {
+                AppLog.w(
+                    AppLog.TAG_STREAM,
+                    "Telemetria indisponível via $clientName para $videoId: ${AppLog.describe(t)}",
+                )
+            }
+        }
+        return null
+    }
+
+    private fun sendPlaybackStats(
+        videoId: String,
+        tracking: PlaybackTracking,
+        playedMs: Long,
+    ): Boolean {
+        val lengthSeconds = tracking.playbackUrl?.toHttpUrlOrNull()
+            ?.queryParameter("len")
+            ?.toDoubleOrNull()
+            ?.toLong()
+            ?.takeIf { it > 0L }
+            ?: (playedMs / 1000L).coerceAtLeast(1L)
+        val cpn = randomCpn()
+        val headers = statsHeaders(tracking.clientName)
+        val playedSeconds = (playedMs / 1000L).coerceIn(0L, lengthSeconds)
+        var success = false
+        listOf(
+            tracking.playbackUrl to false,
+            tracking.watchtimeUrl to true,
+        ).forEach { (url, watchtime) ->
+            if (url.isNullOrBlank()) return@forEach
+            val finalUrl = buildStatsUrl(
+                base = url,
+                watchtime = watchtime,
+                cpn = cpn,
+                lengthSeconds = lengthSeconds,
+                playedSeconds = playedSeconds,
+            )
+            try {
+                val request = Request.Builder()
+                    .url(finalUrl)
+                    .headers(headers)
+                    .get()
+                    .build()
+                http.newCall(request).execute().use { response ->
+                    AppLog.d(
+                        AppLog.TAG_STREAM,
+                        "Telemetria YouTube $videoId " +
+                            "(${if (watchtime) "watchtime" else "playback"}): HTTP ${response.code}",
+                    )
+                    if (response.isSuccessful) success = true
+                }
+            } catch (t: Throwable) {
+                AppLog.w(
+                    AppLog.TAG_STREAM,
+                    "Falha enviando telemetria do YouTube para $videoId: ${AppLog.describe(t)}",
+                )
+            }
+        }
+        if (success) {
+            AppLog.i(AppLog.TAG_STREAM, "YouTube marcou $videoId como ouvido no histórico")
+        }
+        return success
+    }
+
+    private fun buildStatsUrl(
+        base: String,
+        watchtime: Boolean,
+        cpn: String,
+        lengthSeconds: Long,
+        playedSeconds: Long,
+    ): String {
+        val parsed = base.toHttpUrlOrNull() ?: return base
+        val watched = playedSeconds.coerceIn(0L, lengthSeconds.coerceAtLeast(0L)).toString()
+        val builder = parsed.newBuilder()
+            .setQueryParameter("ver", "2")
+            .setQueryParameter("cpn", cpn)
+            .setQueryParameter("cmt", watched)
+            .setQueryParameter("len", lengthSeconds.toString())
+            .setQueryParameter("el", "detailpage")
+        if (watchtime) {
+            builder.setQueryParameter("st", "0")
+            builder.setQueryParameter("et", watched)
+        }
+        return builder.build().toString()
+    }
+
+    private fun statsHeaders(clientName: String): Headers {
+        val builder = headers(clientName).newBuilder()
+        val cookies = session.youtubeCookies?.takeIf { it.isNotBlank() }
+        if (cookies != null) {
+            // O player pode ter sido resolvido por um cliente anônimo; a
+            // telemetria precisa dos cookies para atribuir a reprodução à conta.
+            builder.set("Cookie", cookies)
+            builder.set("X-Goog-AuthUser", "0")
+        }
+        val sapisid = session.youtubeSapisid?.takeIf { it.isNotBlank() }
+        if (sapisid != null) {
+            val origin = if (usesMusicEndpoint(clientName)) {
+                "https://music.youtube.com"
+            } else {
+                "https://www.youtube.com"
+            }
+            val timestamp = System.currentTimeMillis() / 1000
+            val hash = sha1Hex("$timestamp $sapisid $origin")
+            builder.set("Authorization", "SAPISIDHASH ${timestamp}_$hash")
+        }
+        return builder.build()
+    }
+
+    private fun randomCpn(): String {
+        val alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+        return buildString(16) {
+            repeat(16) { append(alphabet[kotlin.random.Random.nextInt(alphabet.length)]) }
+        }
     }
 
     /**
@@ -905,33 +1104,52 @@ class InnerTubeClient(
      * um (primeiro play, conta recém-vinculada ou visitor limpo no login).
      */
     @Synchronized
-    private fun ensureVisitorData(): String? {
-        session.youtubeVisitorData?.takeIf { it.isNotBlank() }?.let { return it }
-        return try {
-            val request = Request.Builder()
-                .url("https://music.youtube.com/")
-                .header("User-Agent", userAgent(VISIONOS))
-                .header("Accept-Language", "pt-BR,pt;q=0.9,en;q=0.8")
-                .build()
-            http.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    AppLog.w(AppLog.TAG_STREAM, "Falha obtendo visitor: HTTP ${response.code}")
-                    return null
-                }
-                val html = response.body?.string().orEmpty()
-                val visitor = VISITOR_DATA_REGEX.find(html)?.groupValues?.getOrNull(1)
-                if (visitor.isNullOrBlank()) {
-                    AppLog.w(AppLog.TAG_STREAM, "Home do YouTube Music sem visitorData")
-                    return null
-                }
-                session.youtubeVisitorData = visitor
-                AppLog.i(AppLog.TAG_STREAM, "VisitorData renovado (${visitor.length} caracteres)")
-                visitor
-            }
-        } catch (t: Throwable) {
-            AppLog.failure(AppLog.TAG_STREAM, "Falha renovando visitorData", t)
-            null
+    private fun ensureVisitorData(forceRefresh: Boolean = false): String? {
+        if (!forceRefresh) {
+            session.youtubeVisitorData?.takeIf { it.isNotBlank() }?.let { return it }
+        } else {
+            session.youtubeVisitorData = null
         }
+        // A home de música é a fonte principal. Algumas redes/proxies entregam
+        // uma página sem o JSON do visitante; nesse caso a home do YouTube
+        // serve de reserva para não deixar o player sem visitante.
+        val sources = listOf(
+            "https://music.youtube.com/" to userAgent(VISIONOS),
+            "https://www.youtube.com/" to userAgent(WEB_REMIX),
+        )
+        for ((url, agent) in sources) {
+            try {
+                val request = Request.Builder()
+                    .url(url)
+                    .header("User-Agent", agent)
+                    .header("Accept-Language", "pt-BR,pt;q=0.9,en;q=0.8")
+                    .build()
+                http.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        AppLog.w(
+                            AppLog.TAG_STREAM,
+                            "Falha obtendo visitor em $url: HTTP ${response.code}",
+                        )
+                        return@use
+                    }
+                    val html = response.body?.string().orEmpty()
+                    val visitor = VISITOR_DATA_REGEX.find(html)?.groupValues?.getOrNull(1)
+                    if (visitor.isNullOrBlank()) {
+                        AppLog.w(AppLog.TAG_STREAM, "Página $url sem visitorData")
+                        return@use
+                    }
+                    session.youtubeVisitorData = visitor
+                    AppLog.i(
+                        AppLog.TAG_STREAM,
+                        "VisitorData renovado em $url (${visitor.length} caracteres)",
+                    )
+                    return visitor
+                }
+            } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_STREAM, "Falha renovando visitorData em $url", t)
+            }
+        }
+        return null
     }
 
     private fun headers(clientName: String): Headers {

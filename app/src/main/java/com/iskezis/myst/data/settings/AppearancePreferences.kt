@@ -85,10 +85,13 @@ class AppearancePreferences(context: Context) {
      * Activities abertas.
      */
     fun apply(settings: AppearanceSettings) {
+        // `commit` síncrono: a TV abre a tela principal logo depois do
+        // pareamento e não pode nascer com o tema anterior por uma gravação
+        // assíncrona ainda pendente. Chamado fora da thread principal.
         prefs.edit()
             .putString(KEY_THEME_MODE, settings.themeMode.storageValue)
             .putBoolean(KEY_AMOLED, settings.amoled)
-            .apply()
+            .commit()
     }
 
     companion object {

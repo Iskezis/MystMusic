@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0-dev.12 — 30/10/2026
+
+Correções de reprodução, estatísticas, conta e pareamento.
+
+### Corrigido
+- **Resolução de áudio:** quando o YouTube responde `LOGIN_REQUIRED`/verificação de bot com o `visitorData` vencido, o app renova o visitante uma vez e repete a resolução nos clientes; a home do YouTube serve de reserva quando a do YouTube Music não entrega o visitante.
+- **Recentes do YouTube Music:** depois dos 10 s ouvidos, o app envia a telemetria de reprodução (`videostatsPlaybackUrl`/`videostatsWatchtimeUrl`) com os cookies e o `SAPISIDHASH` da conta, usando as URLs emitidas pelo `WEB_REMIX`. Assim a faixa tocada no MystMusic também aparece no histórico do YouTube Music.
+- **Estatísticas aos 10 s:** o evento de reprodução é criado assim que a faixa passa dos 10 s e a mesma linha é atualizada ao pular/finalizar. Trocar de música depois do limiar mantém o tempo exato ouvido e não cria uma segunda reprodução. Retratos da TV e importações do `Mystaccount.json` atualizam o maior tempo em vez de descartar a linha já existente.
+- **`Mystaccount.json` v4:** a conexão do Discord (token e nome) agora é salva no arquivo e restaurada na importação, reconectando o Discord na hora. A UI avisa que o arquivo também é uma credencial do Discord; arquivos v1–v3 continuam aceitos.
+- **Discord em tempo real:** conectar/desconectar ou atualizar o nome do Discord no celular regrava o `Mystaccount.json` e envia a conexão à TV imediatamente, sem esperar o ciclo periódico.
+- **TV → celular:** a TV envia o retrato de histórico, estatísticas, playlists, afinidades e lápides ao endpoint autenticado `/push` do celular; o merge acontece antes da resposta e a TV só apaga os dados temporários depois do ack. A desconexão leva o último retrato no próprio `/disconnect`, então o celular grava antes de limpar a sessão. Remoções de faixas de uma playlist também viajam por lápide (`track:playlist:videoId`), inclusive com aviso de readição para não ressuscitar a faixa.
+- **Desconexão:** o celular remove o pareamento local mesmo quando a TV está desligada/fora da rede e pode parear de novo na hora; a TV tem o botão **Desconectar do celular** na tela inicial e limpa a geração antiga sem apagar um pareamento novo.
+- **AMOLED e NSD:** o overlay AMOLED existe também na configuração clara e é reaplicado a cada sync, inclusive quando as preferências já eram iguais; o NSD tenta de novo após `FAILURE_ALREADY_ACTIVE` e desregistra registros pendentes antes de um novo pareamento.
+
 ## 0.2.0-dev.11 — 29/10/2026
 
 Correções de sincronização, desconexão e Estatísticas.

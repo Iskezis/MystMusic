@@ -22,9 +22,11 @@ import com.iskezis.myst.MystApp
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -43,6 +45,7 @@ class PlaybackService : MediaSessionService() {
     private var currentTrack: Track? = null
     private var currentPosition = 0L
     private var recordedCurrent = false
+    private var watchedReported = false
     private var retriedCurrent = false
 
     // Sessão de estatística: começa quando a faixa realmente entra em
@@ -57,6 +60,8 @@ class PlaybackService : MediaSessionService() {
     private var eventLastTickAt = 0L
     private var eventPausedAt = 0L
     private var eventActive = false
+    /** Inserção disparada aos 10 s; o flush aguarda e atualiza a mesma linha. */
+    private var eventRecordTask: Deferred<Long>? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -228,6 +233,7 @@ class PlaybackService : MediaSessionService() {
         }
         currentPosition = 0L
         recordedCurrent = false
+        watchedReported = false
         retriedCurrent = false
         if (currentTrack == null) {
             eventTrack = null
@@ -274,6 +280,7 @@ class PlaybackService : MediaSessionService() {
         eventLastTickAt = System.currentTimeMillis()
         eventPausedAt = 0L
         eventActive = eventUserId != null
+        eventRecordTask = null
     }
 
     private fun updateEvent(app: MystApp, position: Long) {
@@ -294,6 +301,12 @@ class PlaybackService : MediaSessionService() {
             eventLastPosition = position
             eventLastTickAt = now
             eventPausedAt = 0L
+            // Conta a reprodução assim que ela passa dos 10 s. A linha é
+            // atualizada no flush com o tempo total, então pular a faixa
+            // depois do limiar mantém exatamente o trecho escutado.
+            if (eventPlayedMs >= MIN_EVENT_MS && eventRecordTask == null) {
+                eventRecordTask = recordPartialEvent(app, track, userId)
+            }
         } else {
             eventLastPosition = position
             eventLastTickAt = now
@@ -307,6 +320,24 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
+    private fun recordPartialEvent(app: MystApp, track: Track, userId: Long): Deferred<Long> {
+        val startedAt = eventStartedAt
+        val playedMs = eventPlayedMs
+        val duration = player.duration.takeIf { it != C.TIME_UNSET && it > 0 }
+            ?: track.durationMs
+        return app.backgroundScope.async {
+            app.stats.record(
+                userId = userId,
+                track = track,
+                startedAt = startedAt,
+                playedMs = playedMs,
+                durationMs = duration,
+                completed = false,
+                source = if (BuildConfig.FLAVOR == "tv") "tv" else "app",
+            )
+        }
+    }
+
     private fun flushEvent(app: MystApp, completed: Boolean) {
         val track = eventTrack ?: return
         val userId = eventUserId ?: return
@@ -316,6 +347,8 @@ class PlaybackService : MediaSessionService() {
             ?: track.durationMs
         val position = player.currentPosition.coerceAtLeast(0L)
         val completedNow = completed || (duration > 0L && position >= duration - 2_000L)
+        val partial = eventRecordTask
+        eventRecordTask = null
         eventPlayedMs = 0L
         eventStartedAt = 0L
         eventActive = false
@@ -326,16 +359,28 @@ class PlaybackService : MediaSessionService() {
                 "completa=$completedNow",
         )
         app.backgroundScope.launch {
+            // Se a linha dos 10 s ainda está sendo inserida, espera para
+            // atualizar a mesma reprodução em vez de criar uma duplicata.
+            val existingId = runCatching { partial?.await() }.getOrNull() ?: 0L
             runCatching {
-                app.stats.record(
-                    userId = userId,
-                    track = track,
-                    startedAt = startedAt,
-                    playedMs = playedMs,
-                    durationMs = duration,
-                    completed = completedNow,
-                    source = if (BuildConfig.FLAVOR == "tv") "tv" else "app",
-                )
+                if (existingId > 0L) {
+                    app.stats.updateProgress(
+                        id = existingId,
+                        playedMs = playedMs,
+                        durationMs = duration,
+                        completed = completedNow,
+                    )
+                } else {
+                    app.stats.record(
+                        userId = userId,
+                        track = track,
+                        startedAt = startedAt,
+                        playedMs = playedMs,
+                        durationMs = duration,
+                        completed = completedNow,
+                        source = if (BuildConfig.FLAVOR == "tv") "tv" else "app",
+                    )
+                }
             }.onFailure {
                 AppLog.failure(AppLog.TAG_DB, "Falha ao registrar evento de reprodução", it)
             }
@@ -344,6 +389,10 @@ class PlaybackService : MediaSessionService() {
 
     private fun record(app: MystApp, track: Track, position: Long, completed: Boolean) {
         recordedCurrent = true
+        // O mesmo limiar do histórico local marca a faixa no YouTube. Assim
+        // os Recentes da conta do YouTube Music também recebem o que foi
+        // ouvido no MystMusic, inclusive depois de reinstalar o app.
+        reportWatched(app, track, position)
         val userId = app.session.session?.userId ?: return
         AppLog.d(
             AppLog.TAG_PLAYER,
@@ -355,6 +404,21 @@ class PlaybackService : MediaSessionService() {
                 app.recommendations.recordPlay(userId, track, position, completed)
             }.onFailure {
                 AppLog.failure(AppLog.TAG_DB, "Falha ao registrar histórico", it)
+            }
+        }
+    }
+
+    private fun reportWatched(app: MystApp, track: Track, position: Long) {
+        if (watchedReported || position < MIN_PLAY_MS) return
+        watchedReported = true
+        app.backgroundScope.launch {
+            runCatching {
+                app.youtube.markWatched(track.videoId, position)
+            }.onFailure {
+                AppLog.w(
+                    AppLog.TAG_TUBE,
+                    "Não foi possível marcar ${track.videoId} no YouTube: ${AppLog.describe(it)}",
+                )
             }
         }
     }

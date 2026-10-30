@@ -164,13 +164,39 @@ class PairedTvServer(private val app: MystApp) : Closeable {
             }.getOrNull() ?: return unauthorized()
             if (action != DISCONNECT_ACTION) return badRequest()
             AppLog.i(AppLog.TAG_PAIRING, "Celular pediu para desfazer o pareamento da TV")
+            // O último retrato vai na própria resposta. Assim o celular grava
+            // antes de limpar a sessão e não há um `/push` concorrente que
+            // pudesse ficar esperando o mutex do celular enquanto ele espera
+            // esta resposta.
+            val userId = session.mystUserId
+            val snapshot = if (userId > 0L) {
+                runCatching { PairingSync.exportTvChanges(app, userId) }
+                    .getOrElse {
+                        AppLog.failure(
+                            AppLog.TAG_PAIRING,
+                            "Falha montando o retrato final da TV",
+                            it,
+                        )
+                        PairSnapshot()
+                    }
+            } else {
+                PairSnapshot()
+            }
+            val response = PairDisconnectResponse(ok = true, snapshot = snapshot)
+            val encrypted = PairingCrypto.encryptSecret(
+                secret,
+                PairingSync.json.encodeToString(PairDisconnectResponse.serializer(), response),
+            )
             scope.launch {
                 // Deixa a resposta HTTP sair antes de encerrar o servidor e a
                 // reprodução; a Activity volta para a tela do código.
-                delay(250)
+                delay(350)
                 app.pairedSync.onTvUnpaired()
             }
-            return LocalPairingServer.HttpResult(200, json(PairAck.serializer(), PairAck(true)))
+            return LocalPairingServer.HttpResult(
+                200,
+                json(PairSecureEnvelope.serializer(), PairSecureEnvelope(pairId, encrypted)),
+            )
         }
 
     private fun decodeEnvelope(body: String): PairSecureEnvelope? = runCatching {

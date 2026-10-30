@@ -40,6 +40,15 @@ class YouTubeRepository(private val source: MusicSource) {
         return source.accountHistory(limit)
     }
 
+    /**
+     * Envia a telemetria de reprodução para o YouTube. Best-effort: se a conta
+     * não estiver conectada ou o endpoint recusar, o áudio continua normal.
+     */
+    suspend fun markWatched(videoId: String, playedMs: Long = 0L): Boolean {
+        if (videoId.isBlank()) return false
+        return source.markWatched(videoId, playedMs)
+    }
+
     suspend fun personalizedHome(limit: Int = 40): List<Track> {
         AppLog.d(AppLog.TAG_TUBE, "Home personalizada solicitada limite=$limit")
         return cached("personalized-home:$limit") { source.personalizedHome(limit) }

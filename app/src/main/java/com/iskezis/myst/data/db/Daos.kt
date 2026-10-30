@@ -167,6 +167,9 @@ interface PairTombstoneDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(tombstone: PairTombstoneEntity)
 
+    @Query("DELETE FROM pair_tombstones WHERE userId = :userId AND key = :key")
+    suspend fun delete(userId: Long, key: String)
+
     @Query("DELETE FROM pair_tombstones WHERE userId = :userId")
     suspend fun clear(userId: Long)
 }
@@ -284,6 +287,33 @@ interface YouTubeLibraryDao {
 interface PlayEventDao {
     @Insert
     suspend fun insert(event: PlayEventEntity): Long
+
+    /**
+     * Atualiza o trecho ouvido de um evento já criado aos 10 s. A linha é a
+     * mesma durante toda a reprodução, então trocar de faixa não cria uma
+     * segunda reprodução nem perde o tempo escutado depois do limiar.
+     */
+    @Query(
+        "UPDATE play_events SET playedMs = :playedMs, durationMs = :durationMs, " +
+            "completed = :completed WHERE id = :id",
+    )
+    suspend fun updateProgress(
+        id: Long,
+        playedMs: Long,
+        durationMs: Long,
+        completed: Boolean,
+    ): Int
+
+    /**
+     * Localiza a reprodução que já existe ao mesclar um retrato da TV ou um
+     * backup. O tempo ouvido pode ter aumentado na mesma linha (10 s → fim da
+     * faixa), então a mesclagem precisa atualizá-la em vez de descartá-la.
+     */
+    @Query(
+        "SELECT * FROM play_events WHERE userId = :userId AND videoId = :videoId " +
+            "AND startedAt = :startedAt LIMIT 1",
+    )
+    suspend fun find(userId: Long, videoId: String, startedAt: Long): PlayEventEntity?
 
     @Query(
         "SELECT * FROM play_events WHERE userId = :userId " +

@@ -79,6 +79,7 @@ class PairedPhoneServer(
         when (path) {
             "/hello" -> hello()
             "/notify" -> notify(body)
+            "/push" -> push(body)
             else -> LocalPairingServer.HttpResult(
                 404,
                 json(PairAck.serializer(), PairAck(false, "not_found")),
@@ -125,6 +126,33 @@ class PairedPhoneServer(
         return LocalPairingServer.HttpResult(200, json(PairAck.serializer(), PairAck(true)))
     }
 
+    /**
+     * Recebe o retrato completo que a TV envia após uma mudança local. O merge
+     * acontece antes da resposta: a TV só limpa o histórico/estatísticas dela
+     * quando o celular confirma que gravou.
+     */
+    private suspend fun push(body: String): LocalPairingServer.HttpResult {
+        val session = app.session
+        val pairId = session.tvPairId ?: return unauthorized()
+        val secret = session.tvPairSecret ?: return unauthorized()
+        val envelope = runCatching {
+            PairingSync.json.decodeFromString(PairSecureEnvelope.serializer(), body)
+        }.getOrNull() ?: return badRequest()
+        if (envelope.pairId != pairId) return unauthorized()
+        val plaintext = runCatching {
+            PairingCrypto.decryptSecret(secret, envelope.payload)
+        }.getOrNull() ?: return unauthorized()
+        val snapshot = runCatching {
+            PairingSync.json.decodeFromString(PairSnapshot.serializer(), plaintext)
+        }.getOrNull() ?: return badRequest()
+        val applied = app.pairedSync.acceptTvSnapshot(snapshot)
+        return if (applied) {
+            LocalPairingServer.HttpResult(200, json(PairAck.serializer(), PairAck(true)))
+        } else {
+            LocalPairingServer.HttpResult(500, json(PairAck.serializer(), PairAck(false, "merge")))
+        }
+    }
+
     private fun unauthorized(): LocalPairingServer.HttpResult = LocalPairingServer.HttpResult(
         403,
         json(PairAck.serializer(), PairAck(false, "unauthorized")),
@@ -151,7 +179,7 @@ class PairedPhoneServer(
     }
 
     private companion object {
-        const val MAX_BODY_BYTES = 32 * 1024
+        const val MAX_BODY_BYTES = 32 * 1024 * 1024
         const val NOTIFY_ACTION = "sync"
         const val UNPAIR_ACTION = "unpair"
     }

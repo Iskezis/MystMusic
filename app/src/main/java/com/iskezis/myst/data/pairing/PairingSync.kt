@@ -213,6 +213,93 @@ object PairingSync {
         }
 
     /**
+     * Retrato TV → celular. A TV não altera a biblioteca do YouTube (ela é
+     * somente leitura) nem as capas locais, então o envio leva apenas o que
+     * pode ter mudado: playlists, histórico, afinidades, estatísticas e
+     * lápides. Sem capas/YouTube o payload fica pequeno o bastante para ser
+     * enviado após cada mudança, sem esperar o ciclo de 30 s.
+     */
+    suspend fun exportTvChanges(app: MystApp, userId: Long): PairSnapshot =
+        withContext(Dispatchers.IO) {
+            if (userId <= 0L) return@withContext PairSnapshot()
+            val database = app.database
+            var trackBudget = MAX_TRACKS_TOTAL
+            val playlists = database.playlistDao().playlists(userId).map { playlist ->
+                val allTracks = database.playlistDao().tracks(playlist.id)
+                val exported = if (allTracks.size <= trackBudget) {
+                    allTracks
+                } else {
+                    allTracks.take(trackBudget)
+                }
+                trackBudget = (trackBudget - exported.size).coerceAtLeast(0)
+                PairPlaylist(
+                    name = playlist.name,
+                    // A capa é do celular; a TV não a altera e não precisa
+                    // devolver o base64 em cada play.
+                    coverUri = null,
+                    coverBase64 = null,
+                    createdAt = playlist.createdAt,
+                    tracks = exported.map { track ->
+                        PairTrack(
+                            videoId = track.videoId,
+                            title = track.title,
+                            artist = track.artist,
+                            album = track.album,
+                            thumbnailUrl = track.thumbnailUrl?.take(MAX_URL_LENGTH),
+                            durationMs = track.durationMs,
+                        )
+                    },
+                )
+            }
+            val history = database.historyDao().recent(userId, MAX_HISTORY).map { item ->
+                PairHistory(
+                    videoId = item.videoId,
+                    title = item.title,
+                    artist = item.artist,
+                    album = item.album,
+                    thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
+                    durationMs = item.durationMs,
+                    playedMs = item.playedMs,
+                    playedAt = item.playedAt,
+                    completed = item.completed,
+                )
+            }
+            val affinities = database.affinityDao().top(userId, MAX_AFFINITIES).map { item ->
+                PairAffinity(
+                    artist = item.artist,
+                    score = item.score,
+                    updatedAt = item.updatedAt,
+                )
+            }
+            val tombstones = database.pairTombstoneDao().all(userId).take(MAX_TOMBSTONES).map {
+                PairTombstone(key = it.key, deletedAt = it.deletedAt)
+            }
+            val playEvents = database.playEventDao().recent(userId, MAX_PLAY_EVENTS).map { item ->
+                PairPlayEvent(
+                    videoId = item.videoId,
+                    title = item.title,
+                    artist = item.artist,
+                    album = item.album,
+                    thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
+                    startedAt = item.startedAt,
+                    playedMs = item.playedMs,
+                    durationMs = item.durationMs,
+                    completed = item.completed,
+                    source = item.source.take(MAX_SOURCE_LENGTH),
+                )
+            }
+            PairSnapshot(
+                generatedAt = System.currentTimeMillis(),
+                playlists = playlists,
+                tombstones = tombstones,
+                history = history,
+                affinities = affinities,
+                playEvents = playEvents,
+                youtube = PairYouTube(),
+            )
+        }
+
+    /**
      * Exporta a biblioteca do YouTube Music (playlists, faixas e histórico).
      * Sem isso a seção Recentes da TV ficava só com o histórico local da conta
      * Myst, enquanto no celular a lista combina as duas fontes.
@@ -292,6 +379,11 @@ object PairingSync {
         val youtubeName = account.youtubeDisplayName
             ?.takeIf { it.isNotBlank() }
             ?: "YouTube"
+
+        // Um novo pareamento invalida qualquer limpeza atrasada do anterior.
+        // Sem isso, o clearAllTables antigo podia apagar os dados recém-recebidos
+        // e o resetAppearance podia desligar o AMOLED novo.
+        app.pairedSync.prepareTvPairing()
 
         val dao = app.database.userDao()
         val username = account.username.trim().ifBlank {
@@ -398,18 +490,20 @@ object PairingSync {
             themeMode = ThemeMode.DARK
         }
         val settings = AppearanceSettings(themeMode = themeMode, amoled = amoled)
-        if (settings == current) return
-        app.appearance.apply(settings)
-        AppLog.i(
-            AppLog.TAG_PAIRING,
-            "Aparência do celular aplicada na TV: " +
-                "modo=${settings.themeMode.storageValue} amoled=${settings.amoled} " +
-                "escuroEfetivo=${effectiveDark ?: "desconhecido"}",
-        )
+        if (settings != current) {
+            app.appearance.apply(settings)
+            AppLog.i(
+                AppLog.TAG_PAIRING,
+                "Aparência do celular aplicada na TV: " +
+                    "modo=${settings.themeMode.storageValue} amoled=${settings.amoled} " +
+                    "escuroEfetivo=${effectiveDark ?: "desconhecido"}",
+            )
+        }
         if (immediate) {
-            // AppCompat recria as Activities abertas na thread principal. A
-            // próxima sincronização não repete porque as preferências já são
-            // iguais; isso evita recriações em loop.
+            // AppCompat recria as Activities abertas na thread principal. Sempre
+            // reaplica, mesmo quando as preferências já eram iguais: se uma
+            // recriação anterior falhou, o AMOLED volta sem exigir um novo
+            // pareamento. `setDefaultNightMode` é idempotente.
             app.backgroundScope.launch(Dispatchers.Main) {
                 runCatching { app.applyAppearanceNightMode() }.onFailure {
                     AppLog.failure(AppLog.TAG_PAIRING, "Falha reaplicando tema da TV", it)
@@ -462,10 +556,32 @@ object PairingSync {
                 val playlistDao = database.playlistDao()
                 val tombstoneDao = database.pairTombstoneDao()
                 val tombstoneMap = tombstoneDao.all(userId).associateBy { it.key }.toMutableMap()
+                val incomingTrackTombstones = snapshot.tombstones.take(MAX_TOMBSTONES)
+                    .map { it.key.trim() }
+                    .filterTo(mutableSetOf()) {
+                        it.startsWith(PlaylistRepository.TRACK_TOMBSTONE_PREFIX)
+                    }
 
                 snapshot.tombstones.take(MAX_TOMBSTONES).forEach { incoming ->
-                    val key = PlaylistRepository.normalizePlaylistName(incoming.key)
+                    val rawKey = incoming.key.trim()
+                    if (rawKey.isBlank()) return@forEach
+                    // Nomes de playlist são normalizados, mas o videoId de uma
+                    // lápide de faixa diferencia maiúsculas de minúsculas.
+                    val isTrack = rawKey.startsWith(PlaylistRepository.TRACK_TOMBSTONE_PREFIX)
+                    val key = if (isTrack) {
+                        rawKey
+                    } else {
+                        PlaylistRepository.normalizePlaylistName(rawKey)
+                    }
                     if (key.isBlank()) return@forEach
+                    if (isTrack && incoming.deletedAt <= 0L) {
+                        // A faixa foi readicionada: o aviso apaga a lápide
+                        // antiga no outro aparelho e libera a faixa no merge.
+                        tombstoneDao.delete(userId, key)
+                        tombstoneMap.remove(key)
+                        incomingTrackTombstones.remove(key)
+                        return@forEach
+                    }
                     val at = incoming.deletedAt.coerceAtLeast(1L)
                     val previous = tombstoneMap[key]
                     if (previous == null || at > previous.deletedAt) {
@@ -478,6 +594,7 @@ object PairingSync {
                         )
                         tombstoneMap[key] = PairTombstoneEntity(userId, key, at)
                     }
+                    if (isTrack) return@forEach
                     val local = playlistDao.playlists(userId)
                         .firstOrNull { PlaylistRepository.normalizePlaylistName(it.name) == key }
                     if (local != null && local.createdAt <= at) {
@@ -524,10 +641,27 @@ object PairingSync {
                     }
                     val knownTracks = playlistDao.tracks(playlistId)
                         .mapTo(mutableSetOf()) { it.videoId }
+                    val trackPrefix = "${PlaylistRepository.TRACK_TOMBSTONE_PREFIX}$key:"
+                    val incomingRemovals = incomingTrackTombstones
+                        .filterTo(mutableSetOf()) { it.startsWith(trackPrefix) }
                     var position = playlistDao.maxPosition(playlistId) + 1
                     incoming.tracks.take(MAX_TRACKS_PER_PLAYLIST).forEach { track ->
                         val videoId = track.videoId.trim().take(MAX_ID_LENGTH)
-                        if (videoId.isBlank() || !knownTracks.add(videoId)) return@forEach
+                        if (videoId.isBlank()) return@forEach
+                        val tombstoneKey = PlaylistRepository.trackTombstoneKey(name, videoId)
+                        val trackTombstone = tombstoneKey?.let { tombstoneMap[it] }
+                        if (tombstoneKey != null && trackTombstone != null &&
+                            trackTombstone.deletedAt >= createdAt
+                        ) {
+                            // A remoção ainda vale. Só uma lápide de readição
+                            // (`deletedAt = 0`) chega aqui sem bloquear, e ela
+                            // já foi removida no primeiro laço.
+                            if (tombstoneKey in incomingRemovals) {
+                                playlistDao.deleteTrack(playlistId, videoId)
+                            }
+                            return@forEach
+                        }
+                        if (!knownTracks.add(videoId)) return@forEach
                         val inserted = playlistDao.insertTrack(
                             PlaylistTrackEntity(
                                 userId = userId,
@@ -544,6 +678,23 @@ object PairingSync {
                         if (inserted != -1L) {
                             position++
                             importedTracks++
+                        }
+                    }
+                    if (incomingRemovals.isNotEmpty()) {
+                        // Faixas que o outro aparelho removeu da playlist.
+                        // A lápide fica guardada para impedir que um retrato
+                        // antigo (ou um sync atrasado) ressuscite a faixa.
+                        playlistDao.tracks(playlistId).forEach { local ->
+                            val tombstoneKey = PlaylistRepository.trackTombstoneKey(
+                                name,
+                                local.videoId,
+                            ) ?: return@forEach
+                            val trackTombstone = tombstoneMap[tombstoneKey] ?: return@forEach
+                            if (tombstoneKey in incomingRemovals &&
+                                trackTombstone.deletedAt >= createdAt
+                            ) {
+                                playlistDao.deleteTrack(playlistId, local.videoId)
+                            }
                         }
                     }
                 }
@@ -595,7 +746,27 @@ object PairingSync {
                     val videoId = item.videoId.trim().take(MAX_ID_LENGTH)
                     if (videoId.isBlank() || item.playedMs <= 0L) return@forEach
                     val startedAt = item.startedAt.takeIf { it in 1..now } ?: now
-                    if (!playEventKeys.add("$videoId|$startedAt")) return@forEach
+                    val incomingPlayedMs = item.playedMs.coerceAtMost(MAX_PLAYED_MS)
+                    val incomingDurationMs = item.durationMs.coerceIn(0L, MAX_DURATION_MS)
+                    if (!playEventKeys.add("$videoId|$startedAt")) {
+                        // A mesma reprodução pode chegar primeiro aos 10 s e
+                        // depois com o tempo final. Mantém o maior trecho
+                        // ouvido e nunca cria uma segunda reprodução.
+                        val existing = playEventDao.find(userId, videoId, startedAt)
+                        if (existing != null &&
+                            (incomingPlayedMs > existing.playedMs ||
+                                (item.completed && !existing.completed))
+                        ) {
+                            playEventDao.updateProgress(
+                                id = existing.id,
+                                playedMs = maxOf(existing.playedMs, incomingPlayedMs),
+                                durationMs = maxOf(existing.durationMs, incomingDurationMs),
+                                completed = existing.completed || item.completed,
+                            )
+                            importedPlayEvents++
+                        }
+                        return@forEach
+                    }
                     playEventDao.insert(
                         PlayEventEntity(
                             userId = userId,
@@ -605,8 +776,8 @@ object PairingSync {
                             album = item.album.trim().take(MAX_ALBUM_LENGTH),
                             thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
                             startedAt = startedAt,
-                            playedMs = item.playedMs.coerceAtMost(MAX_PLAYED_MS),
-                            durationMs = item.durationMs.coerceIn(0L, MAX_DURATION_MS),
+                            playedMs = incomingPlayedMs,
+                            durationMs = incomingDurationMs,
                             completed = item.completed,
                             source = item.source.trim().take(MAX_SOURCE_LENGTH).ifBlank { "pairing" },
                         ),

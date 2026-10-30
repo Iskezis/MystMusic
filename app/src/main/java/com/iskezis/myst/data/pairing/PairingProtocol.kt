@@ -83,6 +83,17 @@ data class PairSyncResponse(
     val sentAt: Long = System.currentTimeMillis(),
 )
 
+/**
+ * Resposta do `/disconnect`. Leva o último retrato da TV no mesmo payload para
+ * o celular gravar antes de limpar a sessão, sem um `/push` separado que
+ * poderia travar a desconexão esperando o próprio celular.
+ */
+@Serializable
+data class PairDisconnectResponse(
+    val ok: Boolean = true,
+    val snapshot: PairSnapshot = PairSnapshot(),
+)
+
 @Serializable
 data class PairSnapshot(
     val generatedAt: Long = System.currentTimeMillis(),

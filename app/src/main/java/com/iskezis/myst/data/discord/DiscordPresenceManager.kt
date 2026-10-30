@@ -62,6 +62,12 @@ data class DiscordState(
 class DiscordPresenceManager(
     @Suppress("UNUSED_PARAMETER") context: Context,
     private val session: SessionManager,
+    /**
+     * Avisa que o token/nome mudou. O celular usa isso para regravar o
+     * Mystaccount.json e empurrar a conexão à TV na hora, sem esperar o ciclo
+     * periódico de sincronização.
+     */
+    private val onCredentialsChanged: () -> Unit = {},
 ) {
 
     private val json = Json {
@@ -149,8 +155,20 @@ class DiscordPresenceManager(
         // novo login.
         val stored = token
         if (stored != null) {
-            if (stored != session.discordToken) session.discordToken = stored
+            if (stored != session.discordToken) {
+                session.discordToken = stored
+                notifyCredentialsChanged()
+            }
             startConnection(validateToken = true)
+        }
+    }
+
+    private fun notifyCredentialsChanged() {
+        runCatching { onCredentialsChanged() }.onFailure {
+            AppLog.w(
+                AppLog.TAG_DISCORD,
+                "Falha avisando mudança de credenciais do Discord: ${AppLog.describe(it)}",
+            )
         }
     }
 
@@ -169,6 +187,7 @@ class DiscordPresenceManager(
         manualStop = false
         reconnectAttempt = 0
         session.discordToken = clean
+        notifyCredentialsChanged()
         startConnection(validateToken = true)
     }
 
@@ -200,6 +219,7 @@ class DiscordPresenceManager(
         rejectedAppIds.clear()
         artworkCache.evictAll()
         session.clearDiscord()
+        notifyCredentialsChanged()
         runCatching {
             socket?.close(1000, "Desconectado")
             socket?.cancel()
@@ -316,6 +336,7 @@ class DiscordPresenceManager(
                     if (currentToken != token || manualStop) return@launch
                     if (!name.isNullOrBlank()) {
                         session.discordName = name
+                        notifyCredentialsChanged()
                         _state.value = DiscordState(DiscordConnection.CONNECTING, name)
                     }
                 }
@@ -381,6 +402,7 @@ class DiscordPresenceManager(
         readyTimeoutJob = null
         ready = false
         session.clearDiscord()
+        notifyCredentialsChanged()
         presenceJob?.cancel()
         presenceJob = null
         appId = null
@@ -601,7 +623,10 @@ class DiscordPresenceManager(
             ?.takeIf { it.isNotBlank() }
             ?: (user?.get("username") as? JsonPrimitive)?.contentOrNull
                 ?.takeIf { it.isNotBlank() }
-        if (!name.isNullOrBlank()) session.discordName = name
+        if (!name.isNullOrBlank()) {
+            session.discordName = name
+            notifyCredentialsChanged()
+        }
         ready = true
         helloTimeoutJob?.cancel()
         helloTimeoutJob = null

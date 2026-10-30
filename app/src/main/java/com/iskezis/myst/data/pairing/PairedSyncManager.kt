@@ -42,6 +42,7 @@ class PairedSyncManager(private val app: MystApp) {
     private val client = PairedSyncClient()
     private val syncMutex = Mutex()
     private val phoneNotifyMutex = Mutex()
+    private val phonePushMutex = Mutex()
     private val handler = Handler(Looper.getMainLooper())
 
     @Volatile
@@ -53,10 +54,28 @@ class PairedSyncManager(private val app: MystApp) {
     private var phoneLoop: Job? = null
     private var changeJob: Job? = null
     private var serverRetryJob: Job? = null
+    private var unpairCleanupJob: Job? = null
     private var observer: InvalidationTracker.Observer? = null
 
     @Volatile
     private var suppressChangesUntil = 0L
+
+    /**
+     * Impede um sync novo de começar enquanto o usuário desconecta. A flag é
+     * diferente do `syncMutex`: o pedido de desconexão precisa liberar o mutex
+     * durante a chamada remota, senão o `/push` final da TV (que o celular
+     * precisa gravar antes de responder) ficaria bloqueado para sempre.
+     */
+    @Volatile
+    private var disconnecting = false
+
+    /**
+     * Cada pareamento/despareamento recebe uma geração. A limpeza assíncrona
+     * da TV só pode apagar dados enquanto a geração que a iniciou ainda for a
+     * atual; se o usuário pareou de novo no meio, a limpeza antiga aborta.
+     */
+    @Volatile
+    private var pairingEpoch = 0L
 
     private val isTv: Boolean
         get() = BuildConfig.FLAVOR == "tv"
@@ -66,9 +85,31 @@ class PairedSyncManager(private val app: MystApp) {
         if (isTv) startTvServerIfNeeded() else startPhoneServerIfNeeded()
     }
 
+    /**
+     * Chamado no início do pareamento da TV. Cancela uma limpeza antiga e
+     * fecha o canal anterior antes de o novo segredo ser gravado.
+     */
+    fun prepareTvPairing() {
+        if (!isTv) return
+        pairingEpoch++
+        unpairCleanupJob?.cancel()
+        unpairCleanupJob = null
+        serverRetryJob?.cancel()
+        serverRetryJob = null
+        changeJob?.cancel()
+        changeJob = null
+        synchronized(this) {
+            runCatching { tvServer?.close() }
+            tvServer = null
+        }
+    }
+
     /** Chamado depois que a TV recebeu a conta e o segredo pelo pareamento. */
     fun onTvPaired() {
         if (!isTv) return
+        pairingEpoch++
+        unpairCleanupJob?.cancel()
+        unpairCleanupJob = null
         synchronized(this) {
             runCatching { tvServer?.close() }
             tvServer = null
@@ -83,6 +124,10 @@ class PairedSyncManager(private val app: MystApp) {
     /** Chamado no celular depois que o payload foi entregue à TV. */
     fun onPhonePaired() {
         if (isTv) return
+        disconnecting = false
+        // Um novo pareamento pode usar outro pairId/segredo. O servidor antigo
+        // não serve mais: fecha e sobe outro com as credenciais recém-gravadas.
+        synchronized(this) { stopPhoneChannel() }
         startPhoneServerIfNeeded()
         requestSync()
     }
@@ -118,6 +163,7 @@ class PairedSyncManager(private val app: MystApp) {
     }
 
     suspend fun syncNow(): Boolean = syncMutex.withLock {
+        if (disconnecting) return@withLock false
         if (app.session.mystUserId <= 0L || !app.session.hasTvPairing) return@withLock false
         // O merge altera o Room; essas escritas são consequência do snapshot
         // recebido, não uma novidade local que precise voltar para a TV.
@@ -138,28 +184,36 @@ class PairedSyncManager(private val app: MystApp) {
     /**
      * Desfaz o pareamento no celular e pede para a TV limpar os dados.
      *
-     * `forceLocal` é usado somente depois de o usuário confirmar que a TV não
-     * respondeu: nesse caso o segredo local é removido mesmo sem a confirmação
-     * remota. O botão da própria TV continua sendo o caminho para limpá-la
-     * quando ela está fora da rede do celular.
+     * A remoção local nunca depende da TV responder. Se ela estiver desligada,
+     * fora da rede ou com o servidor reiniciando, o celular remove o segredo,
+     * fecha o canal e fecha o ciclo; o usuário pode parear de novo na hora. A
+     * TV é limpa pelo próprio botão dela ou no próximo pareamento.
      */
     suspend fun disconnect(forceLocal: Boolean = false): Boolean {
-        if (isTv) throw IOException("A TV não desconecta a si mesma pelo canal do celular")
-        return try {
-            syncMutex.withLock { client.disconnect(app) }
-            stopPhoneChannel()
-            phoneLoop?.cancel()
-            phoneLoop = null
+        if (isTv) return false
+        disconnecting = true
+        val notified = try {
+            // Dá um instante para um sync já em andamento terminar, mas não
+            // deixa a desconexão presa a uma rede lenta. O POST /disconnect
+            // devolve o retrato final embutido; não há /push concorrente.
+            withTimeoutOrNull(DISCONNECT_WAIT_MS) { syncMutex.withLock { } }
+            client.disconnect(app)
             true
         } catch (t: Throwable) {
-            if (!forceLocal) throw t
             AppLog.w(
                 AppLog.TAG_PAIRING,
-                "TV não confirmou a desconexão; removendo o pareamento só deste celular",
+                "TV não confirmou a desconexão (forceLocal=$forceLocal); " +
+                    "removendo o pareamento deste celular: ${AppLog.describe(t)}",
             )
-            clearPairingLocally()
             false
+        } finally {
+            disconnecting = false
         }
+        stopPhoneChannel()
+        phoneLoop?.cancel()
+        phoneLoop = null
+        if (!notified) clearPairingLocally()
+        return notified
     }
 
     /** Remove o canal local sem tentar falar com a TV. */
@@ -178,17 +232,60 @@ class PairedSyncManager(private val app: MystApp) {
     }
 
     /**
-     * Botão da própria TV: tenta avisar o celular para ele também limpar a
-     * sessão e, de qualquer forma, apaga os dados temporários da TV.
+     * Botão da própria TV: envia o último retrato (histórico/estatísticas) ao
+     * celular, avisa que o pareamento terminou e só então apaga os dados
+     * temporários da TV.
      */
     suspend fun disconnectOnTv() {
         if (!isTv) return
         if (app.session.hasTvPairing) {
+            withTimeoutOrNull(FINAL_PUSH_TIMEOUT_MS) {
+                runCatching { pushTvSnapshotToPhone() }
+                    .onFailure {
+                        AppLog.w(
+                            AppLog.TAG_PAIRING,
+                            "Retrato final da TV não chegou ao celular: ${AppLog.describe(it)}",
+                        )
+                    }
+            }
             withTimeoutOrNull(NOTIFY_TIMEOUT_MS) {
                 runCatching { notifyPhone("unpair") }
+                    .onFailure {
+                        AppLog.d(
+                            AppLog.TAG_PAIRING,
+                            "Aviso de despareamento não entregue: ${it.message}",
+                        )
+                    }
             }
         }
         onTvUnpaired()
+    }
+
+    /**
+     * Chamado pelo servidor do celular quando a TV envia um retrato. O merge é
+     * feito antes de responder, para a TV só apagar os dados depois de o
+     * celular confirmar que gravou. As escritas são suprimidas para não gerar
+     * um novo sync de volta à TV.
+     */
+    suspend fun acceptTvSnapshot(snapshot: PairSnapshot): Boolean = syncMutex.withLock {
+        if (isTv || !app.session.hasTvPairing) return@withLock false
+        val userId = app.session.mystUserId
+        if (userId <= 0L) return@withLock false
+        suppressLocalChanges()
+        return@withLock try {
+            PairingSync.mergeSnapshot(app, userId, snapshot)
+            suppressLocalChanges()
+            app.accountFiles.requestSync()
+            AppLog.i(
+                AppLog.TAG_PAIRING,
+                "Retrato da TV recebido: histórico=${snapshot.history.size} " +
+                    "eventos=${snapshot.playEvents.size} playlists=${snapshot.playlists.size}",
+            )
+            true
+        } catch (t: Throwable) {
+            AppLog.failure(AppLog.TAG_PAIRING, "Falha aplicando o retrato da TV", t)
+            false
+        }
     }
 
     /**
@@ -198,7 +295,9 @@ class PairedSyncManager(private val app: MystApp) {
      */
     fun onTvUnpaired() {
         if (!isTv) return
-        AppLog.i(AppLog.TAG_PAIRING, "Desfazendo pareamento da TV")
+        val epoch = ++pairingEpoch
+        AppLog.i(AppLog.TAG_PAIRING, "Desfazendo pareamento da TV (geração $epoch)")
+        unpairCleanupJob?.cancel()
         synchronized(this) {
             runCatching { tvServer?.close() }
             tvServer = null
@@ -217,12 +316,17 @@ class PairedSyncManager(private val app: MystApp) {
         // A limpeza não pode usar o scope do PairedTvServer: ele acabou de ser
         // fechado e cancelaria a própria rotina de limpeza. O escopo da
         // Application sobrevive ao servidor e termina a transação.
-        app.backgroundScope.launch {
+        unpairCleanupJob = app.backgroundScope.launch {
+            if (!isCurrentUnpair(epoch)) return@launch
             runCatching { app.database.clearAllTables() }.onFailure {
                 AppLog.failure(AppLog.TAG_PAIRING, "Falha limpando tabelas temporárias da TV", it)
             }
+            if (!isCurrentUnpair(epoch)) return@launch
             TvEphemeralData.purge(app)
             handler.post {
+                // Se o usuário já iniciou outro pareamento, esta limpeza ficou
+                // obsoleta: não pode apagar o tema novo nem sequestrar a tela.
+                if (!isCurrentUnpair(epoch)) return@post
                 // Limpa o tema temporário antes de abrir a tela de código, para
                 // ela não herdar a aparência do celular que acabou de
                 // desconectar. A tela só abre depois da limpeza do Room para
@@ -241,6 +345,51 @@ class PairedSyncManager(private val app: MystApp) {
                     }
             }
         }
+    }
+
+    private fun isCurrentUnpair(epoch: Long): Boolean =
+        pairingEpoch == epoch && !app.session.hasTvPairing
+
+    /**
+     * TV → celular: envia o retrato reduzido (histórico, estatísticas,
+     * playlists) diretamente ao endpoint `/push` do celular. O celular grava e
+     * responde antes de a TV apagar qualquer dado. Se o push falhar, o aviso
+     * `/notify` e o ciclo de segurança continuam funcionando como reserva.
+     */
+    suspend fun pushTvSnapshotToPhone(): Boolean = phonePushMutex.withLock {
+        if (!isTv || !app.session.hasTvPairing) return@withLock false
+        val session = app.session
+        val pairId = session.tvPairId ?: return@withLock false
+        val secret = session.tvPairSecret ?: return@withLock false
+        val userId = session.mystUserId
+        if (userId <= 0L) return@withLock false
+        val target = findPhoneTarget(pairId) ?: return@withLock false
+        val snapshot = PairingSync.exportTvChanges(app, userId)
+        val envelope = PairSecureEnvelope(
+            pairId = pairId,
+            payload = PairingCrypto.encryptSecret(
+                secret,
+                PairingSync.json.encodeToString(PairSnapshot.serializer(), snapshot),
+            ),
+        )
+        val responseText = PairingHttp.postJson(
+            url = PairingHttp.url(target.host, target.port, "/push"),
+            body = PairingSync.json.encodeToString(PairSecureEnvelope.serializer(), envelope),
+            connectTimeoutMs = 4_000,
+            readTimeoutMs = 60_000,
+        )
+        val ack = runCatching {
+            PairingSync.json.decodeFromString(PairAck.serializer(), responseText)
+        }.getOrNull()
+        if (ack?.ok != true) throw IOException("Celular recusou o retrato da TV")
+        session.phoneHost = target.host
+        session.phonePort = target.port
+        AppLog.d(
+            AppLog.TAG_PAIRING,
+            "Retrato da TV entregue: histórico=${snapshot.history.size} " +
+                "eventos=${snapshot.playEvents.size} em ${target.host}:${target.port}",
+        )
+        true
     }
 
     /** Chamado pelo servidor da TV logo após o merge de um snapshot. */
@@ -273,12 +422,22 @@ class PairedSyncManager(private val app: MystApp) {
         if (server.start()) {
             phoneServer = server
         } else {
-            AppLog.w(AppLog.TAG_PAIRING, "Canal do celular não iniciou; ciclo de segurança continua")
+            AppLog.w(AppLog.TAG_PAIRING, "Canal do celular não iniciou; tentando de novo")
+            if (serverRetryJob?.isActive != true) {
+                serverRetryJob = scope.launch {
+                    delay(SERVER_RETRY_MS)
+                    startPhoneServerIfNeeded()
+                }
+            }
         }
     }
 
     @Synchronized
     private fun stopPhoneChannel() {
+        if (!isTv) {
+            serverRetryJob?.cancel()
+            serverRetryJob = null
+        }
         runCatching { phoneServer?.close() }
         phoneServer = null
     }
@@ -331,25 +490,48 @@ class PairedSyncManager(private val app: MystApp) {
 
     private fun onLocalDataChanged(tables: Set<String>) {
         if (!app.session.hasTvPairing) return
-        if (System.currentTimeMillis() < suppressChangesUntil) return
         AppLog.d(
             AppLog.TAG_PAIRING,
-            "Dados mudaram (${tables.joinToString(limit = 4)}); agendando ${if (isTv) "aviso ao celular" else "sync"}",
+            "Dados mudaram (${tables.joinToString(limit = 4)}); agendando " +
+                (if (isTv) "retrato ao celular" else "sync"),
         )
         changeJob?.cancel()
         changeJob = scope.launch {
-            delay(CHANGE_DEBOUNCE_MS)
-            if (System.currentTimeMillis() < suppressChangesUntil) return@launch
-            if (!app.session.hasTvPairing) return@launch
-            if (isTv) {
-                runCatching { notifyPhone("sync") }.onFailure {
-                    AppLog.d(
-                        AppLog.TAG_PAIRING,
-                        "Aviso em tempo real para o celular não entregue: ${it.message}",
-                    )
+            // Uma mudança que acontece enquanto um merge está em andamento não
+            // pode ser simplesmente descartada. Espera o fim da supressão e
+            // reavalia; sem isso, um play na TV durante um sync sumia.
+            var waits = 0
+            while (isActive && waits < 4) {
+                val remaining = suppressChangesUntil - System.currentTimeMillis()
+                if (remaining > 0L) {
+                    delay(remaining + 60L)
+                    waits++
+                    continue
                 }
-            } else {
-                runCatching { syncNow() }
+                delay(CHANGE_DEBOUNCE_MS)
+                if (System.currentTimeMillis() < suppressChangesUntil) continue
+                if (!app.session.hasTvPairing) return@launch
+                if (isTv) {
+                    val pushed = runCatching { pushTvSnapshotToPhone() }
+                        .onFailure {
+                            AppLog.d(
+                                AppLog.TAG_PAIRING,
+                                "Retrato direto não entregue; usando aviso: ${it.message}",
+                            )
+                        }
+                        .getOrDefault(false)
+                    if (!pushed) {
+                        runCatching { notifyPhone("sync") }.onFailure {
+                            AppLog.d(
+                                AppLog.TAG_PAIRING,
+                                "Aviso em tempo real para o celular não entregue: ${it.message}",
+                            )
+                        }
+                    }
+                } else {
+                    runCatching { syncNow() }
+                }
+                return@launch
             }
         }
     }
@@ -459,6 +641,8 @@ class PairedSyncManager(private val app: MystApp) {
         private const val SERVER_RETRY_MS = 5_000L
         private const val DISCOVERY_TIMEOUT_MS = 5_000L
         private const val NOTIFY_TIMEOUT_MS = 3_000L
+        private const val FINAL_PUSH_TIMEOUT_MS = 8_000L
+        private const val DISCONNECT_WAIT_MS = 2_000L
 
         private val PAIRING_TABLES = arrayOf(
             "playlists",

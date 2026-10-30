@@ -58,7 +58,11 @@ class MystApp : Application(), ImageLoaderFactory {
     val innerTube: InnerTubeClient by lazy { InnerTubeClient(this, session) }
     val youtube: YouTubeRepository by lazy { YouTubeRepository(innerTube) }
     val accountFiles: MystAccountFileRepository by lazy {
-        MystAccountFileRepository(this, database, appearance)
+        MystAccountFileRepository(this, database, appearance, session) { token ->
+            // A importação do Mystaccount.json pode acontecer com o app já
+            // aberto; reconecta na hora em vez de esperar o próximo início.
+            if (!token.isNullOrBlank()) discord.connect(token)
+        }
     }
     val accounts: AccountRepository by lazy {
         AccountRepository(this, database, session, innerTube, accountFiles)
@@ -71,7 +75,17 @@ class MystApp : Application(), ImageLoaderFactory {
     val stats: StatsRepository by lazy { StatsRepository(database) }
     val spotify: SpotifyImporter by lazy { SpotifyImporter(this, youtube, playlists) }
     val playerController: PlayerController by lazy { PlayerController(this) }
-    val discord: DiscordPresenceManager by lazy { DiscordPresenceManager(this, session) }
+    val discord: DiscordPresenceManager by lazy {
+        DiscordPresenceManager(this, session) {
+            // No celular o token do Discord é uma credencial da conta: grava
+            // o Mystaccount.json e leva a conexão à TV imediatamente. Na TV o
+            // gerenciador apenas recebe o token do celular, sem escrever nada.
+            if (BuildConfig.FLAVOR != "tv") {
+                accountFiles.requestSync()
+                pairedSync.requestSync()
+            }
+        }
+    }
     val pairedSync: PairedSyncManager by lazy { PairedSyncManager(this) }
 
     val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

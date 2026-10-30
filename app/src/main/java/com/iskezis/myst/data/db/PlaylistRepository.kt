@@ -82,8 +82,49 @@ class PlaylistRepository(private val database: AppDatabase) {
         )
     }
 
+    /**
+     * Marca a remoção de uma faixa para que ela também saia da playlist no
+     * outro aparelho. A lápide usa o prefixo `track:`, o nome normalizado da
+     * playlist e o `videoId` **com a caixa original** (ids do YouTube
+     * diferenciam maiúsculas de minúsculas).
+     */
+    suspend fun recordTrackTombstone(
+        userId: Long,
+        playlistName: String,
+        videoId: String,
+        at: Long = System.currentTimeMillis(),
+    ) {
+        val key = trackTombstoneKey(playlistName, videoId) ?: return
+        if (userId <= 0L) return
+        val previous = database.pairTombstoneDao().get(userId, key)
+        database.pairTombstoneDao().upsert(
+            PairTombstoneEntity(
+                userId = userId,
+                key = key,
+                deletedAt = maxOf(previous?.deletedAt ?: 0L, at),
+            ),
+        )
+    }
+
+    /**
+     * Uma faixa readicionada volta a existir nos dois aparelhos. Em vez de
+     * apagar a marca, grava uma lápide com `deletedAt = 0`: o próximo retrato
+     * leva o aviso de "readicionada" mesmo se o outro aparelho ainda tiver a
+     * remoção antiga.
+     */
+    suspend fun clearTrackTombstone(userId: Long, playlistName: String, videoId: String) {
+        val key = trackTombstoneKey(playlistName, videoId) ?: return
+        if (userId <= 0L) return
+        val previous = database.pairTombstoneDao().get(userId, key) ?: return
+        if (previous.deletedAt <= 0L) return
+        database.pairTombstoneDao().upsert(
+            PairTombstoneEntity(userId = userId, key = key, deletedAt = 0L),
+        )
+    }
+
     suspend fun addTrack(playlistId: Long, track: Track): Boolean = withContext(Dispatchers.IO) {
         val playlist = dao.findById(playlistId) ?: return@withContext false
+        clearTrackTombstone(playlist.userId, playlist.name, track.videoId)
         val position = dao.maxPosition(playlistId) + 1
         val result = dao.insertTrack(track.toEntity(playlist.userId, playlistId, position))
         result != -1L
@@ -95,6 +136,7 @@ class PlaylistRepository(private val database: AppDatabase) {
             var position = dao.maxPosition(playlistId) + 1
             var inserted = 0
             tracks.forEach { track ->
+                clearTrackTombstone(playlist.userId, playlist.name, track.videoId)
                 val result = dao.insertTrack(track.toEntity(playlist.userId, playlistId, position))
                 if (result != -1L) {
                     position++
@@ -106,11 +148,16 @@ class PlaylistRepository(private val database: AppDatabase) {
     }
 
     suspend fun removeTrack(playlistId: Long, videoId: String) = withContext(Dispatchers.IO) {
+        val playlist = dao.findById(playlistId)
+        if (playlist != null) {
+            recordTrackTombstone(playlist.userId, playlist.name, videoId)
+        }
         dao.deleteTrack(playlistId, videoId)
     }
 
     suspend fun restoreTrack(playlistId: Long, track: Track, position: Int) = withContext(Dispatchers.IO) {
         val playlist = dao.findById(playlistId) ?: return@withContext
+        clearTrackTombstone(playlist.userId, playlist.name, track.videoId)
         dao.insertTrack(track.toEntity(playlist.userId, playlistId, position))
     }
 
@@ -176,7 +223,16 @@ class PlaylistRepository(private val database: AppDatabase) {
     )
 
     companion object {
+        const val TRACK_TOMBSTONE_PREFIX = "track:"
+
         fun normalizePlaylistName(name: String): String = name.trim().lowercase()
+
+        fun trackTombstoneKey(playlistName: String, videoId: String): String? {
+            val playlist = normalizePlaylistName(playlistName)
+            val id = videoId.trim()
+            if (playlist.isBlank() || id.isBlank()) return null
+            return "$TRACK_TOMBSTONE_PREFIX$playlist:$id"
+        }
     }
 
     private fun Track.toEntity(userId: Long, playlistId: Long, position: Int): PlaylistTrackEntity =

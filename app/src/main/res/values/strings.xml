@@ -72,7 +72,7 @@
     <string name="auth_error_generic">Não foi possível concluir. Tente novamente.</string>
 
     <string name="account_file_title">Guardar sua conta</string>
-    <string name="account_file_message">A conta “%1$s” foi criada. Salve o Mystaccount.json em um lugar seguro, como Downloads ou Drive. Ele guarda seu perfil, playlists, histórico e estatísticas e permite entrar de novo depois de reinstalar o app. Guarde-o como uma chave: quem tiver o arquivo pode acessar a conta Myst.</string>
+    <string name="account_file_message">A conta “%1$s” foi criada. Salve o Mystaccount.json em um lugar seguro, como Downloads ou Drive. Ele guarda seu perfil, playlists, histórico, estatísticas e a conexão do Discord, e permite entrar de novo depois de reinstalar o app. Guarde-o como uma chave: quem tiver o arquivo pode acessar a conta Myst e o Discord vinculado.</string>
     <string name="account_file_save">Salvar arquivo</string>
     <string name="account_file_auto_saved_hint">Conta salva automaticamente no celular. O caminho da cópia aparece em Configurações → Conta Myst.</string>
     <string name="account_backup_permission_title">Backup automático da conta</string>
@@ -93,7 +93,7 @@
     <string name="account_file_login">Entrar com Mystaccount.json</string>
     <string name="account_file_login_hint">Use o arquivo criado no cadastro. Ele restaura perfil, playlists e histórico; a sessão do YouTube é pedida depois.</string>
     <string name="account_file_confirm_title">Restaurar esta conta?</string>
-    <string name="account_file_confirm_message">O Mystaccount.json escolhido restaura o perfil, as playlists e o histórico da conta Myst. Se a conta já existir neste aparelho, os dados serão mesclados sem apagar os atuais. A sessão do YouTube não é restaurada e será pedida em seguida.</string>
+    <string name="account_file_confirm_message">O Mystaccount.json escolhido restaura o perfil, as playlists, o histórico e a conexão do Discord da conta Myst. Se a conta já existir neste aparelho, os dados serão mesclados sem apagar os atuais. A sessão do YouTube não é restaurada e será pedida em seguida.</string>
     <string name="account_file_confirm_action">Restaurar conta</string>
     <string name="youtube_login_title">Entrar com YouTube</string>
     <string name="youtube_login_loading">Aguardando o login do Google…</string>
@@ -164,7 +164,7 @@
     <string name="settings_avatar_error">Não foi possível atualizar a foto. Tente novamente.</string>
     <string name="settings_account_file_save">Salvar outra cópia</string>
     <string name="settings_account_file_saving">Salvando…</string>
-    <string name="settings_account_file_hint">O app salva o Mystaccount.json automaticamente em /sdcard/MystMusic. Este botão cria uma cópia extra em outro local; a sessão do YouTube não vai no arquivo.</string>
+    <string name="settings_account_file_hint">O app salva o Mystaccount.json automaticamente em /sdcard/MystMusic. Este botão cria uma cópia extra em outro local; a conexão do Discord vai no arquivo, mas a sessão do YouTube não.</string>
     <string name="settings_account_file_hint_fallback">Toque aqui para permitir o acesso a /sdcard/MystMusic. Sem essa permissão, a cópia automática fica em Download/MystMusic.</string>
     <string name="settings_account_file_status_missing">Cópia automática ainda não gerada</string>
     <string name="settings_account_file_status_internal">Cópia interna atualizada · gerando cópia automática</string>
