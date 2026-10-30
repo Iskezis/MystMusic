@@ -45,6 +45,9 @@ class AppearanceViewModel(private val app: MystApp) : ViewModel() {
         // A preferência não está no Room; avisa o arquivo da conta para a
         // cópia interna/externa também levar a nova aparência.
         app.accountFiles.requestSync()
+        // A aparência é aplicada na TV pareada imediatamente, sem esperar o
+        // ciclo de segurança de 30 s.
+        app.pairedSync.requestSync()
         // O AppCompat recria as Activities abertas quando o modo noturno muda.
         // O overlay AMOLED é reaplicado no início de cada Activity.
         AppCompatDelegate.setDefaultNightMode(mode.nightMode)
@@ -57,6 +60,7 @@ class AppearanceViewModel(private val app: MystApp) : ViewModel() {
         _state.value = readState()
         AppLog.i(AppLog.TAG_UI, "Aparência: AMOLED=$enabled")
         app.accountFiles.requestSync()
+        app.pairedSync.requestSync()
         return true
     }
 

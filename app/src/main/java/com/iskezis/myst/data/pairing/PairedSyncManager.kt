@@ -294,6 +294,10 @@ class PairedSyncManager(private val app: MystApp) {
                     when {
                         !paired -> 60_000L
                         success -> FALLBACK_SYNC_MS
+                        // Logo após o pareamento a TV pode ainda estar gravando
+                        // o payload grande. Tenta de novo em poucos segundos em
+                        // vez de deixar a primeira sincronização para 45 s.
+                        app.session.tvLastSyncAt <= 0L -> INITIAL_SYNC_RETRY_MS
                         else -> FAILED_SYNC_MS
                     },
                 )
@@ -449,6 +453,7 @@ class PairedSyncManager(private val app: MystApp) {
 
         private const val FALLBACK_SYNC_MS = 30_000L
         private const val FAILED_SYNC_MS = 45_000L
+        private const val INITIAL_SYNC_RETRY_MS = 5_000L
         private const val CHANGE_DEBOUNCE_MS = 700L
         private const val SUPPRESS_CHANGES_MS = 2_500L
         private const val SERVER_RETRY_MS = 5_000L

@@ -65,6 +65,9 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
 
     fun connectDiscord(token: String) {
         app.discord.connect(token)
+        // O token fica na sessão imediatamente; a TV pareada recebe a conexão
+        // sem esperar a próxima sincronização periódica.
+        app.pairedSync.requestSync()
     }
 
     /** Atualiza o status da TV ao voltar do pareamento ou de outra tela. */
@@ -142,10 +145,12 @@ class SettingsViewModel(private val app: MystApp) : ViewModel() {
 
     fun retryDiscord() {
         app.discord.retry()
+        app.pairedSync.requestSync()
     }
 
     fun disconnectDiscord() {
         app.discord.disconnect()
+        app.pairedSync.requestSync()
     }
 
     fun hasDiscordToken(): Boolean = !app.session.discordToken.isNullOrBlank()
