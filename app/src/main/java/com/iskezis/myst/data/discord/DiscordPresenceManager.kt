@@ -205,6 +205,12 @@ class DiscordPresenceManager(
         helloTimeoutJob = null
         readyTimeoutJob?.cancel()
         readyTimeoutJob = null
+        // O card do Discord é uma presença da sessão. Fechar o WebSocket sem
+        // enviar uma presença vazia deixa a última música no perfil até o
+        // Discord expirar a sessão (o que pode levar minutos ou não acontecer
+        // se o socket for cancelado no meio do fechamento). Limpamos o card
+        // enquanto o gateway ainda está pronto e só depois fechamos.
+        if (ready) clearPresence()
         ready = false
         sequence = null
         sessionId = null
@@ -221,8 +227,10 @@ class DiscordPresenceManager(
         session.clearDiscord()
         notifyCredentialsChanged()
         runCatching {
+            // Não chame cancel() logo após close(): isso pode abortar o envio
+            // da presença vazia e do frame de fechamento. O OkHttp conclui o
+            // handshake e fecha o socket sozinho.
             socket?.close(1000, "Desconectado")
-            socket?.cancel()
         }
         socket = null
         _state.value = DiscordState(DiscordConnection.DISCONNECTED, null)

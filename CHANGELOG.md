@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0-dev.14 — 30/10/2026
+
+Correção do Discord ao desconectar a TV.
+
+### Corrigido
+- **Discord RPC na TV:** ao desconectar o celular da TV, o app agora envia uma presença vazia ao gateway antes de fechar o WebSocket e deixa o OkHttp concluir o fechamento sem cancelar o socket na hora. Antes, o card com a última música podia continuar aparecendo no perfil do Discord porque o frame de presença/close era abortado no meio do envio. O mesmo vale para **Desconectar Discord** nas Configurações.
+
 ## 0.2.0-dev.13 — 30/10/2026
 
 Correção emergencial de reprodução.

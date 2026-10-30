@@ -52,6 +52,8 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
   - [x] TV → celular: `/push`, retrato final no `/disconnect`, merge antes do ack, remoção de faixas por lápide e limpeza só depois da confirmação
   - [x] Desconexão confiável: remoção local sem resposta da TV, botão na tela inicial e proteção contra limpeza de um pareamento novo
   - [x] AMOLED reaplicado a cada sync e NSD com retentativas/desregistro
+- [x] Correção do Discord na desconexão da TV (0.2.0-dev.14)
+  - [x] Presença vazia enviada antes de fechar o WebSocket; fechamento gracioso sem `cancel()` imediato
 - [ ] 15. Busca: artistas, álbuns e playlists
   - [ ] Chips Tudo / Músicas / Artistas / Álbuns / Playlists
   - [ ] Perfil do artista, tela do álbum, tela da playlist
@@ -77,6 +79,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - API de atualização do GitHub só funciona sem token se o repositório for público.
 
 ## Release
+- **0.2.0-dev.14** (`versionCode 23`, `versionName "0.2.0-dev.14"`): ao desconectar a TV, o Discord limpa a presença e fecha o socket de forma graciosa, sem deixar o card da última música no perfil; run pendente. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.13** (`versionCode 22`, `versionName "0.2.0-dev.13"`): correção emergencial de reprodução — VISIONOS 1.02 com contexto/UA atual, validação de um bloco real de 256 KiB a partir de 1 MiB para rejeitar URLs do ANDROID_VR que só entregam o primeiro MiB, renovação do visitorData anônimo e nova tentativa no VISIONOS; run `41113703977`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.12** (`versionCode 21`, `versionName "0.2.0-dev.12"`): correções da fase 14 — renovação do visitorData no áudio, telemetria de reprodução no YouTube Music após 10 s, evento de estatística atualizado na mesma linha, `Mystaccount.json` v4 com Discord, Discord em tempo real, `/push` da TV para o celular com lápides de faixas, desconexão confiável e NSD/AMOLED reaplicados; run `41103446681`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.11** (`versionCode 20`, `versionName "0.2.0-dev.11"`): sincronização em tempo real celular↔TV, pareamento com biblioteca do YouTube, aparência/Discord em cada sync, desconexão confiável e estatísticas aos 10 s; run `40994494407`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
