@@ -62,7 +62,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - API de atualização do GitHub só funciona sem token se o repositório for público.
 
 ## Release
-- **0.2.0-dev.9** (`versionCode 18`, `versionName "0.2.0-dev.9"`): a TV recebe o tema e o AMOLED do celular no pareamento e usa essa aparência temporariamente até desconectar ou deslogar; run pendente. APKs em `apks/app.apk` e `apks/app-tv.apk`.
+- **0.2.0-dev.9** (`versionCode 18`, `versionName "0.2.0-dev.9"`): a TV recebe o tema e o AMOLED do celular no pareamento e usa essa aparência temporariamente até desconectar ou deslogar; run `40978889454`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.8** (`versionCode 17`, `versionName "0.2.0-dev.8"`): TV como terminal temporário (Room em memória, sem `Mystaccount.json`, limpeza ao desconectar/deslogar) e backup automático do `Mystaccount.json` no celular em `/sdcard/MystMusic` (fallback `Download/MystMusic` sem a permissão especial); run `40973178702`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.7** (`versionCode 16`, `versionName "0.2.0-dev.7"`): o `Mystaccount.json` passou a levar playlists do YouTube Music, histórico do YouTube e as preferências de aparência, e a restauração religa esses dados; run `40966779743`.
 - **0.2.0-dev.6** (`versionCode 15`, `versionName "0.2.0-dev.6"`): canal persistente celular↔TV, desconexão com confirmação, sincronização bidirecional e lápides de playlists; run `40964571526`. Os APKs do dev.6 foram substituídos pelos do dev.8.
@@ -111,6 +111,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 | 40964571526 | 65331d9 | verde | Canal persistente celular↔TV, desconexão e sincronização bidirecional (0.2.0-dev.6) | — |
 | 40966779743 | 55b18d2 | verde | `Mystaccount.json` com playlists do YouTube, histórico e aparência (0.2.0-dev.7) | — |
 | 40973178702 | 1c6fe94 | verde | TV temporária com Room em memória e backup automático do `Mystaccount.json` no celular (0.2.0-dev.8) | `apks/app.apk`, `apks/app-tv.apk` |
+| 40978889454 | d02bc70 | verde | TV adota tema/AMOLED do celular no pareamento, com aparência temporária apagada na desconexão/logout (0.2.0-dev.9) | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
 - YouTube Music (fase 13): a biblioteca da conta é **somente leitura**. O cache fica em tabelas próprias do Room (`yt_playlists`, `yt_playlist_tracks`, `yt_history`, `yt_sync_state`), com validade de 15 minutos e estratégia *stale-while-revalidate*: a tela mostra o cache na hora e atualiza em segundo plano. O botão/gesto de atualizar força a rede. Nenhuma escrita é enviada ao YouTube.
