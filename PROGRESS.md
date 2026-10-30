@@ -77,6 +77,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - API de atualização do GitHub só funciona sem token se o repositório for público.
 
 ## Release
+- **0.2.0-dev.13** (`versionCode 22`, `versionName "0.2.0-dev.13"`): correção emergencial de reprodução — VISIONOS 1.02 com contexto/UA atual, validação de um bloco real de 256 KiB a partir de 1 MiB para rejeitar URLs do ANDROID_VR que só entregam o primeiro MiB, renovação do visitorData anônimo e nova tentativa no VISIONOS; run `41113703977`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.12** (`versionCode 21`, `versionName "0.2.0-dev.12"`): correções da fase 14 — renovação do visitorData no áudio, telemetria de reprodução no YouTube Music após 10 s, evento de estatística atualizado na mesma linha, `Mystaccount.json` v4 com Discord, Discord em tempo real, `/push` da TV para o celular com lápides de faixas, desconexão confiável e NSD/AMOLED reaplicados; run `41103446681`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.11** (`versionCode 20`, `versionName "0.2.0-dev.11"`): sincronização em tempo real celular↔TV, pareamento com biblioteca do YouTube, aparência/Discord em cada sync, desconexão confiável e estatísticas aos 10 s; run `40994494407`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.10** (`versionCode 19`, `versionName "0.2.0-dev.10"`): conta Myst persistente com dados isolados por conta e tela Estatísticas (tempo ouvido, reproduções, tops de músicas/artistas/álbuns, gráficos de 24 h e por dia, sequência atual/recorde), eventos em `play_events`, migração Room 4→5 não destrutiva e schema exportado; run `40987101834`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
@@ -134,6 +135,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 | 40988066201 | 14bc43b | verde | Publicação do schema Room 5, dos APKs do dev.10 e das notas da fase 14 no repositório | `apks/app.apk`, `apks/app-tv.apk` |
 | 40988591943 | 3d39cfa | verde | APKs do dev.10 e registro do build no repositório; build final da fase 14 verde | — |
 | 41103446681 | 566a721 | verde | Correções da fase 14 (0.2.0-dev.12): áudio, telemetria do YTM, estatísticas aos 10 s, conta v4 com Discord, TV→celular e NSD | `apks/app.apk`, `apks/app-tv.apk` |
+| 41113703977 | 5f0fd67 | verde | Áudio (0.2.0-dev.13): VISIONOS 1.02, visitor anônimo, validação de bloco real de 256 KiB a partir de 1 MiB e rejeição do fallback ANDROID_VR quebrado | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
 - YouTube Music (fase 13): a biblioteca da conta é **somente leitura**. O cache fica em tabelas próprias do Room (`yt_playlists`, `yt_playlist_tracks`, `yt_history`, `yt_sync_state`), com validade de 15 minutos e estratégia *stale-while-revalidate*: a tela mostra o cache na hora e atualiza em segundo plano. O botão/gesto de atualizar força a rede. Nenhuma escrita é enviada ao YouTube.
