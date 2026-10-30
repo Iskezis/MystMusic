@@ -69,12 +69,12 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
   - [x] TV: anel/borda de foco visível em todos os controles do player, incluindo play/pause, artista, álbum, seek e botões de erro
   - [x] TV: foco inicial no play/pause e ordem de foco explícita entre todos os controles
   - [x] Falha de busca/navegação nunca deixa a linha sem resposta; abre a busca pelo nome como fallback
-- [ ] Pareamento e sincronização em segundo plano (0.2.0-dev.19)
-  - [ ] Confirmação do código continua com a tela fechada, app em segundo plano ou removido dos recentes
-  - [ ] Serviço em primeiro plano mantém o servidor do celular e o ciclo TV → celular ativos
-  - [ ] Serviço volta com `START_STICKY`, `BOOT_COMPLETED` e `MY_PACKAGE_REPLACED`
-  - [ ] TV reenvia o retrato pendente com espera crescente quando o celular está inacessível
-  - [ ] Notificação discreta alterna entre "Pareando" e "Conectado à TV"
+- [x] Pareamento e sincronização em segundo plano (0.2.0-dev.19)
+  - [x] Confirmação do código continua com a tela fechada, app em segundo plano ou removido dos recentes
+  - [x] Serviço em primeiro plano mantém o servidor do celular e o ciclo TV → celular ativos
+  - [x] Serviço volta com `START_STICKY`, `BOOT_COMPLETED` e `MY_PACKAGE_REPLACED`
+  - [x] TV reenvia o retrato pendente com espera crescente quando o celular está inacessível
+  - [x] Notificação discreta alterna entre "Pareando" e "Conectado à TV"
 - [x] 15. Busca: artistas, álbuns e playlists
   - [x] Chips Tudo / Músicas / Artistas / Álbuns / Playlists
   - [x] Perfil do artista, tela do álbum, tela da playlist
@@ -102,6 +102,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - API de atualização do GitHub só funciona sem token se o repositório for público.
 
 ## Release
+- **0.2.0-dev.19** (`versionCode 28`, `versionName "0.2.0-dev.19"`): pareamento e sincronização com a TV com o app em segundo plano ou fechado. A sessão de confirmação do código saiu da Activity e vive na `Application`; o `PairingSyncService` em primeiro plano mantém o servidor HTTP do celular e o ciclo TV → celular ativos, com `START_STICKY`, retomada em `BOOT_COMPLETED`/`MY_PACKAGE_REPLACED` e notificação discreta. A TV reenvia o retrato pendente com espera crescente quando o celular está temporariamente inacessível. Run `41138102381`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.18** (`versionCode 27`, `versionName "0.2.0-dev.18"`): Estatísticas clicáveis (músicas tocam na posição tocada; artistas e álbuns resolvem o identificador e abrem a tela certa, com busca como fallback), fotos oficiais dos artistas no Top Artistas em recorte circular e foco visível/ordem de D-pad no player de TV. O tempo das Estatísticas agora mostra só segundos abaixo de 1 minuto, minutos e segundos até 1 hora e horas e minutos acima disso. Build inicial `41133622872`; build final `41135370815`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.17** (`versionCode 26`, `versionName "0.2.0-dev.17"`): correções de persistência do Recentes (horário das faixas do YouTube Music preservado entre sincronizações) e do cancelamento de pareamento na TV (celular remove "Desconectar TV" pelo aviso em tempo real ou pela verificação `/hello` ao abrir Configurações); run `41129850673`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.16** (`versionCode 25`, `versionName "0.2.0-dev.16"`): correção das capas dentro do álbum — as faixas passam a usar a capa oficial do álbum (inclusive nas páginas seguintes, no player, no mini player e nas playlists Myst), em vez da thumbnail 16:9 do vídeo do YouTube; run `41127188346`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
@@ -172,6 +173,8 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 | 41129850673 | b911d44 | verde | Recentes estável e pareamento TV (0.2.0-dev.17): timestamps preservados, `/hello` com lápide, verificação ao abrir Configurações | `apks/app.apk`, `apks/app-tv.apk` |
 | 41133622872 | 94fa04f | verde | Melhorias de navegação e interação (0.2.0-dev.18): estatísticas clicáveis, fotos de artistas e foco no player de TV | — (substituído pelo run final `41135370815`) |
 | 41135370815 | cba3799 | verde | 0.2.0-dev.18 final: segundos nas estatísticas e APKs publicados | `apks/app.apk`, `apks/app-tv.apk` |
+| 41137830357 | 919d0c2 | falha | Pareamento em segundo plano: faltava importar `kotlinx.coroutines.launch` na sessão de pareamento | — |
+| 41138102381 | 386a2c2 | verde | Pareamento e sincronização em segundo plano (0.2.0-dev.19): sessão na Application, serviço `connectedDevice`, retomada automática e retentativa da TV | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
 - YouTube Music (fase 13): a biblioteca da conta é **somente leitura**. O cache fica em tabelas próprias do Room (`yt_playlists`, `yt_playlist_tracks`, `yt_history`, `yt_sync_state`), com validade de 15 minutos e estratégia *stale-while-revalidate*: a tela mostra o cache na hora e atualiza em segundo plano. O botão/gesto de atualizar força a rede. Nenhuma escrita é enviada ao YouTube.
@@ -248,6 +251,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - Estatísticas interativas (0.2.0-dev.18): `play_events` não guarda os identificadores de artista/álbum, então as linhas resolvem o `browseId` sob demanda com `SearchFilter.ARTISTS`/`SearchFilter.ALBUMS`; a resolução fica em cache no `StatsViewModel` e, se não encontrar, abre a busca pelo nome (com aviso e sem quebrar a tela). O Top Músicas toca a lista exibida a partir do índice tocado, levando o álbum agora devolvido por `MAX(album)` na consulta. As fotos do Top Artistas vêm da busca de artistas e são aplicadas aos bindings existentes, sem recriar as linhas, para o foco do D-pad não pular; até a foto chegar, permanece a thumbnail da faixa.
 - Foco no player de TV (0.2.0-dev.18): cada controle interativo tem fundo de foco com borda de 2–4 dp, mudança de cor do ícone/texto e ligações explícitas `nextFocus*`, inclusive quando o álbum está vazio ou um botão está desabilitado. O foco inicial vai para o play/pause; sem `MediaController`, os controles de reprodução são desabilitados e o foco vai para "Tentar novamente". O play/pause não recebe escala no foco porque sua animação de troca de ícone usa o mesmo `ViewPropertyAnimator` do alpha; os demais controles usam escala leve.
 - Tempo das Estatísticas (0.2.0-dev.18): a formatação usa segundos truncados e três faixas — abaixo de 60 s mostra só `N s`; de 1 min a 59 min mostra `N min N s`; a partir de 1 h mostra `N h N min`, sem segundos. A regra vale para o tempo total, o top artistas e as descrições acessíveis dos gráficos.
+- Pareamento em segundo plano (0.2.0-dev.19): o servidor que responde ao `/confirm` pertence à `PhonePairingSession` da `Application`, não à Activity, e o código continua válido por 2 minutos mesmo se a tela for fechada. O `PairingSyncService` usa `foregroundServiceType="connectedDevice"` (com as permissões `FOREGROUND_SERVICE_CONNECTED_DEVICE`, `CHANGE_NETWORK_STATE` e `CHANGE_WIFI_STATE`) para manter o processo e o servidor persistentes do celular vivos; `onTaskRemoved` não encerra o serviço, `START_STICKY` o recria com o pareamento salvo e um receptor de `BOOT_COMPLETED`/`MY_PACKAGE_REPLACED` o retoma depois de reiniciar ou atualizar. A notificação é de importância baixa, sem som, e alterna entre "Pareando com a TV" e "MystMusic conectado à TV". A TV mantém uma retentativa em segundo plano do `/push`/`/notify` com espera de 5 s a 60 s enquanto o pareamento existir. O serviço é encerrado no cancelamento, na expiração do código, na desconexão e no logout. Limitação: forçar a parada do app nas configurações do Android encerra o serviço; o canal volta na próxima abertura, no boot ou na atualização.
 
 ## Problemas em aberto
 - Fase 14: falta a confirmação em aparelho de que instalar o dev.10 por cima do dev.9, relogar e encontrar playlists/histórico/estatísticas intactos. A migração 4→5 e o schema exportado foram conferidos no CI e o build `40987101834` está verde; o ambiente do agente não tem ADB/aparelho para executar o teste de atualização.
