@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0-dev.16 — 30/10/2026
+
+Correção das capas dentro dos álbuns.
+
+### Corrigido
+- **Capas das faixas no álbum:** as linhas de um álbum no YouTube Music não trazem miniatura própria. O app caía na thumbnail do vídeo do YouTube (16:9, fotograma do clipe), diferente do YouTube Music, que mostra a capa quadrada do álbum em todas as faixas. Agora todas as músicas abertas por um álbum usam a capa oficial do álbum, inclusive as páginas seguintes da lista, o player, o mini player, a fila e as playlists Myst que recebem essas faixas.
+
 ## 0.2.0-dev.15 — 30/10/2026
 
 Busca ampliada e telas de artista, álbum e playlist.

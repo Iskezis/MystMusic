@@ -66,14 +66,15 @@ class AlbumViewModel(
             try {
                 val loaded = app.youtube.albumPage(albumId)
                 page = loaded
-                val tracks = loaded.tracks
+                val cover = loaded.thumbnailUrl?.takeIf { it.isNotBlank() }
+                    ?: fallbackThumbnail.takeIf { it.isNotBlank() }
+                val tracks = loaded.tracks.withCover(cover)
                 _state.value = BrowseDetailState(
                     title = loaded.title.ifBlank { fallbackTitle },
                     subtitle = app.getString(R.string.browse_album),
                     meta = meta(loaded),
                     description = loaded.description,
-                    thumbnailUrl = loaded.thumbnailUrl?.takeIf { it.isNotBlank() }
-                        ?: fallbackThumbnail.takeIf { it.isNotBlank() },
+                    thumbnailUrl = cover,
                     tracks = if (tracks.isEmpty()) {
                         LoadState.Empty
                     } else {
@@ -108,7 +109,10 @@ class AlbumViewModel(
         moreJob = viewModelScope.launch {
             try {
                 val next = app.youtube.browseContinuation(token)
-                val merged = (loaded.tracks + next.tracks).distinctBy { it.videoId }
+                val cover = loaded.thumbnailUrl?.takeIf { it.isNotBlank() }
+                    ?: fallbackThumbnail.takeIf { it.isNotBlank() }
+                val merged = (loaded.tracks + next.tracks.withCover(cover))
+                    .distinctBy { it.videoId }
                 val nextToken = next.continuation?.takeIf { it != token }
                 page = loaded.copy(tracks = merged, continuation = nextToken)
                 _state.update {
@@ -142,6 +146,10 @@ class AlbumViewModel(
             app.getString(R.string.browse_album_meta_no_year, count, artist)
         }
     }
+
+    /** No YouTube Music todas as faixas do álbum usam a capa do álbum. */
+    private fun List<Track>.withCover(cover: String?): List<Track> =
+        if (cover.isNullOrBlank()) this else map { it.copy(thumbnailUrl = cover) }
 
     companion object {
         fun factory(

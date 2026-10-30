@@ -1130,6 +1130,7 @@ class InnerTubeClient(
         val artistId = browseIdForPage(strapline, "MUSIC_PAGE_TYPE_ARTIST")
         val year = Regex("\\b(?:19|20)\\d{2}\\b").find(subtitle)?.value.orEmpty()
         val shelf = findTrackShelf(root)
+        val cover = header?.let(::extractThumbnail)
         val tracks = parseShelfTracks(
             shelf,
             TrackContext(
@@ -1138,7 +1139,12 @@ class InnerTubeClient(
                 albumTitle = title,
                 albumId = browseId,
             ),
-        )
+        ).map { track ->
+            // As linhas do álbum não trazem miniatura própria. Sem esta troca, a
+            // UI cairia na thumbnail do vídeo do YouTube (16:9), enquanto o
+            // YouTube Music mostra a capa quadrada do álbum em todas as faixas.
+            if (cover.isNullOrBlank()) track else track.copy(thumbnailUrl = cover)
+        }
         return AlbumPage(
             browseId = browseId,
             title = title,
@@ -1147,7 +1153,7 @@ class InnerTubeClient(
             year = year,
             description = descriptionText(header)
                 .ifBlank { descriptionText(findFirstObject(root, "musicDescriptionShelfRenderer")) },
-            thumbnailUrl = header?.let(::extractThumbnail),
+            thumbnailUrl = cover,
             tracks = tracks,
             continuation = shelf?.let(::shelfContinuation),
         )
