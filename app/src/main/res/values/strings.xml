@@ -462,8 +462,8 @@
     <string name="stats_album_fallback">Não foi possível abrir o álbum agora. Abrindo a busca.</string>
     <string name="stats_open_error">Não foi possível abrir esta tela. Tente novamente.</string>
     <string name="stats_hours_minutes">%1$d h %2$d min</string>
-    <string name="stats_minutes">%1$d min</string>
-    <string name="stats_less_minute">&lt; 1 min</string>
+    <string name="stats_minutes_seconds">%1$d min %2$d s</string>
+    <string name="stats_seconds">%1$d s</string>
     <string name="stats_unknown_artist">Artista desconhecido</string>
     <string name="stats_unknown_track">Música desconhecida</string>
     <string name="stats_unknown_album">Álbum desconhecido</string>

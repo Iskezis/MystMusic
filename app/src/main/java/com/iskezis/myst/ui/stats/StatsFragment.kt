@@ -607,16 +607,23 @@ class StatsFragment : Fragment() {
     }
 
     private fun formatListening(millis: Long): String {
-        val totalMinutes = (millis.coerceAtLeast(0L) / 60_000L)
-        return when {
-            totalMinutes < 1L -> getString(R.string.stats_less_minute)
-            totalMinutes < 60L -> getString(R.string.stats_minutes, totalMinutes)
-            else -> getString(
-                R.string.stats_hours_minutes,
-                totalMinutes / 60L,
-                totalMinutes % 60L,
+        val totalSeconds = millis.coerceAtLeast(0L) / 1_000L
+        if (totalSeconds < 60L) {
+            return getString(R.string.stats_seconds, totalSeconds)
+        }
+        val totalMinutes = totalSeconds / 60L
+        if (totalMinutes < 60L) {
+            return getString(
+                R.string.stats_minutes_seconds,
+                totalMinutes,
+                totalSeconds % 60L,
             )
         }
+        return getString(
+            R.string.stats_hours_minutes,
+            totalMinutes / 60L,
+            totalMinutes % 60L,
+        )
     }
 
     private fun playsText(plays: Int): String =

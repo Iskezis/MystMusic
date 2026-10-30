@@ -12,6 +12,7 @@ Estatísticas interativas, fotos de artistas e navegação por D-pad no player d
 - **Ordem de foco do D-pad:** ao abrir o player na TV, o foco começa no play/pause. As ligações entre topo, artista, álbum, seek, controles e botões de erro são explícitas, inclusive quando o álbum não existe ou um controle está desabilitado.
 
 ### Corrigido
+- **Tempo nas Estatísticas com a precisão certa:** durações abaixo de 1 minuto aparecem só em segundos (ex.: `42 s`); entre 1 minuto e 1 hora aparecem em minutos e segundos (ex.: `3 min 12 s`); a partir de 1 hora aparecem em horas e minutos (ex.: `2 h 7 min`), sem mostrar segundos nesse último caso. A regra vale para o tempo total, o top artistas e as descrições acessíveis dos gráficos.
 - **Linhas de estatística sem foco:** as linhas agora usam o mesmo fundo de foco das faixas, com a borda de foco tendo prioridade sobre o estado "selecionado" para nunca desaparecer no D-pad.
 - **Player de TV sem estado de erro consistente:** ao faltar o controlador, os controles de reprodução ficam desabilitados e o foco inicial vai para "Tentar novamente", em vez de um play que não faria nada.
 - **Acessibilidade:** as linhas clicáveis de Estatísticas anunciam a ação (reproduzir, abrir artista ou abrir álbum) além do rank, nome e contagem.
