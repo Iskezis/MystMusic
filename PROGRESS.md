@@ -60,14 +60,15 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
   - [x] Celular esconde "Desconectar TV" na hora com o aviso de despareamento
   - [x] Verificação `/hello` ao abrir Configurações pega o caso de app fechado/aviso perdido, inclusive na tela de código da TV
   - [x] Lápide `tv_last_pair_id` gravada também para pareamentos que existiam antes da atualização
-- [ ] Melhorias de navegação e interação (0.2.0-dev.18)
-  - [ ] Estatísticas: tocar em uma música do Top Músicas inicia a reprodução na posição tocada
-  - [ ] Estatísticas: tocar em um artista abre o perfil; tocar em um álbum abre a tela do álbum
-  - [ ] Estatísticas: identificadores ausentes são resolvidos via busca do YouTube Music, com indicador de carregamento
-  - [ ] Top Artistas exibe a foto oficial do perfil em recorte circular, com fallback e cache em memória
-  - [ ] TV: anel/borda de foco visível em todos os controles do player, incluindo play/pause, artista, álbum, seek e botões de erro
-  - [ ] TV: foco inicial no play/pause e ordem de foco explícita entre todos os controles
-  - [ ] Falha de busca/navegação nunca deixa a linha sem resposta; abre a busca pelo nome como fallback
+- [x] Melhorias de navegação e interação (0.2.0-dev.18)
+  - [x] Estatísticas: tocar em uma música do Top Músicas inicia a reprodução na posição tocada
+  - [x] Estatísticas: tocar em um artista abre o perfil; tocar em um álbum abre a tela do álbum
+  - [x] Estatísticas: identificadores ausentes são resolvidos via busca do YouTube Music, com indicador de carregamento
+  - [x] Estatísticas: tempo mostra só segundos abaixo de 1 min, minutos + segundos até 1 h e horas + minutos acima de 1 h
+  - [x] Top Artistas exibe a foto oficial do perfil em recorte circular, com fallback e cache em memória
+  - [x] TV: anel/borda de foco visível em todos os controles do player, incluindo play/pause, artista, álbum, seek e botões de erro
+  - [x] TV: foco inicial no play/pause e ordem de foco explícita entre todos os controles
+  - [x] Falha de busca/navegação nunca deixa a linha sem resposta; abre a busca pelo nome como fallback
 - [x] 15. Busca: artistas, álbuns e playlists
   - [x] Chips Tudo / Músicas / Artistas / Álbuns / Playlists
   - [x] Perfil do artista, tela do álbum, tela da playlist
@@ -95,6 +96,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - API de atualização do GitHub só funciona sem token se o repositório for público.
 
 ## Release
+- **0.2.0-dev.18** (`versionCode 27`, `versionName "0.2.0-dev.18"`): Estatísticas clicáveis (músicas tocam na posição tocada; artistas e álbuns resolvem o identificador e abrem a tela certa, com busca como fallback), fotos oficiais dos artistas no Top Artistas em recorte circular e foco visível/ordem de D-pad no player de TV. O tempo das Estatísticas agora mostra só segundos abaixo de 1 minuto, minutos e segundos até 1 hora e horas e minutos acima disso. Build inicial `41133622872`; build final `41135370815`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.17** (`versionCode 26`, `versionName "0.2.0-dev.17"`): correções de persistência do Recentes (horário das faixas do YouTube Music preservado entre sincronizações) e do cancelamento de pareamento na TV (celular remove "Desconectar TV" pelo aviso em tempo real ou pela verificação `/hello` ao abrir Configurações); run `41129850673`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.16** (`versionCode 25`, `versionName "0.2.0-dev.16"`): correção das capas dentro do álbum — as faixas passam a usar a capa oficial do álbum (inclusive nas páginas seguintes, no player, no mini player e nas playlists Myst), em vez da thumbnail 16:9 do vídeo do YouTube; run `41127188346`. APKs em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.2.0-dev.15** (`versionCode 24`, `versionName "0.2.0-dev.15"`): busca completa com chips e resultados mistos, perfil de artista, telas de álbum e playlist pública com paginação, copiar playlist para Myst, menu de faixa com ir para artista/álbum e nomes clicáveis no player; run `41125684699`. APKs substituídos pelos do dev.16.
@@ -162,6 +164,8 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 | 41125684699 | 50bf178 | verde | Fase 15 (0.2.0-dev.15): busca ampliada, artista, álbum, playlist pública e copiar para Myst | `apks/app.apk`, `apks/app-tv.apk` |
 | 41127188346 | 0db8f23 | verde | Capas de álbum (0.2.0-dev.16): faixas usam a capa oficial do álbum | `apks/app.apk`, `apks/app-tv.apk` |
 | 41129850673 | b911d44 | verde | Recentes estável e pareamento TV (0.2.0-dev.17): timestamps preservados, `/hello` com lápide, verificação ao abrir Configurações | `apks/app.apk`, `apks/app-tv.apk` |
+| 41133622872 | 94fa04f | verde | Melhorias de navegação e interação (0.2.0-dev.18): estatísticas clicáveis, fotos de artistas e foco no player de TV | — (substituído pelo run final `41135370815`) |
+| 41135370815 | cba3799 | verde | 0.2.0-dev.18 final: segundos nas estatísticas e APKs publicados | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
 - YouTube Music (fase 13): a biblioteca da conta é **somente leitura**. O cache fica em tabelas próprias do Room (`yt_playlists`, `yt_playlist_tracks`, `yt_history`, `yt_sync_state`), com validade de 15 minutos e estratégia *stale-while-revalidate*: a tela mostra o cache na hora e atualiza em segundo plano. O botão/gesto de atualizar força a rede. Nenhuma escrita é enviada ao YouTube.
@@ -235,6 +239,9 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - Áudio (0.2.0-dev.13): o VISIONOS 0.1 recebia `HTTP 400` quando o visitorData da sessão não servia para o cliente anônimo; o fallback `ANDROID_VR` devolvia URLs com `rqh=1` que passam no teste de 2 bytes mas recusam blocos grandes depois do primeiro MiB (403). A validação agora testa também um bloco de 256 KiB a partir de 1 MiB: o ANDROID_VR é rejeitado, a resolução esgota os clientes, renova o visitorData anônimo e repete o VISIONOS. O VISIONOS foi atualizado para **1.02** (contexto, modelo, sistema e User-Agent atuais); sua URL aceita Range aberto e intervalos arbitrários, então a reprodução e o seek voltam a funcionar sem chunking.
 - Recentes estável (0.2.0-dev.17): o histórico do YouTube Music só informa a ordem, não o horário. A sincronização agora consulta `yt_history` antes de apagar e reusa o `playedAt` de cada `videoId`; somente faixas novas recebem `now - índice * 60 s`. O histórico local e `play_events` nunca são tocados por essa sincronização, então atualizar o APK não reordena nem apaga estatísticas. Se o usuário tocar uma faixa no celular, o merge escolhe o maior `playedAt` e o histórico local continua no topo.
 - Pareamento cancelado na TV (0.2.0-dev.17): a TV grava `tv_last_pair_id` ao desfazer o par (inclusive pares criados antes desta versão, pelo fallback no getter). A tela de código responde `GET /hello` com esse id e `paired=false`; o servidor persistente responde `paired=true` enquanto o par existir. O celular esconde "Desconectar TV" na hora pelo aviso `/notify`; ao abrir Configurações, `refreshPairing()` confere o `/hello` do IP em cache e, se necessário, descobre a TV por NSD (throttle de 5 s, descoberta de 4 s). Os timeouts TV→celular subiram para 12 s (`/notify`) e 15 s (retrato final) para redes locais lentas. Limitação: se a TV estiver desligada e a tela de código não estiver aberta, não há como o celular confirmar pela rede; o pareamento local é removido ao usuário tocar em "Desconectar TV".
+- Estatísticas interativas (0.2.0-dev.18): `play_events` não guarda os identificadores de artista/álbum, então as linhas resolvem o `browseId` sob demanda com `SearchFilter.ARTISTS`/`SearchFilter.ALBUMS`; a resolução fica em cache no `StatsViewModel` e, se não encontrar, abre a busca pelo nome (com aviso e sem quebrar a tela). O Top Músicas toca a lista exibida a partir do índice tocado, levando o álbum agora devolvido por `MAX(album)` na consulta. As fotos do Top Artistas vêm da busca de artistas e são aplicadas aos bindings existentes, sem recriar as linhas, para o foco do D-pad não pular; até a foto chegar, permanece a thumbnail da faixa.
+- Foco no player de TV (0.2.0-dev.18): cada controle interativo tem fundo de foco com borda de 2–4 dp, mudança de cor do ícone/texto e ligações explícitas `nextFocus*`, inclusive quando o álbum está vazio ou um botão está desabilitado. O foco inicial vai para o play/pause; sem `MediaController`, os controles de reprodução são desabilitados e o foco vai para "Tentar novamente". O play/pause não recebe escala no foco porque sua animação de troca de ícone usa o mesmo `ViewPropertyAnimator` do alpha; os demais controles usam escala leve.
+- Tempo das Estatísticas (0.2.0-dev.18): a formatação usa segundos truncados e três faixas — abaixo de 60 s mostra só `N s`; de 1 min a 59 min mostra `N min N s`; a partir de 1 h mostra `N h N min`, sem segundos. A regra vale para o tempo total, o top artistas e as descrições acessíveis dos gráficos.
 
 ## Problemas em aberto
 - Fase 14: falta a confirmação em aparelho de que instalar o dev.10 por cima do dev.9, relogar e encontrar playlists/histórico/estatísticas intactos. A migração 4→5 e o schema exportado foram conferidos no CI e o build `40987101834` está verde; o ambiente do agente não tem ADB/aparelho para executar o teste de atualização.
