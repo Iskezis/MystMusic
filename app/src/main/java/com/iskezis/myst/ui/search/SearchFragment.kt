@@ -73,16 +73,30 @@ class SearchFragment : Fragment() {
                     AppLog.TAG_UI,
                     "Busca: tocar ${tracks.size} faixas no índice $index",
                 )
+                viewModel.commitCurrentQuery()
                 (requireActivity().application as MystApp).playerController.play(tracks, index)
             },
             onMore = { track ->
+                viewModel.commitCurrentQuery()
                 TrackMenuSheet.newInstance(track)
                     .show(childFragmentManager, TrackMenuSheet.TAG)
             },
-            onArtistClick = { track -> openArtistOrSearch(track) },
-            onArtist = { artist -> openArtist(artist) },
-            onAlbum = { album -> openAlbum(album) },
-            onPlaylist = { playlist -> openPlaylist(playlist) },
+            onArtistClick = { track ->
+                viewModel.commitCurrentQuery()
+                openArtistOrSearch(track)
+            },
+            onArtist = { artist ->
+                viewModel.commitCurrentQuery()
+                openArtist(artist)
+            },
+            onAlbum = { album ->
+                viewModel.commitCurrentQuery()
+                openAlbum(album)
+            },
+            onPlaylist = { playlist ->
+                viewModel.commitCurrentQuery()
+                openPlaylist(playlist)
+            },
             onLoadMore = { viewModel.loadMore() },
         )
         binding.searchList.layoutManager = LinearLayoutManager(requireContext())
@@ -110,7 +124,7 @@ class SearchFragment : Fragment() {
         }
         binding.searchInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                viewModel.searchNow()
+                viewModel.searchNow(recordHistory = true)
                 true
             } else {
                 false
@@ -215,7 +229,7 @@ class SearchFragment : Fragment() {
             chip.setOnClickListener {
                 binding.searchInput.setText(query)
                 binding.searchInput.setSelection(query.length)
-                viewModel.searchNow()
+                viewModel.searchNow(recordHistory = true)
             }
             binding.searchRecentChips.addView(chip)
         }

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0-dev.26 — 31/10/2026
+
+Ajustes pedidos depois da revisão do dev.25.
+
+### Corrigido
+- **Navbar:** a aba Playlists passou a usar o mesmo estado selecionado das outras abas (fundo de destaque, ícone e texto em azul). O ícone central não fica mais permanentemente aceso.
+- **Busca:** o cabeçalho não tem mais altura fixa menor que o título (era a causa da sobreposição com o campo de texto); chips e conteúdo ganharam espaçamento. O histórico só é gravado quando o usuário toca em **Buscar** no teclado, toca em uma busca recente ou escolhe um resultado; digitar ou trocar o filtro não grava mais.
+- **Mini player:** a barra de progresso agora atravessa a largura inteira do card, passando por baixo dos botões de anterior, play/pause e próxima.
+- **Continuar ouvindo:** o card virou um quadrado de largura total, então a capa aparece inteira (sem `centerCrop` cortando a arte) e o rótulo "Continuar ouvindo" continua sobre a parte inferior.
+- **Recentes:** a seção da Home deixou o carrossel horizontal e passou a mostrar fileiras de 4 músicas, de cima para baixo, com capa, título, artista e selo de download.
+- **Ícone do app:** voltou o ícone anterior ao dev.24 (vetor azul-céu com a nota), no celular e no banner da TV.
+- **Galeria:** toda capa salva por download agora começa com ponto (`.videoId.jpg`), então o MediaStore não a indexa nem mostra na galeria. Capas antigas são renomeadas ao abrir o app e o MediaStore é avisado para retirá-las.
+
 ## 0.2.0-dev.25 — 31/10/2026
 
 Correções dos sete problemas relatados depois do dev.24.

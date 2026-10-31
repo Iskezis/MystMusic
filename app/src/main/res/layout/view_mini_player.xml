@@ -119,7 +119,7 @@
             android:minHeight="@dimen/mini_progress_height"
             android:progressDrawable="@drawable/progress_mini"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/miniControls"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/miniCover" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>

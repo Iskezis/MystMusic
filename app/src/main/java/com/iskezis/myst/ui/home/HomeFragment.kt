@@ -183,7 +183,7 @@ class HomeFragment : YouTubeLoginFragment() {
                 items += HomeItem.Featured(continueTrack, queue)
             }
             items += HomeItem.Header(HomeSection.RECENT)
-            items += HomeItem.Carousel(HomeSection.RECENT, state.recent)
+            items += HomeItem.RecentGrid(HomeSection.RECENT, state.recent)
             items += HomeItem.Header(HomeSection.TRENDING)
             items += HomeItem.Ranked(HomeSection.TRENDING, state.trending)
             items += HomeItem.Header(HomeSection.RECOMMENDED)

@@ -3,6 +3,8 @@ package com.iskezis.myst.ui.home
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
+import android.widget.Space
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -16,8 +18,10 @@ import com.iskezis.myst.databinding.ItemCarouselBinding
 import com.iskezis.myst.databinding.ItemHomeFeaturedBinding
 import com.iskezis.myst.databinding.ItemHomeHeaderBinding
 import com.iskezis.myst.databinding.ItemHomeOfflineBinding
+import com.iskezis.myst.databinding.ItemHomeRecentGridBinding
 import com.iskezis.myst.databinding.ItemHomeRankedBinding
 import com.iskezis.myst.databinding.ItemHomeSearchBinding
+import com.iskezis.myst.databinding.ItemRecentTileBinding
 import com.iskezis.myst.databinding.ItemRankedTrackBinding
 import com.iskezis.myst.databinding.ItemSectionHeaderBinding
 import com.iskezis.myst.ui.common.LoadState
@@ -33,6 +37,7 @@ sealed interface HomeItem {
     data class Featured(val track: Track, val queue: List<Track>) : HomeItem
     data class Header(val section: HomeSection) : HomeItem
     data class Carousel(val section: HomeSection, val state: LoadState<List<Track>>) : HomeItem
+    data class RecentGrid(val section: HomeSection, val state: LoadState<List<Track>>) : HomeItem
     data class Ranked(val section: HomeSection, val state: LoadState<List<Track>>) : HomeItem
 }
 
@@ -57,6 +62,7 @@ class HomeAdapter(
         is HomeItem.Featured -> TYPE_FEATURED
         is HomeItem.Header -> TYPE_HEADER
         is HomeItem.Carousel -> TYPE_CAROUSEL
+        is HomeItem.RecentGrid -> TYPE_RECENT_GRID
         is HomeItem.Ranked -> TYPE_RANKED
     }
 
@@ -82,6 +88,12 @@ class HomeAdapter(
                 onRetryTrending,
                 onRetryRecommended,
             )
+            TYPE_RECENT_GRID -> RecentGridHolder(
+                ItemHomeRecentGridBinding.inflate(inflater, parent, false),
+                onPlay,
+                onMore,
+                onRetryRecent,
+            )
             else -> CarouselHolder(
                 ItemCarouselBinding.inflate(inflater, parent, false),
                 onPlay,
@@ -103,6 +115,7 @@ class HomeAdapter(
             is HomeItem.Featured -> (holder as FeaturedHolder).bind(item)
             is HomeItem.Header -> (holder as HeaderHolder).bind(item)
             is HomeItem.Carousel -> (holder as CarouselHolder).bind(item)
+            is HomeItem.RecentGrid -> (holder as RecentGridHolder).bind(item)
             is HomeItem.Ranked -> (holder as RankedHolder).bind(item)
         }
     }
@@ -394,6 +407,146 @@ class HomeAdapter(
         }
     }
 
+    /**
+     * Recentes em grade fixa de quatro colunas, de cima para baixo. As linhas
+     * são montadas no próprio holder para não aninhar um RecyclerView vertical
+     * dentro da lista da Home (o que quebraria o scroll e a reciclagem).
+     */
+    private class RecentGridHolder(
+        private val binding: ItemHomeRecentGridBinding,
+        private val onPlay: (List<Track>, Int) -> Unit,
+        private val onMore: (Track) -> Unit,
+        private val onRetryRecent: () -> Unit,
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(item: HomeItem.RecentGrid) {
+            val context = binding.root.context
+            when (val state = item.state) {
+                is LoadState.Loading -> {
+                    binding.recentGridShimmer.visibility = View.VISIBLE
+                    binding.recentGridShimmer.startShimmer()
+                    binding.recentGridContainer.visibility = View.GONE
+                    binding.recentGridState.stateRoot.visibility = View.GONE
+                }
+                is LoadState.Data -> {
+                    binding.recentGridShimmer.stopShimmer()
+                    binding.recentGridShimmer.visibility = View.GONE
+                    binding.recentGridState.stateRoot.visibility = View.GONE
+                    binding.recentGridContainer.visibility = View.VISIBLE
+                    bindTracks(state.value)
+                }
+                is LoadState.Empty -> {
+                    binding.recentGridShimmer.stopShimmer()
+                    binding.recentGridShimmer.visibility = View.GONE
+                    binding.recentGridContainer.visibility = View.GONE
+                    showState(
+                        icon = R.drawable.ic_music,
+                        title = context.getString(R.string.section_personalize_hint),
+                        retry = false,
+                    )
+                }
+                is LoadState.Error -> {
+                    binding.recentGridShimmer.stopShimmer()
+                    binding.recentGridShimmer.visibility = View.GONE
+                    binding.recentGridContainer.visibility = View.GONE
+                    showState(
+                        icon = R.drawable.ic_cloud_off,
+                        title = context.getString(state.messageRes),
+                        retry = true,
+                    )
+                }
+            }
+        }
+
+        private fun bindTracks(tracks: List<Track>) {
+            val context = binding.root.context
+            val inflater = LayoutInflater.from(context)
+            val gap = context.resources.getDimensionPixelSize(R.dimen.space_s)
+            binding.recentGridContainer.removeAllViews()
+
+            tracks.chunked(COLUMNS).forEachIndexed { rowIndex, rowTracks ->
+                val row = LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    weightSum = COLUMNS.toFloat()
+                    baselineAligned = false
+                }
+                rowTracks.forEachIndexed { column, track ->
+                    val tile = ItemRecentTileBinding.inflate(inflater, row, false)
+                    tile.root.layoutParams = LinearLayout.LayoutParams(
+                        0,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        1f,
+                    ).apply {
+                        marginEnd = if (column < rowTracks.lastIndex) gap else 0
+                    }
+                    bindTile(tile, track, tracks)
+                    row.addView(tile.root)
+                }
+                repeat(COLUMNS - rowTracks.size) {
+                    row.addView(
+                        Space(context),
+                        LinearLayout.LayoutParams(0, 1, 1f),
+                    )
+                }
+                val params = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    if (rowIndex > 0) topMargin = gap
+                }
+                binding.recentGridContainer.addView(row, params)
+            }
+        }
+
+        private fun bindTile(
+            tile: ItemRecentTileBinding,
+            track: Track,
+            tracks: List<Track>,
+        ) {
+            val context = tile.root.context
+            val title = track.title.ifBlank {
+                context.getString(R.string.player_unknown_title)
+            }
+            tile.recentTitle.text = title
+            tile.recentArtist.text = track.artist.ifBlank {
+                context.getString(R.string.player_unknown_artist)
+            }
+            tile.recentCover.contentDescription = context.getString(
+                R.string.content_cover,
+                title,
+            )
+            tile.recentCover.load(track.artworkUrl()) {
+                crossfade(true)
+                placeholder(R.drawable.bg_cover_placeholder)
+                error(R.drawable.bg_cover_placeholder)
+            }
+            tile.recentDownloadBadge.videoId = track.videoId
+            tile.root.contentDescription = context.getString(R.string.content_song, title)
+            val index = tracks.indexOfFirst { it.videoId == track.videoId }.coerceAtLeast(0)
+            tile.root.setOnClickListener { onPlay(tracks, index) }
+            tile.root.setOnLongClickListener {
+                onMore(track)
+                true
+            }
+        }
+
+        private fun showState(icon: Int, title: String, retry: Boolean) {
+            binding.recentGridState.stateRoot.visibility = View.VISIBLE
+            binding.recentGridState.stateIcon.setImageResource(icon)
+            binding.recentGridState.stateTitle.text = title
+            binding.recentGridState.stateSubtitle.visibility = View.GONE
+            binding.recentGridState.stateRetry.visibility =
+                if (retry) View.VISIBLE else View.GONE
+            binding.recentGridState.stateRetry.setOnClickListener(
+                if (retry) View.OnClickListener { onRetryRecent() } else null,
+            )
+        }
+
+        private companion object {
+            const val COLUMNS = 4
+        }
+    }
+
     private object Diff : DiffUtil.ItemCallback<HomeItem>() {
         override fun areItemsTheSame(oldItem: HomeItem, newItem: HomeItem): Boolean =
             when {
@@ -405,6 +558,8 @@ class HomeAdapter(
                 oldItem is HomeItem.Header && newItem is HomeItem.Header ->
                     oldItem.section == newItem.section
                 oldItem is HomeItem.Carousel && newItem is HomeItem.Carousel ->
+                    oldItem.section == newItem.section
+                oldItem is HomeItem.RecentGrid && newItem is HomeItem.RecentGrid ->
                     oldItem.section == newItem.section
                 oldItem is HomeItem.Ranked && newItem is HomeItem.Ranked ->
                     oldItem.section == newItem.section
@@ -423,5 +578,6 @@ class HomeAdapter(
         private const val TYPE_OFFLINE = 4
         private const val TYPE_FEATURED = 5
         private const val TYPE_RANKED = 6
+        private const val TYPE_RECENT_GRID = 7
     }
 }

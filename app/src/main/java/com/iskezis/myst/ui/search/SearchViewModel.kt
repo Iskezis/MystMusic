@@ -101,7 +101,12 @@ class SearchViewModel(private val app: MystApp) : ViewModel() {
         }
     }
 
-    fun searchNow() {
+    /**
+     * Executa a consulta atual. [recordHistory] só é verdadeiro quando o
+     * usuário confirma a busca (Enter ou um resultado), nunca a cada letra
+     * digitada ou troca de filtro.
+     */
+    fun searchNow(recordHistory: Boolean = false) {
         val current = _state.value
         val query = current.query.trim()
         if (query.length < 2) return
@@ -109,8 +114,15 @@ class SearchViewModel(private val app: MystApp) : ViewModel() {
         moreJob?.cancel()
         _state.value = current.copy(state = SearchState.Loading)
         searchJob = viewModelScope.launch {
-            execute(query, current.filter, current.params)
+            execute(query, current.filter, current.params, recordHistory)
         }
+    }
+
+    /** Guarda a consulta atual quando o usuário escolhe um resultado. */
+    fun commitCurrentQuery() {
+        val query = _state.value.query.trim()
+        if (query.length < 2) return
+        viewModelScope.launch { recordSearch(query) }
     }
 
     fun onFilterChanged(filter: SearchFilter) {
@@ -181,8 +193,9 @@ class SearchViewModel(private val app: MystApp) : ViewModel() {
         query: String,
         filter: SearchFilter,
         params: Map<SearchFilter, String>,
+        recordHistory: Boolean = false,
     ) {
-        recordSearch(query)
+        if (recordHistory) recordSearch(query)
         try {
             AppLog.d(AppLog.TAG_TUBE, "Busca completa: $query filtro=${filter.name}")
             val startedAt = System.currentTimeMillis()

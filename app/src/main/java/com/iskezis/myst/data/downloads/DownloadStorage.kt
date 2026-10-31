@@ -1,6 +1,7 @@
 package com.iskezis.myst.data.downloads
 
 import android.content.Context
+import android.media.MediaScannerConnection
 import android.os.Environment
 import android.os.StatFs
 import com.iskezis.myst.data.account.AutoAccountBackup
@@ -46,7 +47,9 @@ class DownloadStorage(private val context: Context) {
 
     fun prepare(): File {
         val current = root
-        ensure(File(current, COVERS_DIRECTORY))
+        val covers = File(current, COVERS_DIRECTORY)
+        ensure(covers)
+        hideLegacyCovers(covers)
         AppLog.i(AppLog.TAG_DB, "Pasta de downloads: ${current.absolutePath}")
         return current
     }
@@ -60,9 +63,14 @@ class DownloadStorage(private val context: Context) {
     fun partFile(videoId: String): File =
         File(root, "${safeId(videoId)}.$AUDIO_EXTENSION.part")
 
+    /**
+     * A capa começa com ponto para ficar oculta da galeria: o Android não
+     * indexa arquivos ocultos no MediaStore, mesmo dentro de uma pasta
+     * pública. O áudio continua visível no gerenciador de arquivos.
+     */
     fun coverFile(videoId: String): File = File(
         File(root, COVERS_DIRECTORY),
-        "${safeId(videoId)}.$COVER_EXTENSION",
+        ".${safeId(videoId)}.$COVER_EXTENSION",
     )
 
     fun transferFile(videoId: String): File =
@@ -84,11 +92,15 @@ class DownloadStorage(private val context: Context) {
     }
 
     fun findCover(videoId: String, storedPath: String? = null): File? {
+        val id = safeId(videoId)
         val candidates = buildList {
             storedPath?.takeIf { it.isNotBlank() }?.let { add(File(it)) }
             add(coverFile(videoId))
-            add(File(File(publicRoot, COVERS_DIRECTORY), "${safeId(videoId)}.$COVER_EXTENSION"))
-            add(File(File(privateRoot, COVERS_DIRECTORY), "${safeId(videoId)}.$COVER_EXTENSION"))
+            add(File(File(publicRoot, COVERS_DIRECTORY), ".$id.$COVER_EXTENSION"))
+            add(File(File(privateRoot, COVERS_DIRECTORY), ".$id.$COVER_EXTENSION"))
+            // Capas baixadas antes do dev.26 não tinham o ponto inicial.
+            add(File(File(publicRoot, COVERS_DIRECTORY), "$id.$COVER_EXTENSION"))
+            add(File(File(privateRoot, COVERS_DIRECTORY), "$id.$COVER_EXTENSION"))
         }
         return candidates.firstOrNull { it.isFile && it.length() > 0L }
     }
@@ -118,6 +130,7 @@ class DownloadStorage(private val context: Context) {
         runCatching {
             path?.takeIf { it.isNotBlank() }?.let { File(it).delete() }
             coverFile(videoId).delete()
+            File(coverFile(videoId).parentFile, "${safeId(videoId)}.$COVER_EXTENSION").delete()
         }.onFailure {
             AppLog.failure(AppLog.TAG_DB, "Falha removendo capa baixada $videoId", it)
         }
@@ -130,6 +143,41 @@ class DownloadStorage(private val context: Context) {
     private fun ensure(directory: File): Boolean = runCatching {
         directory.isDirectory || directory.mkdirs()
     }.getOrDefault(false)
+
+    /**
+     * Esconde as capas antigas renomeando `id.jpg` para `.id.jpg`, sem perder
+     * o arquivo, e avisa o MediaStore para retirar a imagem da galeria. O
+     * caminho antigo no banco deixa de existir, mas [findCover] encontra o
+     * novo pelo videoId.
+     */
+    private fun hideLegacyCovers(directory: File) {
+        runCatching {
+            val files = directory.listFiles() ?: return@runCatching
+            for (file in files) {
+                if (!file.isFile) continue
+                if (file.name.startsWith(".")) continue
+                if (!file.extension.equals(COVER_EXTENSION, ignoreCase = true)) continue
+                val hidden = File(directory, ".${file.name}")
+                if (hidden.exists()) {
+                    file.delete()
+                    continue
+                }
+                if (file.renameTo(hidden)) {
+                    MediaScannerConnection.scanFile(
+                        context,
+                        arrayOf(file.absolutePath, hidden.absolutePath),
+                        null,
+                        null,
+                    )
+                }
+            }
+        }.onFailure {
+            AppLog.w(
+                AppLog.TAG_DB,
+                "Falha ocultando capas antigas da galeria: ${AppLog.describe(it)}",
+            )
+        }
+    }
 
     private fun safeId(videoId: String): String =
         videoId.filter { it.isLetterOrDigit() || it == '-' || it == '_' }
