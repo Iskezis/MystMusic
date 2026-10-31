@@ -468,7 +468,7 @@ class HomeAdapter(
                 val row = LinearLayout(context).apply {
                     orientation = LinearLayout.HORIZONTAL
                     weightSum = COLUMNS.toFloat()
-                    baselineAligned = false
+                    isBaselineAligned = false
                 }
                 rowTracks.forEachIndexed { column, track ->
                     val tile = ItemRecentTileBinding.inflate(inflater, row, false)
