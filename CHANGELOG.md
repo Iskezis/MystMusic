@@ -14,6 +14,7 @@ Correção do “erro ao analisar o pacote” ao instalar a atualização baixad
 
 ### Build e release
 - `versionCode 42`, `versionName "0.1.8 Beta 3"`, tag `v0.1.8-beta.3` (pré-release).
+- Build `41238003714` verde nos dois flavors; release publicada pelo run `41238409259`, com `app.apk`, `app-tv.apk` e `SHA256SUMS.txt` verificados.
 - `RELEASE_NOTES.md` começa com `versionCode: 42`; o pop-up de atualização mostra o download e usa `app-tv.apk` no flavor de TV.
 
 ## 0.1.8 Beta 2 — 31/10/2026
