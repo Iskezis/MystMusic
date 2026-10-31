@@ -17,6 +17,24 @@ val localProps = Properties().apply {
 fun secret(name: String): String =
     (System.getenv(name) ?: localProps.getProperty(name) ?: "").replace("\"", "")
 
+/**
+ * Repositório público usado pelo verificador de atualizações. No CI vem de
+ * GITHUB_REPOSITORY; localmente pode ser definido em local.properties. O
+ * fallback é o repositório oficial do projeto, nunca um token/segredo.
+ */
+fun githubRepo(): String {
+    val candidates = listOf(
+        System.getenv("GITHUB_REPOSITORY"),
+        localProps.getProperty("GITHUB_REPO"),
+        "Iskezis/MystMusic",
+    )
+    return candidates.firstOrNull { !it.isNullOrBlank() }!!
+        .trim()
+        .removePrefix("https://github.com/")
+        .removeSuffix(".git")
+        .trim('/')
+}
+
 val stableKeystoreFile = rootProject.file(
     secret("MYST_KEYSTORE_PATH").ifBlank { "release.keystore" },
 )
@@ -36,14 +54,15 @@ android {
         applicationId = "com.iskezis.myst"
         minSdk = 21
         targetSdk = 34
-        versionCode = 37
-        versionName = "0.2.0-dev.28"
+        versionCode = 38
+        versionName = "0.2.0-dev.29"
         multiDexEnabled = true
         vectorDrawables.useSupportLibrary = true
 
         buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"${secret("SPOTIFY_CLIENT_ID")}\"")
         buildConfigField("String", "SPOTIFY_CLIENT_SECRET", "\"${secret("SPOTIFY_CLIENT_SECRET")}\"")
         buildConfigField("String", "DISCORD_APP_ID", "\"${secret("DISCORD_APP_ID")}\"")
+        buildConfigField("String", "GITHUB_REPO", "\"${githubRepo()}\"")
     }
 
     flavorDimensions += "device"

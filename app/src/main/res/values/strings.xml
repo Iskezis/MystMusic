@@ -701,4 +701,42 @@
     <string name="tv_disconnect_progress_title">Desconectando da TV</string>
     <string name="tv_disconnect_progress_message">Recebendo downloads da TV, se houver. Não feche o app.</string>
     <string name="tv_disconnect_done">TV desconectada</string>
+
+    <!-- Atualização pelo GitHub Releases -->
+    <string name="update_check">Verificar atualizações</string>
+    <string name="update_available_title">Nova versão disponível</string>
+    <string name="update_version_format">v%1$s → v%2$s</string>
+    <string name="update_size_format">Download: %1$s</string>
+    <string name="update_notes_title">Novidades</string>
+    <string name="update_notes_empty">Sem notas para esta versão.</string>
+    <string name="update_now">Atualizar</string>
+    <string name="update_later">Agora não</string>
+    <string name="update_checking">Verificando atualizações…</string>
+    <string name="update_up_to_date">Você já está na versão mais recente.</string>
+    <string name="update_check_title">Verificar atualizações</string>
+    <string name="update_check_error">Não foi possível verificar atualizações.</string>
+    <string name="update_retry">Tentar novamente</string>
+    <string name="update_close">Fechar</string>
+    <string name="update_download_title">Baixando atualização</string>
+    <string name="update_download_percent">%1$d%%</string>
+    <string name="update_download_bytes">%1$s de %2$s</string>
+    <string name="update_download_bytes_unknown">%1$s baixados</string>
+    <string name="update_cancel">Cancelar</string>
+    <string name="update_download_error">Não foi possível baixar a atualização.</string>
+    <string name="update_download_failed_title">Falha na atualização</string>
+    <string name="update_install_error_title">Instalação não iniciada</string>
+    <string name="update_error_network">Sem conexão com o GitHub. Verifique sua internet.</string>
+    <string name="update_error_rate_limit">O GitHub limitou as verificações. Tente novamente mais tarde.</string>
+    <string name="update_error_parse">O GitHub respondeu em um formato inesperado.</string>
+    <string name="update_error_asset">Esta versão não tem um APK compatível com este aparelho.</string>
+    <string name="update_error_checksum">O arquivo baixado não passou na verificação de integridade.</string>
+    <string name="update_error_download">A conexão falhou durante o download.</string>
+    <string name="update_unavailable">As atualizações não estão disponíveis nesta compilação.</string>
+    <string name="update_install_permission_title">Permitir a instalação</string>
+    <string name="update_install_permission_message">Para atualizar o MystMusic, permita instalar apps desconhecidos para este aplicativo. Depois volte ao MystMusic.</string>
+    <string name="update_open_settings">Abrir configurações</string>
+    <string name="update_install_error">Não foi possível abrir o instalador do Android. Baixe o APK pelo GitHub e instale manualmente.</string>
+    <string name="update_install_signature_hint">Se o Android recusar a instalação, a versão instalada usa outra assinatura. Desinstale-a e instale esta versão uma única vez.</string>
+    <string name="update_download_cancelled">Download cancelado.</string>
+    <string name="update_install_started">Abrindo o instalador…</string>
 </resources>

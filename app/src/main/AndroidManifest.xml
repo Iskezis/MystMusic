@@ -12,6 +12,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Instalação do APK baixado pelo próprio app (fase 18). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!--
       Canal persistente celular↔TV: o serviço em primeiro plano usa o tipo
       connectedDevice e precisa de uma permissão de conectividade declarada.
@@ -149,6 +151,21 @@
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/log_file_paths" />
+        </provider>
+
+        <!--
+          Autoridade separada para o APK de atualização em cacheDir/updates.
+          O instalador do sistema recebe leitura temporária apenas da URI
+          enviada no Intent; nada é exposto para outros aplicativos.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_file_paths" />
         </provider>
     </application>
 </manifest>

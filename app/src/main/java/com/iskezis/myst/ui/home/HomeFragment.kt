@@ -21,6 +21,7 @@ import com.iskezis.myst.databinding.FragmentHomeBinding
 import com.iskezis.myst.ui.common.LoadState
 import com.iskezis.myst.ui.common.YouTubeLoginFragment
 import com.iskezis.myst.ui.player.TrackMenuSheet
+import com.iskezis.myst.ui.update.UpdateUi
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.applyFadeThrough
 import kotlinx.coroutines.launch
@@ -33,6 +34,7 @@ class HomeFragment : YouTubeLoginFragment() {
         HomeViewModel.factory(requireActivity().application)
     }
     private lateinit var adapter: HomeAdapter
+    private var updateUi: UpdateUi? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,10 +53,15 @@ class HomeFragment : YouTubeLoginFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         AppLog.d(AppLog.TAG_UI, "HomeFragment.onViewCreated")
+        val app = requireActivity().application as MystApp
+        val updateController = UpdateUi(this, binding.root, app.updates)
+        updateUi = updateController
+        updateController.start()
         adapter = HomeAdapter(
             onSearch = { findNavController().navigate(R.id.searchFragment) },
             onAvatar = { findNavController().navigate(R.id.settingsFragment) },
             onStats = { findNavController().navigate(R.id.statsFragment) },
+            onUpdate = updateController::checkManually,
             onPlay = { tracks, index ->
                 AppLog.i(
                     AppLog.TAG_UI,
@@ -90,6 +97,9 @@ class HomeFragment : YouTubeLoginFragment() {
         binding.homeYtBanner.ytBannerAction.setOnClickListener { requestYouTubeLogin() }
         binding.homeTvDisconnect.setOnClickListener { confirmTvDisconnect() }
         updateTvDisconnectVisibility()
+        // A verificação automática é silenciosa e limitada a uma vez a cada
+        // 6 horas por processo; o botão do GitHub força uma consulta manual.
+        updateController.checkAutomatically()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -109,6 +119,9 @@ class HomeFragment : YouTubeLoginFragment() {
         // Foto e nome podem ter mudado nas Configurações.
         viewModel.refreshAccount()
         updateTvDisconnectVisibility()
+        // Retoma a instalação depois de o usuário liberar a permissão e
+        // repete a verificação após o app voltar do segundo plano.
+        updateUi?.onResume()
     }
 
     private fun updateTvDisconnectVisibility() {
@@ -194,6 +207,10 @@ class HomeFragment : YouTubeLoginFragment() {
 
     override fun onDestroyView() {
         AppLog.d(AppLog.TAG_UI, "HomeFragment.onDestroyView")
+        // Fecha os pop-ups antes de a janela do fragment sumir; sem isso o
+        // Android acusa window leak ao girar a tela com o diálogo aberto.
+        updateUi?.stop()
+        updateUi = null
         // Mantém o adapter anexado: limpá-lo durante o layout/scroll da saída
         // de tela provoca IllegalStateException no RecyclerView. A view e o
         // adapter são descartados juntos quando o fragment é destruído.

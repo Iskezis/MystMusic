@@ -44,6 +44,7 @@ class HomeAdapter(
     private val onSearch: () -> Unit,
     private val onAvatar: () -> Unit,
     private val onStats: () -> Unit,
+    private val onUpdate: () -> Unit,
     private val onPlay: (List<Track>, Int) -> Unit,
     private val onMore: (Track) -> Unit,
     private val onRetryRecent: () -> Unit,
@@ -108,7 +109,12 @@ class HomeAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (val item = getItem(position)) {
-            is HomeItem.Greeting -> (holder as GreetingHolder).bind(item, onAvatar, onStats)
+            is HomeItem.Greeting -> (holder as GreetingHolder).bind(
+                item,
+                onAvatar,
+                onStats,
+                onUpdate,
+            )
             is HomeItem.Search -> (holder as SearchHolder).bind(onSearch)
             is HomeItem.Offline -> (holder as OfflineHolder).bind()
             is HomeItem.Featured -> (holder as FeaturedHolder).bind(item)
@@ -122,7 +128,12 @@ class HomeAdapter(
     private class GreetingHolder(private val binding: ItemHomeHeaderBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(item: HomeItem.Greeting, onAvatar: () -> Unit, onStats: () -> Unit) {
+        fun bind(
+            item: HomeItem.Greeting,
+            onAvatar: () -> Unit,
+            onStats: () -> Unit,
+            onUpdate: () -> Unit,
+        ) {
             val context = binding.root.context
             val name = item.name.trim()
             binding.homeGreeting.text = if (name.isBlank()) {
@@ -152,6 +163,7 @@ class HomeAdapter(
             }
             binding.homeHeaderAvatarFrame.setOnClickListener { onAvatar() }
             binding.homeStatsButton.setOnClickListener { onStats() }
+            binding.homeUpdateButton.setOnClickListener { onUpdate() }
         }
     }
 

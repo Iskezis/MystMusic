@@ -51,6 +51,18 @@
             android:src="@drawable/ic_stats"
             app:tint="?attr/mystAccentText" />
 
+        <ImageButton
+            android:id="@+id/homeUpdateButton"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:layout_marginStart="@dimen/space_s"
+            android:background="@drawable/bg_circle_tonal"
+            android:contentDescription="@string/update_check"
+            android:focusable="true"
+            android:padding="13dp"
+            android:src="@drawable/ic_github"
+            app:tint="?attr/mystAccentText" />
+
         <FrameLayout
             android:id="@+id/homeHeaderAvatarFrame"
             android:layout_width="@dimen/touch_target"

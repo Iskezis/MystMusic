@@ -25,6 +25,7 @@ import com.iskezis.myst.data.settings.SearchHistoryStore
 import com.iskezis.myst.data.recommendations.RecommendationRepository
 import com.iskezis.myst.data.spotify.SpotifyImporter
 import com.iskezis.myst.data.stats.StatsRepository
+import com.iskezis.myst.data.update.UpdateManager
 import com.iskezis.myst.data.youtube.InnerTubeClient
 import com.iskezis.myst.data.youtube.YouTubeLibraryRepository
 import com.iskezis.myst.data.youtube.YouTubeRepository
@@ -107,6 +108,7 @@ class MystApp : Application(), ImageLoaderFactory {
     }
     val pairedSync: PairedSyncManager by lazy { PairedSyncManager(this) }
     val phonePairing: PhonePairingSession by lazy { PhonePairingSession(this) }
+    val updates: UpdateManager by lazy { UpdateManager(this) }
 
     val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val discordScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)

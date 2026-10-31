@@ -38,6 +38,7 @@ object AppLog {
     const val TAG_SPOTIFY = "MystSpotify"
     const val TAG_DISCORD = "MystDiscord"
     const val TAG_PAIRING = "MystPairing"
+    const val TAG_UPDATE = "MystUpdate"
     const val TAG_CRASH = "MystCrash"
 
     private const val MAX_DIAGNOSTIC_LINES = 500
