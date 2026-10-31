@@ -3,10 +3,12 @@ package com.iskezis.myst.ui.home
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
+import androidx.recyclerview.widget.PagerSnapHelper
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.iskezis.myst.R
@@ -405,9 +407,9 @@ class HomeAdapter(
     }
 
     /**
-     * Recentes compactos em uma linha horizontal: quatro capas aparecem de
-     * cada vez e as mais antigas ficam ao lado, para deslizar. O adaptador
-     * calcula a largura de cada item para caber exatamente quatro na tela.
+     * Recentes em páginas de quatro músicas: a primeira página mostra as
+     * quatro mais recentes, ao deslizar para o lado aparecem as próximas
+     * quatro, e assim por diante. O cabeçalho "Recentes" fica fixo acima.
      */
     private class RecentGridHolder(
         private val binding: ItemHomeRecentGridBinding,
@@ -416,13 +418,23 @@ class HomeAdapter(
         private val onRetryRecent: () -> Unit,
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        private val tiles = RecentTileAdapter(onPlay, onMore)
+        private val pages = RecentPageAdapter(onPlay, onMore)
+        private val snap = PagerSnapHelper()
 
         init {
             binding.recentGridList.layoutManager =
                 LinearLayoutManager(binding.root.context, LinearLayoutManager.HORIZONTAL, false)
-            binding.recentGridList.setHasFixedSize(true)
-            binding.recentGridList.adapter = tiles
+            snap.attachToRecyclerView(binding.recentGridList)
+            binding.recentGridList.adapter = pages
+            binding.recentGridList.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                    updateDots()
+                }
+
+                override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                    if (newState == RecyclerView.SCROLL_STATE_IDLE) updateDots()
+                }
+            })
         }
 
         fun bind(item: HomeItem.RecentGrid) {
@@ -432,6 +444,7 @@ class HomeAdapter(
                     binding.recentGridShimmer.visibility = View.VISIBLE
                     binding.recentGridShimmer.startShimmer()
                     binding.recentGridList.visibility = View.GONE
+                    binding.recentGridDots.visibility = View.GONE
                     binding.recentGridState.stateRoot.visibility = View.GONE
                 }
                 is LoadState.Data -> {
@@ -439,12 +452,15 @@ class HomeAdapter(
                     binding.recentGridShimmer.visibility = View.GONE
                     binding.recentGridList.visibility = View.VISIBLE
                     binding.recentGridState.stateRoot.visibility = View.GONE
-                    tiles.submitList(state.value)
+                    pages.submit(state.value)
+                    buildDots((state.value.size + RecentPageAdapter.PAGE_SIZE - 1) /
+                        RecentPageAdapter.PAGE_SIZE)
                 }
                 is LoadState.Empty -> {
                     binding.recentGridShimmer.stopShimmer()
                     binding.recentGridShimmer.visibility = View.GONE
                     binding.recentGridList.visibility = View.GONE
+                    binding.recentGridDots.visibility = View.GONE
                     showState(
                         icon = R.drawable.ic_music,
                         title = context.getString(R.string.section_personalize_hint),
@@ -455,12 +471,43 @@ class HomeAdapter(
                     binding.recentGridShimmer.stopShimmer()
                     binding.recentGridShimmer.visibility = View.GONE
                     binding.recentGridList.visibility = View.GONE
+                    binding.recentGridDots.visibility = View.GONE
                     showState(
                         icon = R.drawable.ic_cloud_off,
                         title = context.getString(state.messageRes),
                         retry = true,
                     )
                 }
+            }
+        }
+
+        private fun buildDots(pageCount: Int) {
+            val context = binding.root.context
+            binding.recentGridDots.removeAllViews()
+            binding.recentGridDots.visibility =
+                if (pageCount > 1) View.VISIBLE else View.GONE
+            if (pageCount <= 1) return
+            val size = context.resources.getDimensionPixelSize(R.dimen.page_dot_size)
+            val gap = context.resources.getDimensionPixelSize(R.dimen.page_dot_gap)
+            repeat(pageCount) { index ->
+                val dot = View(context)
+                dot.setBackgroundResource(R.drawable.bg_page_dot)
+                dot.alpha = if (index == 0) 1f else 0.32f
+                val params = LinearLayout.LayoutParams(size, size).apply {
+                    if (index > 0) marginStart = gap
+                }
+                binding.recentGridDots.addView(dot, params)
+            }
+        }
+
+        private fun updateDots() {
+            val layoutManager = binding.recentGridList.layoutManager as? LinearLayoutManager
+                ?: return
+            val position = layoutManager.findFirstVisibleItemPosition()
+            if (position == RecyclerView.NO_POSITION) return
+            for (index in 0 until binding.recentGridDots.childCount) {
+                binding.recentGridDots.getChildAt(index).alpha =
+                    if (index == position) 1f else 0.32f
             }
         }
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0-dev.28 — 31/10/2026
+
+Correção do formato dos Recentes conforme o esclarecimento do usuário.
+
+### Corrigido
+- **Recentes em páginas de quatro:** o cabeçalho "Recentes" fica fixo e, abaixo dele, aparecem quatro músicas em lista vertical. Ao deslizar para o lado, a página inteira troca para as próximas quatro (5–8), depois 9–12 e assim por diante, com indicador de páginas. Tocar em uma música mantém a fila completa dos Recentes e o menu de três pontos continua disponível em cada linha.
+
 ## 0.2.0-dev.27 — 31/10/2026
 
 Ajustes finais pedidos depois do dev.26.

@@ -1,74 +1,76 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recentGridList"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:clipToPadding="false"
-        android:overScrollMode="never"
-        android:paddingStart="@dimen/screen_margin"
-        android:paddingTop="@dimen/space_s"
-        android:paddingEnd="@dimen/screen_margin"
-        android:paddingBottom="@dimen/space_s" />
+        android:layout_height="wrap_content">
 
-    <com.facebook.shimmer.ShimmerFrameLayout
-        android:id="@+id/recentGridShimmer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingStart="@dimen/screen_margin"
-        android:paddingTop="@dimen/space_s"
-        android:paddingEnd="@dimen/screen_margin"
-        android:paddingBottom="@dimen/space_s"
-        android:visibility="gone"
-        app:shimmer_auto_start="true"
-        app:shimmer_base_color="?attr/mystSurfaceAlt"
-        app:shimmer_highlight_color="?attr/mystSurface">
-
-        <LinearLayout
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recentGridList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:baselineAligned="false"
-            android:orientation="horizontal"
-            android:weightSum="4">
+            android:clipToPadding="false"
+            android:overScrollMode="never" />
 
-            <include
-                layout="@layout/item_recent_skeleton"
-                android:layout_width="0dp"
+        <com.facebook.shimmer.ShimmerFrameLayout
+            android:id="@+id/recentGridShimmer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="@dimen/screen_margin"
+            android:paddingTop="@dimen/space_xs"
+            android:paddingEnd="@dimen/screen_margin"
+            android:paddingBottom="@dimen/space_s"
+            android:visibility="gone"
+            app:shimmer_auto_start="true"
+            app:shimmer_base_color="?attr/mystSurfaceAlt"
+            app:shimmer_highlight_color="?attr/mystSurface">
+
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="@dimen/space_s"
-                android:layout_weight="1" />
+                android:orientation="vertical">
 
-            <include
-                layout="@layout/item_recent_skeleton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="@dimen/space_s"
-                android:layout_weight="1" />
+                <include
+                    layout="@layout/item_track_row_skeleton"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/track_row_height" />
 
-            <include
-                layout="@layout/item_recent_skeleton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="@dimen/space_s"
-                android:layout_weight="1" />
+                <include
+                    layout="@layout/item_track_row_skeleton"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/track_row_height" />
 
-            <include
-                layout="@layout/item_recent_skeleton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1" />
-        </LinearLayout>
-    </com.facebook.shimmer.ShimmerFrameLayout>
+                <include
+                    layout="@layout/item_track_row_skeleton"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/track_row_height" />
 
-    <include
-        android:id="@+id/recentGridState"
-        layout="@layout/view_state"
+                <include
+                    layout="@layout/item_track_row_skeleton"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/track_row_height" />
+            </LinearLayout>
+        </com.facebook.shimmer.ShimmerFrameLayout>
+
+        <include
+            android:id="@+id/recentGridState"
+            layout="@layout/view_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/recentGridDots"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingBottom="@dimen/space_s"
         android:visibility="gone" />
-</FrameLayout>
+</LinearLayout>

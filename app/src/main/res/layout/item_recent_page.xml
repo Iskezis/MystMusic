@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="@dimen/screen_margin"
+    android:paddingTop="@dimen/space_xs"
+    android:paddingEnd="@dimen/screen_margin"
+    android:paddingBottom="@dimen/space_s">
+
+    <LinearLayout
+        android:id="@+id/recentPageRows"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+</LinearLayout>

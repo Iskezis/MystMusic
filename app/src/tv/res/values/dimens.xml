@@ -23,6 +23,8 @@
     <dimen name="artist_cover">260dp</dimen>
     <dimen name="track_thumb">72dp</dimen>
     <dimen name="track_row_height">96dp</dimen>
+    <dimen name="page_dot_size">10dp</dimen>
+    <dimen name="page_dot_gap">6dp</dimen>
     <dimen name="mini_cover">64dp</dimen>
     <dimen name="mini_control">56dp</dimen>
     <dimen name="mini_play_size">60dp</dimen>
