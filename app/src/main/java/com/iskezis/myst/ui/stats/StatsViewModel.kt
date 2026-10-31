@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.room.InvalidationTracker
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.data.stats.StatsAlbum
@@ -24,6 +25,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -60,9 +62,50 @@ class StatsViewModel(private val app: MystApp) : ViewModel() {
 
     private var job: Job? = null
     private var albumJob: Job? = null
+    private var liveReloadJob: Job? = null
+    private var statsObserver: InvalidationTracker.Observer? = null
 
     init {
         load(StatsPeriod.WEEK)
+        observePlayEvents()
+    }
+
+    /**
+     * O celular pode receber eventos de reprodução da TV pela sincronização
+     * enquanto a tela de Estatísticas já está aberta. Observar a tabela evita
+     * que o usuário veja dados velhos até sair e voltar da tela.
+     */
+    private fun observePlayEvents() {
+        if (statsObserver != null) return
+        val created = object : InvalidationTracker.Observer("play_events") {
+            override fun onInvalidated(tables: Set<String>) {
+                liveReloadJob?.cancel()
+                liveReloadJob = viewModelScope.launch {
+                    // Um merge da TV grava vários eventos em sequência.
+                    delay(RELOAD_DEBOUNCE_MS)
+                    load(_state.value.period, showLoading = false)
+                }
+            }
+        }
+        runCatching {
+            app.database.invalidationTracker.addObserver(created)
+            statsObserver = created
+        }.onFailure {
+            AppLog.failure(
+                AppLog.TAG_DB,
+                "Falha observando mudanças nas estatísticas",
+                it,
+            )
+        }
+    }
+
+    override fun onCleared() {
+        statsObserver?.let { observer ->
+            runCatching { app.database.invalidationTracker.removeObserver(observer) }
+        }
+        statsObserver = null
+        liveReloadJob = null
+        super.onCleared()
     }
 
     fun selectPeriod(period: StatsPeriod) {
@@ -239,9 +282,15 @@ class StatsViewModel(private val app: MystApp) : ViewModel() {
             .replace(SPACES, " ")
             .trim()
 
-    private fun load(period: StatsPeriod) {
+    private fun load(period: StatsPeriod, showLoading: Boolean = true) {
         job?.cancel()
-        _state.update { it.copy(period = period, state = LoadState.Loading) }
+        if (showLoading) {
+            _state.update { it.copy(period = period, state = LoadState.Loading) }
+        } else {
+            // Atualização em segundo plano: mantém os números atuais na tela
+            // para não piscar a cada evento recebido da TV.
+            _state.update { it.copy(period = period) }
+        }
         val userId = app.session.session?.userId ?: 0L
         if (userId <= 0L) {
             _state.update { it.copy(state = LoadState.Empty) }
@@ -311,6 +360,7 @@ class StatsViewModel(private val app: MystApp) : ViewModel() {
     }
 
     companion object {
+        private const val RELOAD_DEBOUNCE_MS = 350L
         private val MARKS = Regex("\\p{Mn}+")
         private val SPACES = Regex("\\s+")
 

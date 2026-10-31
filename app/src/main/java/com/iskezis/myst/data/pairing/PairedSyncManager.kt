@@ -21,6 +21,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
 
@@ -56,6 +57,7 @@ class PairedSyncManager(private val app: MystApp) {
     private var serverRetryJob: Job? = null
     private var unpairCleanupJob: Job? = null
     private var tvPushRetryJob: Job? = null
+    private var tvStatsRestoreJob: Job? = null
     private var observer: InvalidationTracker.Observer? = null
 
     @Volatile
@@ -94,7 +96,12 @@ class PairedSyncManager(private val app: MystApp) {
 
     fun onAppCreated() {
         registerLocalObserver()
-        if (isTv) startTvServerIfNeeded() else startPhoneServerIfNeeded()
+        if (isTv) {
+            startTvServerIfNeeded()
+            restorePendingTvStats()
+        } else {
+            startPhoneServerIfNeeded()
+        }
     }
 
     /**
@@ -112,6 +119,8 @@ class PairedSyncManager(private val app: MystApp) {
         changeJob = null
         tvPushRetryJob?.cancel()
         tvPushRetryJob = null
+        tvStatsRestoreJob?.cancel()
+        tvStatsRestoreJob = null
         synchronized(this) {
             runCatching { tvServer?.close() }
             tvServer = null
@@ -129,6 +138,7 @@ class PairedSyncManager(private val app: MystApp) {
             tvServer = null
         }
         startTvServerIfNeeded()
+        restorePendingTvStats()
     }
 
     fun onTvMainReady() {
@@ -202,6 +212,16 @@ class PairedSyncManager(private val app: MystApp) {
                     )
                 }
         }
+    }
+
+    /**
+     * A TV chama depois de gravar um evento de reprodução. O observer do Room
+     * normalmente já faria isso, mas o aviso explícito cobre o caso de a
+     * invalidação chegar durante um merge e ser descartada pela supressão.
+     */
+    fun requestTvStatsSync() {
+        if (!isTv || !app.session.hasTvPairing) return
+        onLocalDataChanged(setOf("play_events"))
     }
 
     suspend fun syncNow(): Boolean = syncMutex.withLock {
@@ -458,6 +478,8 @@ class PairedSyncManager(private val app: MystApp) {
         changeJob = null
         tvPushRetryJob?.cancel()
         tvPushRetryJob = null
+        tvStatsRestoreJob?.cancel()
+        tvStatsRestoreJob = null
         app.session.clearTvPairing()
         runCatching { app.discord.disconnect() }
             .onFailure { AppLog.failure(AppLog.TAG_DISCORD, "Falha desconectando Discord na TV", it) }
@@ -515,8 +537,15 @@ class PairedSyncManager(private val app: MystApp) {
         val secret = session.tvPairSecret ?: return@withLock false
         val userId = session.mystUserId
         if (userId <= 0L) return@withLock false
-        val target = findPhoneTarget(pairId) ?: return@withLock false
         val snapshot = PairingSync.exportTvChanges(app, userId)
+        // Grava antes de tentar a rede. Se a TV for desligada no meio do
+        // envio, o próximo processo restaura estes eventos e tenta de novo.
+        // A escrita fica em IO porque este método também é chamado pelo botão
+        // de desconexão da TV, que roda a partir da thread principal.
+        withContext(Dispatchers.IO) {
+            TvStatsOutbox.store(app, userId, snapshot.playEvents)
+        }
+        val target = findPhoneTarget(pairId) ?: return@withLock false
         val envelope = PairSecureEnvelope(
             pairId = pairId,
             payload = PairingCrypto.encryptSecret(
@@ -534,6 +563,7 @@ class PairedSyncManager(private val app: MystApp) {
             PairingSync.json.decodeFromString(PairAck.serializer(), responseText)
         }.getOrNull()
         if (ack?.ok != true) throw IOException("Celular recusou o retrato da TV")
+        withContext(Dispatchers.IO) { TvStatsOutbox.clear(app) }
         session.phoneHost = target.host
         session.phonePort = target.port
         AppLog.d(
@@ -547,6 +577,62 @@ class PairedSyncManager(private val app: MystApp) {
     /** Chamado pelo servidor da TV logo após o merge de um snapshot. */
     fun suppressLocalChanges(durationMs: Long = SUPPRESS_CHANGES_MS) {
         suppressChangesUntil = System.currentTimeMillis() + durationMs
+    }
+
+    /**
+     * Restaura os eventos de reprodução que ficaram no outbox da TV porque o
+     * celular não estava acessível. O banco em memória é repovoado e o retrato
+     * é reenviado antes de qualquer novo play; o arquivo só é apagado quando o
+     * celular confirma a gravação.
+     */
+    private fun restorePendingTvStats() {
+        if (!isTv || !app.session.hasTvPairing) return
+        if (tvStatsRestoreJob?.isActive == true) return
+        tvStatsRestoreJob = scope.launch {
+            if (!isTv || !app.session.hasTvPairing) return@launch
+            val userId = app.session.mystUserId
+            if (userId <= 0L) return@launch
+            val pending = TvStatsOutbox.load(app) ?: return@launch
+            if (pending.userId != userId) {
+                // O outbox pertence a outra conta Myst; não há como entregá-lo
+                // sem misturar estatísticas de usuários diferentes.
+                TvStatsOutbox.clear(app)
+                return@launch
+            }
+            val effectiveUserId = runCatching { app.accounts.ensureTvSessionUser() }
+                .getOrElse { error ->
+                    AppLog.failure(
+                        AppLog.TAG_PAIRING,
+                        "Falha preparando a TV para reenviar estatísticas",
+                        error,
+                    )
+                    0L
+                }
+            if (effectiveUserId <= 0L) return@launch
+            runCatching {
+                PairingSync.mergeSnapshot(
+                    app = app,
+                    userId = effectiveUserId,
+                    snapshot = PairSnapshot(playEvents = pending.events),
+                )
+                suppressLocalChanges()
+                if (pushTvSnapshotToPhone()) {
+                    AppLog.i(
+                        AppLog.TAG_PAIRING,
+                        "Estatísticas pendentes da TV reenviadas: ${pending.events.size} evento(s)",
+                    )
+                } else {
+                    scheduleTvPushRetry()
+                }
+            }.onFailure {
+                AppLog.failure(
+                    AppLog.TAG_PAIRING,
+                    "Falha reenviando estatísticas pendentes da TV",
+                    it,
+                )
+                scheduleTvPushRetry()
+            }
+        }
     }
 
     @Synchronized

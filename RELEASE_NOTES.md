@@ -1,10 +1,12 @@
-versionCode: 40
-## MystMusic 0.1.8 Beta
+versionCode: 41
+## MystMusic 0.1.8 Beta 2
 
-Versão final de teste da MystMusic, com atualização pelo próprio app.
+Atualização de correção da beta, focada nas estatísticas reproduzidas na TV e na atualização em tempo real da tela de Estatísticas.
 
 ### Correção desta build
-- **Teclado da TV:** a tela de pareamento foi reorganizada em duas colunas (código à esquerda, teclado à direita) e agora rola em telas menores. O teclado numérico de 5 dígitos não fica mais cortado, os botões têm 52 dp de altura e o foco do controle remoto foi definido tecla por tecla.
+- **Estatísticas da TV:** cada reprodução feita na TV agora é confirmada pelo celular antes de os dados temporários serem descartados. Se o celular estiver dormindo, fora da rede ou com o app fechado, a TV guarda os eventos pendentes e os reenvia na próxima abertura ou no próximo pareamento com a mesma conta Myst. Nenhuma reprodução é perdida ao desligar a TV.
+- **Estatísticas ao vivo no celular:** se a tela de Estatísticas estiver aberta quando a TV sincronizar, os números, gráficos e tops são atualizados automaticamente, sem precisar sair e voltar da tela.
+- **Teclado da TV:** mantido o layout em duas colunas com rolagem e teclas de 52 dp do hotfix anterior; os cinco dígitos continuam visíveis em telas de 540 dp.
 
 ### Destaques
 - **Atualização pelo GitHub:** ao abrir o app logado, a MystMusic verifica se há uma release mais nova. O pop-up mostra a versão atual → nova, o tamanho e as novidades, com **Atualizar** e **Agora não**. Se você escolher "Agora não", o aviso volta na próxima abertura. O botão do GitHub no cabeçalho também verifica manualmente.
@@ -17,8 +19,9 @@ Versão final de teste da MystMusic, com atualização pelo próprio app.
 - **Player, Discord e TV:** player completo com fila e repetição, Discord RPC opt-in e flavor de TV 32 bits com pareamento por código de 5 dígitos.
 
 ### Build e assinatura
-- `versionCode: 40`, compilado pelos workflows do GitHub Actions com a keystore estável dos Secrets.
+- `versionCode: 41`, compilado pelos workflows do GitHub Actions com a keystore estável dos Secrets.
+- Instala por cima da build 40 mantendo conta Myst, playlists, histórico e estatísticas.
 - Assets desta release: `app.apk` (celular), `app-tv.apk` (Android TV, armeabi-v7a) e `SHA256SUMS.txt`.
 
 ### Observação
-- Se o Android recusar a instalação por diferença de assinatura, desinstale a versão antiga uma única vez. A partir desta versão, as próximas atualizações instalam por cima e mantêm os dados da conta Myst.
+- Se o Android recusar a instalação por diferença de assinatura, desinstale a versão antiga uma única vez. A partir da `0.2.0-dev.4`, as atualizações instalam por cima e mantêm os dados da conta Myst.

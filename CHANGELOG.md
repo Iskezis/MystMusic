@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.8 Beta 2 — 31/10/2026
+
+Correção das estatísticas reproduzidas na TV e atualização ao vivo da tela de Estatísticas.
+
+**Versão:** `versionName "0.1.8 Beta 2"` · `versionCode 41` · tag `v0.1.8-beta.2`. A build 41 instala por cima da 40 e mantém conta Myst, playlists, histórico e estatísticas.
+
+### Corrigido
+- **Estatísticas da TV:** o flavor `tv` usa um banco em memória de propósito, então as reproduções podiam desaparecer se o celular estivesse inacessível no momento do play e a TV fosse desligada. Agora a TV grava um outbox em disco com os eventos pendentes antes de tentar a rede, tenta novamente enquanto o pareamento existir e restaura/reenvia o que ficou pendente na próxima abertura ou no próximo pareamento com a mesma conta Myst. O arquivo só é apagado depois que o celular confirma a gravação; se pertencer a outra conta, é descartado para não misturar usuários.
+- **Estatísticas ao vivo no celular:** a tela de Estatísticas observa `play_events` e recarrega os dados com debounce quando chega um retrato da TV, mantendo os números atuais na tela durante a atualização (sem piscar). Antes era necessário sair e voltar para ver as reproduções feitas na TV.
+- **Aviso explícito de reprodução na TV:** além do observer do Room, o `PlaybackService` da TV avisa o `PairedSyncManager` depois de inserir o evento dos 10 s e de atualizar o tempo final, cobrindo o caso de a invalidação ser descartada durante um merge.
+
+### Build e release
+- `versionCode 41`, `versionName "0.1.8 Beta 2"`, tag `v0.1.8-beta.2` (pré-release).
+- `RELEASE_NOTES.md` começa com `versionCode: 41`; o pop-up de atualização mostra a correção e o download usa `app-tv.apk` no flavor de TV.
+
 ## 0.1.8 Beta — 31/10/2026
 
 Versão final de teste, consolidando as fases 1–19 e o novo fluxo de atualização.

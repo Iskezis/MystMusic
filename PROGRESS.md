@@ -14,7 +14,7 @@ Atualize após cada etapa. Marque [x] só quando o build do GitHub estiver verde
 - [x] 10. Revisão final + APKs em apks/
 
 ## Fases 0.2.0
-Marque cada subitem só com build verde + verificação. Versão durante o desenvolvimento: `0.2.0-dev.N` (versionCode crescente a partir de 10); por pedido do usuário em 31/10/2026, a final é **`0.1.8 Beta`** (`versionCode 40` após o hotfix do teclado da TV, tag `v0.1.8-beta`).
+Marque cada subitem só com build verde + verificação. Versão durante o desenvolvimento: `0.2.0-dev.N` (versionCode crescente a partir de 10); por pedido do usuário em 31/10/2026, a final é **`0.1.8 Beta`**. O hotfix do teclado da TV foi a build 40 (`v0.1.8-beta`) e a correção das estatísticas da TV é a **`0.1.8 Beta 2`** (`versionCode 41`, tag `v0.1.8-beta.2`).
 
 - [x] 11. Tema do sistema + Aparência
   - [x] Segue o tema do sistema (claro/escuro) em todas as telas, celular e TV
@@ -103,12 +103,17 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
   - [x] Ajustes dev.26: destaque da aba Playlists na navbar, layout da Busca sem sobreposição e histórico só ao confirmar/escolher, progresso do mini player sob os controles, "Continuar ouvindo" quadrado com capa inteira, Recentes em fileiras de 4, ícone antigo restaurado e capas de download ocultas da galeria
   - [x] Ajustes dev.27: Recentes em linha horizontal de 4 capas com deslize para as próximas e campo de busca sem sobreposição entre texto digitado e placeholder
   - [x] Ajustes dev.28: Recentes em páginas de 4 músicas em lista vertical, com deslize para a próxima página (5–8, 9–12...) e indicador de páginas
-- [ ] 18. Atualização pelo GitHub
-  - [ ] Workflow de release publica `app.apk` e `app-tv.apk` na Release
-  - [ ] Assinatura estável (keystore em GitHub Secrets)
-  - [ ] Pop-up de atualização ao entrar, com "Atualizar" e "Agora não"
-  - [ ] Download com progresso + instalação (permissão de fontes desconhecidas tratada)
-- [ ] 19. Revisão final da 0.1.8 Beta (checklist do AGENTS.md, APKs finais, CHANGELOG, tag `v0.1.8-beta`)
+- [x] 18. Atualização pelo GitHub
+  - [x] Workflow de release publica `app.apk` e `app-tv.apk` na Release
+  - [x] Assinatura estável (keystore em GitHub Secrets)
+  - [x] Pop-up de atualização ao entrar, com "Atualizar" e "Agora não"
+  - [x] Download com progresso + instalação (permissão de fontes desconhecidas tratada)
+- [x] 19. Revisão final da 0.1.8 Beta (checklist do AGENTS.md, APKs finais, CHANGELOG, tag `v0.1.8-beta`)
+- [ ] Correções pós-release (0.1.8 Beta 2, versionCode 41)
+  - [ ] Estatísticas da TV com outbox em disco e reenvio após reinício/novo pareamento
+  - [ ] Tela de Estatísticas do celular recarrega ao vivo quando chega um retrato da TV
+  - [ ] Aviso explícito do `PlaybackService` da TV após gravar/atualizar um evento
+  - [ ] Build verde, APKs em `apks/` e release `v0.1.8-beta.2` publicada
 
 ## Riscos conhecidos da 0.2.0
 - Atualização por cima só instala se a assinatura for a mesma. As APKs até a 0.2.0-dev.3 usam a chave de debug do runner; a keystore fixa entrou no 0.2.0-dev.4. Quem tem uma APK anterior ao dev.4 precisa **desinstalar e reinstalar uma vez**; isso apaga os dados locais, então salve um `Mystaccount.json` antes. Do dev.4 em diante as atualizações instalam por cima.
@@ -318,7 +323,11 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - Versão final (31/10/2026): por pedido explícito do usuário, a versão final passou de `0.2.0 Alpha` para **0.1.8 Beta**. O `versionName` é `0.1.8 Beta`, a tag é `v0.1.8-beta` e o `versionCode` final é **40** (o 39 foi publicado e depois substituído pelo hotfix do teclado da TV). Como 40 > 38 do dev.29, a atualização instala por cima. A release continua marcada como pré-release porque é um beta; o nome "0.1.8 Beta" é o que aparece no app e na documentação.
 - Teclado da TV (hotfix 40): o layout original era uma coluna fixa de 640dp com cabeçalho, código e um `GridLayout` de 4 linhas; em 540dp de altura (1080p/720p em `xhdpi`/`tvdpi`) a última linha e o botão de serviço ficavam fora da tela, sem rolagem. O layout virou um `ScrollView` com duas colunas: à esquerda ficam o código, a validade e o botão de nova tentativa; à direita, o teclado 3×4 com teclas de 104×52dp, margem de 4dp e padding horizontal de 6dp para "Apagar"/"Confirmar" não truncarem. Cada tecla tem `nextFocusUp/Down/Left/Right` explícito. O `tvPairConfirm` continua desabilitado até o código ter 5 dígitos. O `versionCode` subiu para 40 e o mesmo release `v0.1.8-beta` recebeu os novos APKs e o `SHA256SUMS.txt`.
 
+- Estatísticas da TV (0.1.8 Beta 2): o Room da TV é em memória para não persistir a conta, então um play podia existir só nela e sumir ao desligar a TV antes de o celular confirmar o retrato. `TvStatsOutbox` grava `filesDir/pairing/tv_pending_stats.json` **antes** de cada tentativa de `/push`, mescla os eventos por `videoId|startedAt` (mantendo o maior `playedMs` e `completed`) e só apaga o arquivo depois de um `ack.ok`. Se o celular estiver indisponível, o retry e o `/notify` continuam; na próxima abertura ou pareamento com a mesma conta, os eventos são mesclados no banco em memória e reenviados. Um outbox de outra conta Myst é descartado para não misturar estatísticas. A escrita/leitura do arquivo roda em `Dispatchers.IO`.
+- Estatísticas ao vivo (0.1.8 Beta 2): `StatsViewModel` registra um `InvalidationTracker.Observer` em `play_events` e, ao receber um merge da TV, recarrega com debounce de 350 ms usando `showLoading=false`, preservando os números atuais para a tela não piscar. `PlaybackService` também chama `PairedSyncManager.requestTvStatsSync()` depois de inserir o evento dos 10 s e de atualizar o tempo final, porque uma invalidação pode chegar durante a janela de supressão de um merge. O observer é removido em `onCleared`.
+
 ## Problemas em aberto
+- Correção das estatísticas da TV (0.1.8 Beta 2): a lógica de outbox/retry/reload foi revisada e compilada no CI, mas o teste físico de tocar na TV, desligá-la antes do sync, reabrir e conferir os eventos no celular ainda depende do usuário; o ambiente do agente não tem ADB nem TV.
 - Fase 14: falta a confirmação em aparelho de que instalar o dev.10 por cima do dev.9, relogar e encontrar playlists/histórico/estatísticas intactos. A migração 4→5 e o schema exportado foram conferidos no CI e o build `40987101834` está verde; o ambiente do agente não tem ADB/aparelho para executar o teste de atualização.
 - Validação funcional em aparelho físico confirmada pelo usuário em 29/10/2026: login YouTube, reprodução, navegação, Discord RPC com capa/progresso e pareamento TV. Nenhum bloqueador conhecido para a 0.1.0 Alpha.
 - Discord: se o aplicativo público de capas for recusado, o log mostra `Discord recusou o aplicativo de capas: HTTP ...`; nesse caso, criar um aplicativo no Discord Developer Portal e definir `DISCORD_APP_ID` em `local.properties`/GitHub Secrets. Sem isso, o app continua funcionando e a presença aparece sem capa.

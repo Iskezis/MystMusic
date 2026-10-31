@@ -402,7 +402,9 @@ class PlaybackService : MediaSessionService() {
                 durationMs = duration,
                 completed = false,
                 source = if (BuildConfig.FLAVOR == "tv") "tv" else "app",
-            )
+            ).also { id ->
+                if (id > 0L) notifyTvStatsChanged(app)
+            }
         }
     }
 
@@ -449,9 +451,16 @@ class PlaybackService : MediaSessionService() {
                         source = if (BuildConfig.FLAVOR == "tv") "tv" else "app",
                     )
                 }
+                notifyTvStatsChanged(app)
             }.onFailure {
                 AppLog.failure(AppLog.TAG_DB, "Falha ao registrar evento de reprodução", it)
             }
+        }
+    }
+
+    private fun notifyTvStatsChanged(app: MystApp) {
+        if (BuildConfig.FLAVOR == "tv") {
+            app.pairedSync.requestTvStatsSync()
         }
     }
 
