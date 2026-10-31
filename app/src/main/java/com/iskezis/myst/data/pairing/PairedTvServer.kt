@@ -4,6 +4,7 @@ import android.os.Build
 import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.util.AppLog
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -12,6 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.Closeable
 
 /**
@@ -31,6 +33,13 @@ class PairedTvServer(private val app: MystApp) : Closeable {
     private var server: LocalPairingServer? = null
     private var nsd: PairingNsd? = null
     private var port = 0
+
+    /** Preenchido pelo `/disconnect` e confirmado pelo `/disconnect_ack`. */
+    @Volatile
+    private var disconnectAck: CompletableDeferred<Boolean>? = null
+
+    @Volatile
+    private var disconnectStarted = false
 
     @Synchronized
     fun start(): Boolean {
@@ -81,6 +90,7 @@ class PairedTvServer(private val app: MystApp) : Closeable {
             "/hello" -> hello()
             "/sync" -> sync(body)
             "/disconnect" -> disconnect(body)
+            "/disconnect_ack" -> disconnectAck(body)
             else -> LocalPairingServer.HttpResult(
                 404,
                 json(PairAck.serializer(), PairAck(false, "not_found")),
@@ -163,12 +173,25 @@ class PairedTvServer(private val app: MystApp) : Closeable {
                 PairingCrypto.decryptSecret(secret, envelope.payload)
             }.getOrNull() ?: return unauthorized()
             if (action != DISCONNECT_ACTION) return badRequest()
+            if (disconnectStarted) {
+                return LocalPairingServer.HttpResult(
+                    409,
+                    json(PairAck.serializer(), PairAck(false, "disconnect_in_progress")),
+                )
+            }
+            disconnectStarted = true
             AppLog.i(AppLog.TAG_PAIRING, "Celular pediu para desfazer o pareamento da TV")
-            // O último retrato vai na própria resposta. Assim o celular grava
-            // antes de limpar a sessão e não há um `/push` concorrente que
-            // pudesse ficar esperando o mutex do celular enquanto ele espera
-            // esta resposta.
+
+            // Para o som antes de montar o retrato. O pequeno intervalo deixa
+            // o PlaybackService gravar o último evento/histórico no banco em
+            // memória, para esse trecho também chegar ao celular.
+            app.pairedSync.stopTvPlaybackForUnpair()
+            delay(FINAL_FLUSH_WAIT_MS)
+
             val userId = session.mystUserId
+            val accountUsername = runCatching {
+                app.accounts.currentUser()?.username.orEmpty()
+            }.getOrDefault("")
             val snapshot = if (userId > 0L) {
                 runCatching { PairingSync.exportTvChanges(app, userId) }
                     .getOrElse {
@@ -182,20 +205,63 @@ class PairedTvServer(private val app: MystApp) : Closeable {
             } else {
                 PairSnapshot()
             }
+            // Antes de responder, persiste tudo. Se o celular não confirmar o
+            // merge, o retrato sobrevive à limpeza da TV e é reaplicado no
+            // próximo pareamento com a mesma conta.
+            if (userId > 0L) {
+                TvSnapshotOutbox.store(
+                    context = app,
+                    userId = userId,
+                    accountUsername = accountUsername,
+                    pairId = pairId,
+                    snapshot = snapshot,
+                )
+            }
+            val ack = CompletableDeferred<Boolean>()
+            disconnectAck = ack
             val response = PairDisconnectResponse(ok = true, snapshot = snapshot)
             val encrypted = PairingCrypto.encryptSecret(
                 secret,
                 PairingSync.json.encodeToString(PairDisconnectResponse.serializer(), response),
             )
             scope.launch {
-                // Deixa a resposta HTTP sair antes de encerrar o servidor e a
-                // reprodução; a Activity volta para a tela do código.
-                delay(350)
-                app.pairedSync.onTvUnpaired()
+                // Deixa a resposta HTTP sair e espera o celular confirmar que
+                // mesclou o retrato. Sem confirmação, o outbox completo fica
+                // em disco; a TV pode abrir a tela de código sem perder dados.
+                delay(RESPONSE_DRAIN_MS)
+                val acknowledged = withTimeoutOrNull(DISCONNECT_ACK_WAIT_MS) {
+                    ack.await()
+                } ?: false
+                app.pairedSync.onTvUnpaired(
+                    clearPendingSnapshot = acknowledged,
+                    expectedPairId = pairId,
+                )
             }
             return LocalPairingServer.HttpResult(
                 200,
                 json(PairSecureEnvelope.serializer(), PairSecureEnvelope(pairId, encrypted)),
+            )
+        }
+
+    private suspend fun disconnectAck(body: String): LocalPairingServer.HttpResult =
+        syncMutex.withLock {
+            val session = app.session
+            val pairId = session.tvPairId ?: return unauthorized()
+            val secret = session.tvPairSecret ?: return unauthorized()
+            val envelope = decodeEnvelope(body) ?: return badRequest()
+            if (envelope.pairId != pairId) return unauthorized()
+            val action = runCatching {
+                PairingCrypto.decryptSecret(secret, envelope.payload)
+            }.getOrNull() ?: return unauthorized()
+            if (action != DISCONNECT_ACK_ACTION) return badRequest()
+            disconnectAck?.complete(true)
+            AppLog.i(
+                AppLog.TAG_PAIRING,
+                "Celular confirmou o retrato final; TV pode apagar os dados temporários",
+            )
+            return LocalPairingServer.HttpResult(
+                200,
+                json(PairAck.serializer(), PairAck(true)),
             )
         }
 
@@ -232,5 +298,9 @@ class PairedTvServer(private val app: MystApp) : Closeable {
     companion object {
         private const val MAX_BODY_BYTES = 32 * 1024 * 1024
         private const val DISCONNECT_ACTION = "disconnect"
+        private const val DISCONNECT_ACK_ACTION = "disconnect_ack"
+        private const val FINAL_FLUSH_WAIT_MS = 700L
+        private const val RESPONSE_DRAIN_MS = 350L
+        private const val DISCONNECT_ACK_WAIT_MS = 20_000L
     }
 }

@@ -208,6 +208,7 @@ object PairingSync {
                 history = history,
                 affinities = affinities,
                 playEvents = playEvents,
+                searchHistory = app.searchHistory.load(userId),
                 youtube = exportYouTube(app, userId),
             )
         }
@@ -295,6 +296,7 @@ object PairingSync {
                 history = history,
                 affinities = affinities,
                 playEvents = playEvents,
+                searchHistory = app.searchHistory.load(userId),
                 youtube = PairYouTube(),
             )
         }
@@ -790,6 +792,8 @@ object PairingSync {
                 importedYtTracks = ytResult.second
                 importedYtHistory = ytResult.third
             }
+
+            app.searchHistory.merge(userId, snapshot.searchHistory)
 
             if (coverWrites.isNotEmpty()) {
                 var budget = MAX_COVER_BUDGET_BYTES.toLong()

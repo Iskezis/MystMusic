@@ -37,6 +37,21 @@ class SessionManager(context: Context) {
         val conflict: Boolean,
     )
 
+    /**
+     * Credenciais de um despareamento que o celular já removeu localmente mas
+     * ainda não conseguiu confirmar na TV. Ficam guardadas por um curto
+     * período para o canal tentar parar a reprodução e limpar a TV quando a
+     * rede voltar, sem manter o botão "Desconectar TV" na interface.
+     */
+    data class PendingUnpair(
+        val pairId: String,
+        val secret: String,
+        val name: String,
+        val host: String?,
+        val port: Int,
+        val expiresAt: Long,
+    )
+
     private val prefs: SharedPreferences = createPrefs(context.applicationContext)
 
     /**
@@ -180,6 +195,63 @@ class SessionManager(context: Context) {
         get() = prefs.getLong(KEY_TV_LAST_SYNC, 0L)
         set(value) = prefs.edit().putLong(KEY_TV_LAST_SYNC, value).apply()
 
+    /**
+     * Despareamento pendente: o celular já não exibe mais a TV como conectada,
+     * mas ainda tenta avisá-la para parar a reprodução e apagar os dados
+     * temporários. Não é o mesmo que `hasTvPairing`; a interface não deve
+     * mostrar "Desconectar TV" por causa dele.
+     */
+    val pendingUnpair: PendingUnpair?
+        get() {
+            val pairId = prefs.getString(KEY_PENDING_UNPAIR_ID, null)
+                ?.takeIf { it.isNotBlank() }
+                ?: return null
+            val secret = prefs.getString(KEY_PENDING_UNPAIR_SECRET, null)
+                ?.takeIf { it.isNotBlank() }
+                ?: return null
+            val expiresAt = prefs.getLong(KEY_PENDING_UNPAIR_EXPIRES, 0L)
+            if (expiresAt <= System.currentTimeMillis()) return null
+            return PendingUnpair(
+                pairId = pairId,
+                secret = secret,
+                name = prefs.getString(KEY_PENDING_UNPAIR_NAME, "").orEmpty(),
+                host = prefs.getString(KEY_PENDING_UNPAIR_HOST, null)
+                    ?.takeIf { it.isNotBlank() },
+                port = prefs.getInt(KEY_PENDING_UNPAIR_PORT, 0),
+                expiresAt = expiresAt,
+            )
+        }
+
+    fun savePendingUnpair(
+        pairId: String,
+        secret: String,
+        name: String,
+        host: String?,
+        port: Int,
+        ttlMs: Long = PENDING_UNPAIR_TTL_MS,
+    ) {
+        if (pairId.isBlank() || secret.isBlank()) return
+        prefs.edit()
+            .putString(KEY_PENDING_UNPAIR_ID, pairId)
+            .putString(KEY_PENDING_UNPAIR_SECRET, secret)
+            .putString(KEY_PENDING_UNPAIR_NAME, name)
+            .putString(KEY_PENDING_UNPAIR_HOST, host)
+            .putInt(KEY_PENDING_UNPAIR_PORT, port)
+            .putLong(KEY_PENDING_UNPAIR_EXPIRES, System.currentTimeMillis() + ttlMs)
+            .apply()
+    }
+
+    fun clearPendingUnpair() {
+        prefs.edit()
+            .remove(KEY_PENDING_UNPAIR_ID)
+            .remove(KEY_PENDING_UNPAIR_SECRET)
+            .remove(KEY_PENDING_UNPAIR_NAME)
+            .remove(KEY_PENDING_UNPAIR_HOST)
+            .remove(KEY_PENDING_UNPAIR_PORT)
+            .remove(KEY_PENDING_UNPAIR_EXPIRES)
+            .apply()
+    }
+
     /** Pareamento novo, com segredo. TVs pareadas antes do dev.6 precisam parear de novo. */
     val hasTvPairing: Boolean
         get() = tvPaired && !tvPairId.isNullOrBlank() && !tvPairSecret.isNullOrBlank()
@@ -203,6 +275,12 @@ class SessionManager(context: Context) {
             .putLong(KEY_TV_PAIRED_AT, System.currentTimeMillis())
             .putLong(KEY_TV_LAST_SYNC, 0L)
             .putBoolean(KEY_TV_PAIRED, true)
+            .remove(KEY_PENDING_UNPAIR_ID)
+            .remove(KEY_PENDING_UNPAIR_SECRET)
+            .remove(KEY_PENDING_UNPAIR_NAME)
+            .remove(KEY_PENDING_UNPAIR_HOST)
+            .remove(KEY_PENDING_UNPAIR_PORT)
+            .remove(KEY_PENDING_UNPAIR_EXPIRES)
             .apply()
         notifyTvPairingChanged()
     }
@@ -331,6 +409,12 @@ class SessionManager(context: Context) {
             .remove(KEY_TV_LAST_SYNC)
             .remove(KEY_PHONE_HOST)
             .remove(KEY_PHONE_PORT)
+            .remove(KEY_PENDING_UNPAIR_ID)
+            .remove(KEY_PENDING_UNPAIR_SECRET)
+            .remove(KEY_PENDING_UNPAIR_NAME)
+            .remove(KEY_PENDING_UNPAIR_HOST)
+            .remove(KEY_PENDING_UNPAIR_PORT)
+            .remove(KEY_PENDING_UNPAIR_EXPIRES)
             .apply()
         notifyTvPairingChanged()
     }
@@ -475,5 +559,13 @@ class SessionManager(context: Context) {
         private const val KEY_TV_LAST_SYNC = "tv_last_sync"
         private const val KEY_PHONE_HOST = "phone_host"
         private const val KEY_PHONE_PORT = "phone_port"
+        private const val KEY_PENDING_UNPAIR_ID = "pending_unpair_pair_id"
+        private const val KEY_PENDING_UNPAIR_SECRET = "pending_unpair_secret"
+        private const val KEY_PENDING_UNPAIR_NAME = "pending_unpair_name"
+        private const val KEY_PENDING_UNPAIR_HOST = "pending_unpair_host"
+        private const val KEY_PENDING_UNPAIR_PORT = "pending_unpair_port"
+        private const val KEY_PENDING_UNPAIR_EXPIRES = "pending_unpair_expires"
+
+        private const val PENDING_UNPAIR_TTL_MS = 30L * 60L * 1000L
     }
 }

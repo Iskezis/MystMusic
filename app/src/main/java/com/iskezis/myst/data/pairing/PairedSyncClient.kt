@@ -18,6 +18,14 @@ import java.io.IOException
  */
 class PairedSyncClient {
 
+    data class DisconnectCredentials(
+        val pairId: String,
+        val secret: String,
+        val name: String = "",
+        val host: String? = null,
+        val port: Int = 0,
+    )
+
     suspend fun sync(app: MystApp): SyncResult = withContext(Dispatchers.IO) {
         val session = app.session
         val pairId = session.tvPairId
@@ -27,7 +35,13 @@ class PairedSyncClient {
         val userId = session.mystUserId
         if (userId <= 0L) throw IOException("Conta Myst ausente")
 
-        val target = findTarget(app, pairId) ?: throw IOException("TV não encontrada na rede")
+        val target = findTarget(
+            app = app,
+            pairId = pairId,
+            cachedHost = session.tvHost,
+            cachedPort = session.tvPort,
+            tvName = session.tvName,
+        ) ?: throw IOException("TV não encontrada na rede")
         val outgoing = PairingSync.exportSnapshot(app, userId)
         val request = PairSyncRequest(
             snapshot = outgoing,
@@ -85,22 +99,43 @@ class PairedSyncClient {
         )
     }
 
-    suspend fun disconnect(app: MystApp) = withContext(Dispatchers.IO) {
-        val session = app.session
-        val pairId = session.tvPairId ?: throw IOException("TV não pareada")
-        val secret = session.tvPairSecret ?: throw IOException("Segredo do pareamento ausente")
-        val target = findTarget(app, pairId) ?: throw IOException("TV não encontrada na rede")
+    /**
+     * Pede a desconexão usando credenciais explícitas. O gerenciador pode
+     * manter um despareamento pendente depois de já ter removido a sessão
+     * local, por isso este método não lê nem apaga o `SessionManager`.
+     *
+     * A TV só apaga o retrato final depois de receber `/disconnect_ack`; se o
+     * merge no celular falhar, o ack não é enviado e o outbox da TV é mantido
+     * para a próxima tentativa/pareamento.
+     */
+    suspend fun disconnect(
+        app: MystApp,
+        credentials: DisconnectCredentials,
+        acceptWithoutPairing: Boolean = false,
+    ) = withContext(Dispatchers.IO) {
+        val pairId = credentials.pairId
+        val secret = credentials.secret
+        if (pairId.isBlank() || secret.isBlank()) throw IOException("Credenciais da TV ausentes")
+        val target = findTarget(
+            app = app,
+            pairId = pairId,
+            cachedHost = credentials.host ?: app.session.tvHost,
+            cachedPort = credentials.port.takeIf { it > 0 } ?: app.session.tvPort,
+            tvName = credentials.name.ifBlank { app.session.tvName },
+        ) ?: throw IOException("TV não encontrada na rede")
         val envelope = PairSecureEnvelope(
             pairId = pairId,
-            payload = PairingCrypto.encryptSecret(secret, "disconnect"),
+            payload = PairingCrypto.encryptSecret(secret, DISCONNECT_ACTION),
         )
         val responseText = PairingHttp.postJson(
             url = PairingHttp.url(target.host, target.port, "/disconnect"),
             body = PairingSync.json.encodeToString(PairSecureEnvelope.serializer(), envelope),
             connectTimeoutMs = 5_000,
             // A resposta pode carregar o retrato final da TV (histórico,
-            // estatísticas e playlists), então merece mais folga que um ack.
-            readTimeoutMs = 30_000,
+            // estatísticas, playlists e buscas), então merece mais folga que
+            // um ack. Se o celular desistir cedo demais, a TV preserva o
+            // outbox, mas o retrato só chega no próximo pareamento.
+            readTimeoutMs = 60_000,
         )
         // A TV nova devolve um envelope cifrado com o retrato final. A TV
         // antiga devolvia um PairAck em texto puro; aceitar os dois formatos
@@ -124,10 +159,34 @@ class PairedSyncClient {
             }
             if (!response.ok) throw IOException("A TV recusou a desconexão")
             val accepted = runCatching {
-                app.pairedSync.acceptTvSnapshot(response.snapshot)
+                if (app.session.hasTvPairing) {
+                    app.pairedSync.acceptTvSnapshot(response.snapshot)
+                } else if (acceptWithoutPairing) {
+                    app.pairedSync.acceptUnpairedTvSnapshot(response.snapshot)
+                } else {
+                    false
+                }
             }.getOrElse {
                 AppLog.failure(AppLog.TAG_PAIRING, "Falha gravando o retrato final da TV", it)
                 false
+            }
+            if (accepted) {
+                // Confirma que o retrato foi gravado. Sem isso a TV mantém o
+                // outbox completo para a próxima tentativa e não apaga dados
+                // que o celular nunca recebeu.
+                runCatching {
+                    sendDisconnectAck(target, pairId, secret)
+                }.onFailure {
+                    AppLog.w(
+                        AppLog.TAG_PAIRING,
+                        "TV não recebeu a confirmação do retrato final: ${it.message}",
+                    )
+                }
+            } else {
+                // A TV já parou o som, mas o retrato não entrou no banco do
+                // celular. Mantém o despareamento como pendente para tentar de
+                // novo em vez de apagar a sessão e deixar os dados só na TV.
+                throw IOException("Não foi possível gravar o retrato final da TV")
             }
             AppLog.i(
                 AppLog.TAG_PAIRING,
@@ -141,13 +200,33 @@ class PairedSyncClient {
             }.getOrNull()
             if (ack?.ok != true) throw IOException("A TV recusou a desconexão")
         }
-        session.clearTvPairing()
         AppLog.i(AppLog.TAG_PAIRING, "TV desconectada pelo celular")
     }
 
-    private suspend fun findTarget(app: MystApp, pairId: String): PairingNsd.Target? {
-        val cachedHost = app.session.tvHost
-        val cachedPort = app.session.tvPort
+    private suspend fun sendDisconnectAck(
+        target: PairingNsd.Target,
+        pairId: String,
+        secret: String,
+    ) {
+        val envelope = PairSecureEnvelope(
+            pairId = pairId,
+            payload = PairingCrypto.encryptSecret(secret, DISCONNECT_ACK_ACTION),
+        )
+        PairingHttp.postJson(
+            url = PairingHttp.url(target.host, target.port, "/disconnect_ack"),
+            body = PairingSync.json.encodeToString(PairSecureEnvelope.serializer(), envelope),
+            connectTimeoutMs = 3_000,
+            readTimeoutMs = 5_000,
+        )
+    }
+
+    private suspend fun findTarget(
+        app: MystApp,
+        pairId: String,
+        cachedHost: String?,
+        cachedPort: Int,
+        tvName: String,
+    ): PairingNsd.Target? {
         if (!cachedHost.isNullOrBlank()) {
             val candidates = linkedSetOf<Int>()
             if (cachedPort in 1..65535) candidates += cachedPort
@@ -156,7 +235,7 @@ class PairedSyncClient {
             candidates += PairedSyncManager.TV_PORT
             candidates.forEach { port ->
                 val cached = PairingNsd.Target(
-                    name = app.session.tvName.ifBlank { "MystMusic TV" },
+                    name = tvName.ifBlank { "MystMusic TV" },
                     host = cachedHost,
                     port = port,
                 )
@@ -215,5 +294,7 @@ class PairedSyncClient {
 
     private companion object {
         const val DISCOVERY_TIMEOUT_MS = 7_000L
+        const val DISCONNECT_ACTION = "disconnect"
+        const val DISCONNECT_ACK_ACTION = "disconnect_ack"
     }
 }

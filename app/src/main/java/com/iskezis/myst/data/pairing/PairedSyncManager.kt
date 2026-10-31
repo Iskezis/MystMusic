@@ -58,6 +58,7 @@ class PairedSyncManager(private val app: MystApp) {
     private var unpairCleanupJob: Job? = null
     private var tvPushRetryJob: Job? = null
     private var tvStatsRestoreJob: Job? = null
+    private var pendingUnpairRetryJob: Job? = null
     private var observer: InvalidationTracker.Observer? = null
 
     @Volatile
@@ -98,9 +99,10 @@ class PairedSyncManager(private val app: MystApp) {
         registerLocalObserver()
         if (isTv) {
             startTvServerIfNeeded()
-            restorePendingTvStats()
+            restorePendingTvSnapshot()
         } else {
             startPhoneServerIfNeeded()
+            resumePendingUnpair()
         }
     }
 
@@ -138,7 +140,7 @@ class PairedSyncManager(private val app: MystApp) {
             tvServer = null
         }
         startTvServerIfNeeded()
-        restorePendingTvStats()
+        restorePendingTvSnapshot()
     }
 
     fun onTvMainReady() {
@@ -149,6 +151,11 @@ class PairedSyncManager(private val app: MystApp) {
     fun onPhonePaired() {
         if (isTv) return
         disconnecting = false
+        // O novo pareamento substitui qualquer despareamento pendente. O
+        // `saveTvPairing` já removeu as credenciais antigas do disco.
+        pendingUnpairRetryJob?.cancel()
+        pendingUnpairRetryJob = null
+        app.session.clearPendingUnpair()
         // Um novo pareamento pode usar outro pairId/segredo. O servidor antigo
         // não serve mais: fecha e sobe outro com as credenciais recém-gravadas.
         synchronized(this) { stopPhoneChannel() }
@@ -253,29 +260,68 @@ class PairedSyncManager(private val app: MystApp) {
      */
     suspend fun disconnect(forceLocal: Boolean = false): Boolean {
         if (isTv) return false
-        disconnecting = true
-        val notified = try {
-            // Dá um instante para um sync já em andamento terminar, mas não
-            // deixa a desconexão presa a uma rede lenta. O POST /disconnect
-            // devolve o retrato final embutido; não há /push concorrente.
-            withTimeoutOrNull(DISCONNECT_WAIT_MS) { syncMutex.withLock { } }
-            client.disconnect(app)
-            true
-        } catch (t: Throwable) {
-            AppLog.w(
-                AppLog.TAG_PAIRING,
-                "TV não confirmou a desconexão (forceLocal=$forceLocal); " +
-                    "removendo o pareamento deste celular: ${AppLog.describe(t)}",
-            )
-            false
-        } finally {
-            disconnecting = false
+        val session = app.session
+        val credentials = session.tvPairId?.let { pairId ->
+            session.tvPairSecret?.let { secret ->
+                PairedSyncClient.DisconnectCredentials(
+                    pairId = pairId,
+                    secret = secret,
+                    name = session.tvName,
+                    host = session.tvHost,
+                    port = session.tvPort,
+                )
+            }
         }
-        stopPhoneChannel()
-        phoneLoop?.cancel()
-        phoneLoop = null
-        PairingSyncService.stop(app)
-        if (!notified) clearPairingLocally()
+        disconnecting = true
+        val notified = if (forceLocal || credentials == null) {
+            false
+        } else {
+            try {
+                // Dá um instante para um sync já em andamento terminar, mas não
+                // deixa a desconexão presa a uma rede lenta. O POST /disconnect
+                // devolve o retrato final embutido; não há /push concorrente.
+                withTimeoutOrNull(DISCONNECT_WAIT_MS) { syncMutex.withLock { } }
+                client.disconnect(app, credentials)
+                true
+            } catch (t: Throwable) {
+                AppLog.w(
+                    AppLog.TAG_PAIRING,
+                    "TV não confirmou a desconexão (forceLocal=$forceLocal); " +
+                        "removendo o pareamento deste celular: ${AppLog.describe(t)}",
+                )
+                false
+            } finally {
+                disconnecting = false
+            }
+        }
+        disconnecting = false
+        if (notified) {
+            app.session.clearTvPairing()
+            app.session.clearPendingUnpair()
+            pendingUnpairRetryJob?.cancel()
+            pendingUnpairRetryJob = null
+            stopPhoneChannel()
+            phoneLoop?.cancel()
+            phoneLoop = null
+            PairingSyncService.stop(app)
+        } else {
+            // A sessão sai da interface imediatamente, mas as credenciais
+            // ficam guardadas por um curto período para uma nova tentativa
+            // conseguir parar a música e limpar a TV quando a rede voltar.
+            if (credentials != null) {
+                app.session.savePendingUnpair(
+                    pairId = credentials.pairId,
+                    secret = credentials.secret,
+                    name = credentials.name,
+                    host = credentials.host,
+                    port = credentials.port,
+                )
+            }
+            clearPairingLocally()
+            if (app.session.pendingUnpair != null) {
+                schedulePendingUnpairRetry()
+            }
+        }
         return notified
     }
 
@@ -293,6 +339,66 @@ class PairedSyncManager(private val app: MystApp) {
         changeJob = null
         PairingSyncService.stop(app)
         AppLog.i(AppLog.TAG_PAIRING, "Pareamento removido localmente no celular")
+    }
+
+    /**
+     * Retoma um despareamento que ficou pendente porque a rede/TV não respondeu.
+     * A sessão já não aparece na interface; a tarefa existe só para parar a
+     * reprodução da TV e entregar o retrato final.
+     */
+    private fun resumePendingUnpair() {
+        if (isTv) return
+        val pending = app.session.pendingUnpair
+        if (pending == null) {
+            // Pode estar expirado; remove as chaves velhas.
+            app.session.clearPendingUnpair()
+            return
+        }
+        schedulePendingUnpairRetry()
+    }
+
+    private fun schedulePendingUnpairRetry() {
+        if (isTv) return
+        if (pendingUnpairRetryJob?.isActive == true) return
+        pendingUnpairRetryJob = scope.launch {
+            var waitMs = PENDING_UNPAIR_RETRY_INITIAL_MS
+            while (isActive) {
+                val pending = app.session.pendingUnpair ?: return@launch
+                if (pending.expiresAt <= System.currentTimeMillis()) {
+                    app.session.clearPendingUnpair()
+                    return@launch
+                }
+                delay(waitMs)
+                val credentials = PairedSyncClient.DisconnectCredentials(
+                    pairId = pending.pairId,
+                    secret = pending.secret,
+                    name = pending.name,
+                    host = pending.host,
+                    port = pending.port,
+                )
+                val confirmed = runCatching {
+                    client.disconnect(
+                        app = app,
+                        credentials = credentials,
+                        acceptWithoutPairing = true,
+                    )
+                }.onFailure {
+                    AppLog.d(
+                        AppLog.TAG_PAIRING,
+                        "Nova tentativa de despareamento ainda sem resposta: ${it.message}",
+                    )
+                }.isSuccess
+                if (confirmed) {
+                    app.session.clearPendingUnpair()
+                    AppLog.i(
+                        AppLog.TAG_PAIRING,
+                        "Despareamento pendente concluído; TV parada e limpa",
+                    )
+                    return@launch
+                }
+                waitMs = (waitMs * 2).coerceAtMost(PENDING_UNPAIR_RETRY_MAX_MS)
+            }
+        }
     }
 
     /**
@@ -408,8 +514,14 @@ class PairedSyncManager(private val app: MystApp) {
      */
     suspend fun disconnectOnTv() {
         if (!isTv) return
+        var pushed = false
         if (app.session.hasTvPairing) {
-            withTimeoutOrNull(FINAL_PUSH_TIMEOUT_MS) {
+            // Primeiro cala a TV; depois espera o último histórico/evento ser
+            // gravado e tenta entregar o retrato completo. Se o celular não
+            // estiver acessível, o outbox fica em disco para a próxima vez.
+            stopTvPlaybackForUnpair()
+            delay(FINAL_FLUSH_WAIT_MS)
+            pushed = withTimeoutOrNull(FINAL_PUSH_TIMEOUT_MS) {
                 runCatching { pushTvSnapshotToPhone() }
                     .onFailure {
                         AppLog.w(
@@ -417,7 +529,8 @@ class PairedSyncManager(private val app: MystApp) {
                             "Retrato final da TV não chegou ao celular: ${AppLog.describe(it)}",
                         )
                     }
-            }
+                    .getOrDefault(false)
+            } ?: false
             withTimeoutOrNull(NOTIFY_TIMEOUT_MS) {
                 runCatching { notifyPhone("unpair") }
                     .onFailure {
@@ -428,7 +541,30 @@ class PairedSyncManager(private val app: MystApp) {
                     }
             }
         }
-        onTvUnpaired()
+        onTvUnpaired(
+            clearPendingSnapshot = pushed,
+            expectedPairId = app.session.tvPairId,
+        )
+    }
+
+    /**
+     * Para a reprodução local da TV sem tocar na sessão. Um MediaController
+     * ainda vinculado mantinha o serviço vivo; além de mandar o comando ao
+     * player, liberamos o controller e enviamos uma ação direta ao serviço.
+     */
+    fun stopTvPlaybackForUnpair() {
+        if (!isTv) return
+        runCatching { app.playerController.stopAndRelease() }
+            .onFailure {
+                AppLog.failure(AppLog.TAG_PLAYER, "Falha parando/liberando o player da TV", it)
+            }
+        // A ação direta grava o último trecho e chama stopSelf. Não chamamos
+        // stopService na sequência para não destruir o serviço antes de a
+        // ação ser processada.
+        runCatching { PlaybackService.stopNow(app) }
+            .onFailure {
+                AppLog.failure(AppLog.TAG_PLAYER, "Falha enviando parada ao serviço da TV", it)
+            }
     }
 
     /**
@@ -459,12 +595,54 @@ class PairedSyncManager(private val app: MystApp) {
     }
 
     /**
+     * Mesmo merge de [acceptTvSnapshot], mas aceito quando o celular já removeu
+     * a sessão local e está apenas concluindo um despareamento pendente. A
+     * conta Myst continua logada; o retrato final ainda pertence a ela.
+     */
+    suspend fun acceptUnpairedTvSnapshot(snapshot: PairSnapshot): Boolean = syncMutex.withLock {
+        if (isTv) return@withLock false
+        val userId = app.session.mystUserId
+        if (userId <= 0L) return@withLock false
+        suppressLocalChanges()
+        return@withLock try {
+            PairingSync.mergeSnapshot(app, userId, snapshot)
+            suppressLocalChanges()
+            app.accountFiles.requestSync()
+            AppLog.i(
+                AppLog.TAG_PAIRING,
+                "Retrato final de despareamento recebido: histórico=${snapshot.history.size} " +
+                    "eventos=${snapshot.playEvents.size} playlists=${snapshot.playlists.size}",
+            )
+            true
+        } catch (t: Throwable) {
+            AppLog.failure(AppLog.TAG_PAIRING, "Falha aplicando o retrato final da TV", t)
+            false
+        }
+    }
+
+    /**
      * Executado no servidor da TV quando o celular pede a desconexão, ou pelo
      * botão local da TV. O servidor fecha, a reprodução para e a tarefa é
      * limpa com a tela de código no topo.
+     *
+     * [clearPendingSnapshot] só é verdadeiro quando o celular confirmou o
+     * merge. Caso contrário, o retrato completo permanece no outbox da TV para
+     * ser reaplicado no próximo pareamento.
      */
-    fun onTvUnpaired() {
+    fun onTvUnpaired(
+        clearPendingSnapshot: Boolean = true,
+        expectedPairId: String? = null,
+    ) {
         if (!isTv) return
+        if (expectedPairId != null && app.session.tvPairId != expectedPairId) {
+            // Uma limpeza atrasada (ex.: espera pelo ack do celular) não pode
+            // derrubar um pareamento novo que já começou.
+            AppLog.w(
+                AppLog.TAG_PAIRING,
+                "Limpeza de despareamento obsoleta ignorada (pareamento já mudou)",
+            )
+            return
+        }
         val epoch = ++pairingEpoch
         AppLog.i(AppLog.TAG_PAIRING, "Desfazendo pareamento da TV (geração $epoch)")
         unpairCleanupJob?.cancel()
@@ -480,23 +658,38 @@ class PairedSyncManager(private val app: MystApp) {
         tvPushRetryJob = null
         tvStatsRestoreJob?.cancel()
         tvStatsRestoreJob = null
+        // Para o som e libera o MediaController antes de qualquer limpeza. Se
+        // o controller continuar vinculado, o serviço sobrevive ao
+        // stopService e a música segue tocando na TV.
+        stopTvPlaybackForUnpair()
+        val userId = app.session.mystUserId
         app.session.clearTvPairing()
         runCatching { app.discord.disconnect() }
             .onFailure { AppLog.failure(AppLog.TAG_DISCORD, "Falha desconectando Discord na TV", it) }
-        runCatching { app.playerController.stop() }
-            .onFailure { AppLog.failure(AppLog.TAG_PLAYER, "Falha parando o player na desconexão", it) }
-        runCatching { app.stopService(Intent(app, PlaybackService::class.java)) }
-            .onFailure { AppLog.failure(AppLog.TAG_PLAYER, "Falha parando o serviço de reprodução", it) }
         // A limpeza não pode usar o scope do PairedTvServer: ele acabou de ser
         // fechado e cancelaria a própria rotina de limpeza. O escopo da
         // Application sobrevive ao servidor e termina a transação.
         unpairCleanupJob = app.backgroundScope.launch {
             if (!isCurrentUnpair(epoch)) return@launch
+            // Dá tempo de o PlaybackService gravar o último trecho antes de
+            // apagar o Room em memória. Vale principalmente para o botão de
+            // desconectar da própria TV, que chega aqui sem a espera do canal.
+            delay(FINAL_FLUSH_WAIT_MS)
+            if (!isCurrentUnpair(epoch)) return@launch
+            if (clearPendingSnapshot) {
+                // Só apaga o retrato depois que o celular confirmou o merge.
+                // Caso contrário ele é preservado para o próximo pareamento.
+                withContext(Dispatchers.IO) { TvSnapshotOutbox.clear(app) }
+            }
             runCatching { app.database.clearAllTables() }.onFailure {
                 AppLog.failure(AppLog.TAG_PAIRING, "Falha limpando tabelas temporárias da TV", it)
             }
             if (!isCurrentUnpair(epoch)) return@launch
             TvEphemeralData.purge(app)
+            // As buscas da TV já foram guardadas no outbox quando o retrato
+            // não foi confirmado; a cópia em SharedPreferences não precisa
+            // sobreviver ao fim da sessão temporária.
+            if (userId > 0L) app.searchHistory.clear(userId)
             handler.post {
                 // Se o usuário já iniciou outro pareamento, esta limpeza ficou
                 // obsoleta: não pode apagar o tema novo nem sequestrar a tela.
@@ -538,12 +731,20 @@ class PairedSyncManager(private val app: MystApp) {
         val userId = session.mystUserId
         if (userId <= 0L) return@withLock false
         val snapshot = PairingSync.exportTvChanges(app, userId)
-        // Grava antes de tentar a rede. Se a TV for desligada no meio do
-        // envio, o próximo processo restaura estes eventos e tenta de novo.
-        // A escrita fica em IO porque este método também é chamado pelo botão
-        // de desconexão da TV, que roda a partir da thread principal.
+        val accountUsername = runCatching {
+            app.accounts.currentUser()?.username.orEmpty()
+        }.getOrDefault("")
+        // Grava o retrato completo antes de tentar a rede. Se a TV for
+        // desligada no meio do envio, o próximo processo restaura playlists,
+        // histórico, afinidades e estatísticas, não só os eventos de play.
         withContext(Dispatchers.IO) {
-            TvStatsOutbox.store(app, userId, snapshot.playEvents)
+            TvSnapshotOutbox.store(
+                context = app,
+                userId = userId,
+                accountUsername = accountUsername,
+                pairId = pairId,
+                snapshot = snapshot,
+            )
         }
         val target = findPhoneTarget(pairId) ?: return@withLock false
         val envelope = PairSecureEnvelope(
@@ -563,13 +764,14 @@ class PairedSyncManager(private val app: MystApp) {
             PairingSync.json.decodeFromString(PairAck.serializer(), responseText)
         }.getOrNull()
         if (ack?.ok != true) throw IOException("Celular recusou o retrato da TV")
-        withContext(Dispatchers.IO) { TvStatsOutbox.clear(app) }
+        withContext(Dispatchers.IO) { TvSnapshotOutbox.clear(app) }
         session.phoneHost = target.host
         session.phonePort = target.port
         AppLog.d(
             AppLog.TAG_PAIRING,
             "Retrato da TV entregue: histórico=${snapshot.history.size} " +
-                "eventos=${snapshot.playEvents.size} em ${target.host}:${target.port}",
+                "eventos=${snapshot.playEvents.size} playlists=${snapshot.playlists.size} " +
+                "buscas=${snapshot.searchHistory.size} em ${target.host}:${target.port}",
         )
         true
     }
@@ -585,41 +787,56 @@ class PairedSyncManager(private val app: MystApp) {
      * é reenviado antes de qualquer novo play; o arquivo só é apagado quando o
      * celular confirma a gravação.
      */
-    private fun restorePendingTvStats() {
+    private fun restorePendingTvSnapshot() {
         if (!isTv || !app.session.hasTvPairing) return
         if (tvStatsRestoreJob?.isActive == true) return
         tvStatsRestoreJob = scope.launch {
             if (!isTv || !app.session.hasTvPairing) return@launch
             val userId = app.session.mystUserId
             if (userId <= 0L) return@launch
-            val pending = TvStatsOutbox.load(app) ?: return@launch
-            if (pending.userId != userId) {
-                // O outbox pertence a outra conta Myst; não há como entregá-lo
-                // sem misturar estatísticas de usuários diferentes.
-                TvStatsOutbox.clear(app)
+            val accountUsername = runCatching {
+                app.accounts.currentUser()?.username.orEmpty()
+            }.getOrDefault("")
+            val pending = withContext(Dispatchers.IO) {
+                TvSnapshotOutbox.loadFor(app, userId, accountUsername)
+            } ?: return@launch
+            val belongsToAccount = pending.userId == userId ||
+                (accountUsername.isNotBlank() &&
+                    pending.accountUsername.equals(accountUsername, ignoreCase = true))
+            if (!belongsToAccount) {
+                // O outbox é de outra conta Myst e não pode ser misturado.
+                // Não apaga: o próximo pareamento dessa conta ainda pode usá-lo.
+                AppLog.w(
+                    AppLog.TAG_PAIRING,
+                    "Retrato pendente da TV pertence a outra conta; mantendo em disco",
+                )
                 return@launch
             }
             val effectiveUserId = runCatching { app.accounts.ensureTvSessionUser() }
                 .getOrElse { error ->
                     AppLog.failure(
                         AppLog.TAG_PAIRING,
-                        "Falha preparando a TV para reenviar estatísticas",
+                        "Falha preparando a TV para restaurar dados pendentes",
                         error,
                     )
                     0L
                 }
             if (effectiveUserId <= 0L) return@launch
             runCatching {
+                suppressLocalChanges()
                 PairingSync.mergeSnapshot(
                     app = app,
                     userId = effectiveUserId,
-                    snapshot = PairSnapshot(playEvents = pending.events),
+                    snapshot = pending.snapshot,
                 )
                 suppressLocalChanges()
                 if (pushTvSnapshotToPhone()) {
                     AppLog.i(
                         AppLog.TAG_PAIRING,
-                        "Estatísticas pendentes da TV reenviadas: ${pending.events.size} evento(s)",
+                        "Dados pendentes da TV restaurados e reenviados: " +
+                            "playlists=${pending.snapshot.playlists.size} " +
+                            "histórico=${pending.snapshot.history.size} " +
+                            "eventos=${pending.snapshot.playEvents.size}",
                     )
                 } else {
                     scheduleTvPushRetry()
@@ -627,7 +844,7 @@ class PairedSyncManager(private val app: MystApp) {
             }.onFailure {
                 AppLog.failure(
                     AppLog.TAG_PAIRING,
-                    "Falha reenviando estatísticas pendentes da TV",
+                    "Falha reenviando dados pendentes da TV",
                     it,
                 )
                 scheduleTvPushRetry()
@@ -929,11 +1146,14 @@ class PairedSyncManager(private val app: MystApp) {
         private const val DISCOVERY_TIMEOUT_MS = 5_000L
         private const val NOTIFY_TIMEOUT_MS = 12_000L
         private const val FINAL_PUSH_TIMEOUT_MS = 15_000L
+        private const val FINAL_FLUSH_WAIT_MS = 700L
         private const val DISCONNECT_WAIT_MS = 2_000L
         private const val VERIFY_THROTTLE_MS = 5_000L
         private const val VERIFY_DISCOVERY_TIMEOUT_MS = 4_000L
         private const val TV_PUSH_RETRY_INITIAL_MS = 5_000L
         private const val TV_PUSH_RETRY_MAX_MS = 60_000L
+        private const val PENDING_UNPAIR_RETRY_INITIAL_MS = 4_000L
+        private const val PENDING_UNPAIR_RETRY_MAX_MS = 60_000L
 
         private val PAIRING_TABLES = arrayOf(
             "playlists",

@@ -1,6 +1,7 @@
 package com.iskezis.myst.player
 
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.media3.common.AudioAttributes
@@ -68,6 +69,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
+        playbackActive = true
         AppLog.i(AppLog.TAG_PLAYER, "PlaybackService.onCreate")
         val app = application as MystApp
         resolver = StreamResolver(app)
@@ -196,7 +198,38 @@ class PlaybackService : MediaSessionService() {
         historyJob = scope.launch { trackHistory(app) }
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            AppLog.i(AppLog.TAG_PLAYER, "Pedido externo para parar e liberar o serviço")
+            stopPlaybackNow()
+            return android.app.Service.START_NOT_STICKY
+        }
+        return super.onStartCommand(intent, flags, startId)
+    }
+
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
+
+    /**
+     * Parada usada no despareamento da TV. Não depende de um MediaController
+     * conectado (ele pode estar nulo ou preso a um serviço ainda vinculado) e
+     * grava o último histórico/evento antes de soltar o player.
+     */
+    private fun stopPlaybackNow() {
+        val app = application as MystApp
+        val track = currentTrack
+        val position = runCatching { player.currentPosition }.getOrDefault(0L).coerceAtLeast(0L)
+        flushEvent(app, completed = false)
+        if (track != null && !recordedCurrent && position >= MIN_PLAY_MS) {
+            record(app, track, position, completed = false)
+        }
+        runCatching { player.pause() }
+            .onFailure { AppLog.w(AppLog.TAG_PLAYER, "Falha pausando na parada: ${it.message}") }
+        runCatching { player.stop() }
+            .onFailure { AppLog.w(AppLog.TAG_PLAYER, "Falha parando o player: ${it.message}") }
+        runCatching { player.clearMediaItems() }
+            .onFailure { AppLog.w(AppLog.TAG_PLAYER, "Falha limpando a fila: ${it.message}") }
+        stopSelf()
+    }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         AppLog.d(
@@ -209,6 +242,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        playbackActive = false
         AppLog.i(AppLog.TAG_PLAYER, "PlaybackService.onDestroy")
         // Grava o último trecho antes de soltar o player. A escrita roda no
         // escopo do Application para terminar mesmo depois que este serviço
@@ -230,9 +264,10 @@ class PlaybackService : MediaSessionService() {
             if (currentPosition >= MIN_PLAY_MS) {
                 record(app, previous, currentPosition, completed = false)
             } else if (currentPosition > 0 && previous.durationMs > MIN_PLAY_MS) {
-                scope.launch(Dispatchers.IO) {
+                app.backgroundScope.launch(Dispatchers.IO) {
                     app.session.session?.let { session ->
                         app.recommendations.recordSkip(session.userId, previous)
+                        notifyTvStatsChanged(app)
                     }
                 }
             }
@@ -341,6 +376,7 @@ class PlaybackService : MediaSessionService() {
             val userId = app.session.session?.userId ?: return@launch
             runCatching {
                 app.stats.updateAlbum(userId, track.videoId, album.name)
+                notifyTvStatsChanged(app)
             }.onFailure {
                 AppLog.w(
                     AppLog.TAG_DB,
@@ -476,9 +512,12 @@ class PlaybackService : MediaSessionService() {
             "Registrando histórico: ${track.videoId} posição=${AppLog.durationForLog(position)} " +
                 "completa=$completed",
         )
-        scope.launch(Dispatchers.IO) {
+        // O escopo da Application termina a gravação mesmo quando o serviço é
+        // destruído logo depois de uma parada por despareamento.
+        app.backgroundScope.launch(Dispatchers.IO) {
             runCatching {
                 app.recommendations.recordPlay(userId, track, position, completed)
+                notifyTvStatsChanged(app)
             }.onFailure {
                 AppLog.failure(AppLog.TAG_DB, "Falha ao registrar histórico", it)
             }
@@ -523,6 +562,30 @@ class PlaybackService : MediaSessionService() {
         const val EXTRA_DURATION = "extra_duration"
         const val EXTRA_ARTIST_ID = "extra_artist_id"
         const val EXTRA_ALBUM_ID = "extra_album_id"
+
+        private const val ACTION_STOP = "com.iskezis.myst.action.STOP_PLAYBACK"
+
+        @Volatile
+        private var playbackActive = false
+
+        /**
+         * Pede ao serviço em execução para parar o som, gravar o último trecho
+         * e se encerrar, mesmo que o MediaController da Application esteja
+         * nulo ou ainda vinculado ao serviço.
+         */
+        fun stopNow(context: Context) {
+            if (!playbackActive) return
+            runCatching {
+                context.startService(
+                    Intent(context, PlaybackService::class.java).setAction(ACTION_STOP),
+                )
+            }.onFailure {
+                AppLog.w(
+                    AppLog.TAG_PLAYER,
+                    "Não foi possível enviar a parada ao PlaybackService: ${it.message}",
+                )
+            }
+        }
 
         /** Só entra nas estatísticas depois dos primeiros 10 s, mesmo parcial. */
         private const val MIN_PLAY_MS = 10_000L

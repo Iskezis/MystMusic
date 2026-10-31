@@ -129,6 +129,10 @@ class PlayerController(context: Context) {
         controllerFuture = future
         future.addListener(
             {
+                // Uma parada/liberação pode descartar a conexão em andamento;
+                // nesse caso o resultado atrasado não pode recriar o controller
+                // nem sobrescrever o estado com um erro de conexão.
+                if (controllerFuture !== future) return@addListener
                 controllerFuture = null
                 runCatching {
                     val mediaController = future.get()
@@ -293,6 +297,41 @@ class PlayerController(context: Context) {
         current.stop()
         current.clearMediaItems()
         _state.value = PlayerState(connected = true)
+    }
+
+    /**
+     * Para e desvincula o MediaController. Usado no despareamento da TV: um
+     * controller ainda vinculado pode manter o PlaybackService vivo mesmo
+     * depois de stopService(), fazendo a música continuar. O próximo play
+     * reconecta automaticamente.
+     */
+    fun stopAndRelease() {
+        // MediaController precisa ser acessado na thread principal. O canal de
+        // pareamento chama este método de IO; `Main.immediate` executa na hora
+        // quando já estamos na thread principal e enfileira quando não estamos.
+        scope.launch { stopAndReleaseInternal() }
+    }
+
+    @Synchronized
+    private fun stopAndReleaseInternal() {
+        AppLog.i(AppLog.TAG_PLAYER, "stopAndRelease()")
+        runCatching { stop() }.onFailure {
+            AppLog.w(AppLog.TAG_PLAYER, "Falha parando antes de liberar o controller: ${it.message}")
+        }
+        pendingPlay = null
+        ticker?.cancel()
+        ticker = null
+        val future = controllerFuture
+        controllerFuture = null
+        if (future != null) {
+            // Forma documentada pelo Media3 de liberar uma conexão em
+            // andamento; cancel(true) podia deixar o listener criar um
+            // controller novo depois da parada.
+            runCatching { MediaController.releaseFuture(future) }
+        }
+        runCatching { controller?.release() }
+        controller = null
+        _state.value = PlayerState()
     }
 
     private fun playInternal(

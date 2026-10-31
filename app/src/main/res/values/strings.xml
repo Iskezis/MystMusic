@@ -255,9 +255,9 @@
     <string name="settings_tv_disconnect_success">TV desconectada. Ela voltou para a tela do código.</string>
     <string name="settings_tv_disconnect_error">Não foi possível desconectar a TV. Verifique se ela está ligada e na mesma rede Wi-Fi.</string>
     <string name="settings_tv_force_disconnect_title">TV não respondeu</string>
-    <string name="settings_tv_force_disconnect_message">Não foi possível avisar a TV. Remover o pareamento só deste celular? A TV continuará com os dados temporários até você tocar em “Desconectar do celular” nela.</string>
+    <string name="settings_tv_force_disconnect_message">Não foi possível avisar a TV agora. Remover o pareamento deste celular? O MystMusic continuará tentando pará-la e buscar os últimos dados quando ela estiver na mesma rede. Você também pode desconectar nas Configurações da TV.</string>
     <string name="settings_tv_force_disconnect_confirm">Desconectar só aqui</string>
-    <string name="settings_tv_force_disconnect_success">Pareamento removido deste celular. A TV pode ser desconectada nas Configurações dela.</string>
+    <string name="settings_tv_force_disconnect_success">Pareamento removido deste celular. Vamos tentar parar a TV e buscar os últimos dados quando ela estiver na rede.</string>
     <string name="settings_tv_phone_title">Conexão com o celular</string>
     <string name="settings_tv_phone_subtitle">Esta TV é temporária: os dados ficam apenas na memória enquanto o pareamento existir.</string>
     <string name="settings_tv_phone_connected">Conectada a %1$s. Playlists, Recentes, estatísticas, aparência e Discord são atualizados em tempo real.</string>

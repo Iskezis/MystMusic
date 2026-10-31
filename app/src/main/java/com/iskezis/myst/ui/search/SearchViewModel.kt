@@ -237,6 +237,9 @@ class SearchViewModel(private val app: MystApp) : ViewModel() {
         val recent = withContext(Dispatchers.IO) {
             app.searchHistory.add(userId(), query)
         }
+        // A busca é um dado temporário da TV; o observer do Room não a vê
+        // porque ela fica em SharedPreferences. Avisa explicitamente o canal.
+        app.pairedSync.requestTvStatsSync()
         _state.update { it.copy(recentSearches = recent) }
     }
 

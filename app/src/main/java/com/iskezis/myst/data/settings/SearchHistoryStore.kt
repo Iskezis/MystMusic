@@ -50,8 +50,36 @@ class SearchHistoryStore(context: Context) {
         return trimmed
     }
 
+    /**
+     * Mescla buscas recebidas de outro aparelho. A ordem preserva as buscas
+     * mais recentes dos dois lados e remove duplicatas sem diferenciar
+     * maiúsculas de minúsculas.
+     */
+    fun merge(userId: Long, incoming: List<String>): List<String> {
+        if (userId <= 0L || incoming.isEmpty()) return load(userId)
+        val merged = mutableListOf<String>()
+        (load(userId) + incoming).forEach { raw ->
+            val query = raw.trim().replace(WHITESPACE, " ")
+            if (query.length < MIN_LENGTH) return@forEach
+            if (merged.any { it.equals(query, ignoreCase = true) }) return@forEach
+            merged += query
+        }
+        val result = merged.take(MAX_ITEMS)
+        runCatching {
+            prefs.edit()
+                .putString(key(userId), result.joinToString(SEPARATOR))
+                .apply()
+        }
+        return result
+    }
+
     fun clear(userId: Long) {
         runCatching { prefs.edit().remove(key(userId)).apply() }
+    }
+
+    /** Usado só na TV ao encerrar a sessão temporária. */
+    fun clearAll() {
+        runCatching { prefs.edit().clear().apply() }
     }
 
     private fun key(userId: Long): String = "recent_$userId"

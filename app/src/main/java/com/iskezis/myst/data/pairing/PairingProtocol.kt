@@ -103,6 +103,8 @@ data class PairSnapshot(
     val affinities: List<PairAffinity> = emptyList(),
     /** Eventos de reprodução usados nas Estatísticas; a TV mantém só em memória. */
     val playEvents: List<PairPlayEvent> = emptyList(),
+    /** Buscas recentes digitadas na TV, que só existem no armazenamento local. */
+    val searchHistory: List<String> = emptyList(),
     /**
      * Cache da biblioteca do YouTube Music. Sem ele a TV recebia só o
      * histórico local e a seção Recentes ficava incompleta depois do pareamento.

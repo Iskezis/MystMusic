@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.1.8 Beta 4 — 31/10/2026
+
+Correção do despareamento celular ↔ TV e envio completo dos dados temporários da TV.
+
+**Versão:** `versionName "0.1.8 Beta 4"` · `versionCode 43` · tag `v0.1.8-beta.4`. A build 43 instala por cima da 42 e anteriores com a mesma assinatura, mantendo conta Myst, playlists, histórico e estatísticas.
+
+### Corrigido
+- **A música da TV para no despareamento:** o celular pede a parada antes de montar o retrato final. A TV libera o `MediaController`, envia uma ação direta ao `PlaybackService`, grava o último histórico/estatística e só então encerra o serviço. Antes, um controller ainda vinculado mantinha o serviço vivo e o som continuava.
+- **Despareamento confirmado nos dois lados:** a TV responde ao `/disconnect` com o retrato completo e espera o `/disconnect_ack` do celular antes de apagar o Room em memória, a aparência temporária e os arquivos da sessão. Se a confirmação não chegar, o retrato fica no outbox e é reaplicado no próximo pareamento com a mesma conta Myst.
+- **Outbox completo da TV:** `filesDir/pairing/tv_pending_snapshot.json` agora guarda playlists, faixas, histórico, afinidades, lápides, eventos de reprodução e buscas recentes, em vez de só estatísticas. O arquivo é mesclado, reenviado com espera crescente e só apagado depois do `ack`.
+- **Celular tenta de novo:** se a TV estiver desligada ou fora da rede, o pareamento some da interface imediatamente, mas as credenciais ficam guardadas por 30 minutos e o celular continua tentando parar a TV e buscar o retrato final. Uma nova tentativa aceita o retrato mesmo depois de a sessão local ter sido removida.
+- **Dados em tempo real:** buscas recentes da TV passaram a viajar no snapshot; o `PlaybackService` avisa o sincronizador após gravar histórico, álbum, evento de reprodução e pulo; e as buscas em `SharedPreferences` são limpas ao encerrar a sessão temporária da TV.
+
+### Compatibilidade
+- Atualiza por cima da Beta 3 (`versionCode 42`) e anteriores com a mesma assinatura.
+- Para o despareamento novo funcionar por completo, atualize **celular e TV** para a Beta 4.
+- Nenhuma migração do Room foi necessária nesta build.
+
+### Build e release
+- `versionCode 43`, `versionName "0.1.8 Beta 4"`, tag `v0.1.8-beta.4` (pré-release).
+- `RELEASE_NOTES.md` começa com `versionCode: 43`; o pop-up de atualização usa `app.apk` no celular e `app-tv.apk` na TV.
+
 ## 0.1.8 Beta 3 — 31/10/2026
 
 Correção do “erro ao analisar o pacote” ao instalar a atualização baixada pelo próprio app.
