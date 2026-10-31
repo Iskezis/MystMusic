@@ -268,6 +268,8 @@ class PlayerController(context: Context) {
         }
     }
 
+    fun currentIndex(): Int = controller?.currentMediaItemIndex ?: -1
+
     fun retry() {
         val current = controller
         lastError = null

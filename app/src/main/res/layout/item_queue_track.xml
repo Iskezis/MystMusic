@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/queueRow"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="@dimen/space_s"
+    android:layout_marginEnd="@dimen/space_s"
+    android:background="@drawable/bg_track_row"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:minHeight="@dimen/track_row_height"
+    android:orientation="horizontal"
+    android:padding="@dimen/space_s">
+
+    <TextView
+        android:id="@+id/queueRowIndex"
+        android:layout_width="26dp"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/poppins_medium"
+        android:gravity="center"
+        android:textColor="?attr/mystOnSurfaceDim"
+        android:textSize="@dimen/text_small" />
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/queueRowCover"
+        android:layout_width="@dimen/track_thumb"
+        android:layout_height="@dimen/track_thumb"
+        android:background="@drawable/bg_cover_placeholder"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        android:src="@drawable/bg_cover_placeholder"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.CoverSmall" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/space_s"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/queueRowTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_medium"
+            android:maxLines="1"
+            android:textColor="?attr/mystOnSurface"
+            android:textSize="@dimen/text_body" />
+
+        <TextView
+            android:id="@+id/queueRowArtist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_regular"
+            android:maxLines="1"
+            android:textColor="?attr/mystOnSurfaceDim"
+            android:textSize="@dimen/text_small" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/queueRowCurrent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/space_s"
+        android:fontFamily="@font/poppins_medium"
+        android:text="@string/player_queue_current"
+        android:textColor="?attr/mystAccentText"
+        android:textSize="@dimen/text_small"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/queueRowDuration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/space_s"
+        android:fontFamily="@font/poppins_regular"
+        android:textColor="?attr/mystOnSurfaceDim"
+        android:textSize="@dimen/text_small" />
+</LinearLayout>

@@ -5,26 +5,16 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
 import android.graphics.Bitmap
-import android.graphics.Color
-import android.graphics.RenderEffect
-import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.GradientDrawable
-import android.os.Build
 import android.os.Bundle
-import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
-import androidx.core.graphics.ColorUtils
 import androidx.core.view.isVisible
-import androidx.palette.graphics.Palette
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -41,7 +31,6 @@ import com.iskezis.myst.player.PlayerController
 import com.iskezis.myst.player.PlayerState
 import com.iskezis.myst.ui.auth.YouTubeLoginActivity
 import com.iskezis.myst.ui.browse.BrowseNavigation
-import com.iskezis.myst.ui.playlists.AddToPlaylistSheet
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.animatePlayIcon
 import com.iskezis.myst.util.UiAnimations.focusScale
@@ -62,7 +51,7 @@ class PlayerFragment : Fragment() {
     private var latest: PlayerState = PlayerState()
     private var seeking = false
     private var loadedArtworkFor: String? = null
-    private var paletteJob: Job? = null
+    private var backdropJob: Job? = null
     private var lastLoggedTrack: String? = null
     private var lastLoggedPlaying: Boolean? = null
     private var initialFocusApplied = false
@@ -126,15 +115,17 @@ class PlayerFragment : Fragment() {
         binding.playerPlay.setOnClickListener { controller?.toggle() }
         binding.playerNext.setOnClickListener { controller?.next() }
         binding.playerPrevious.setOnClickListener { controller?.previous() }
-        binding.playerShuffle.setOnClickListener { controller?.toggleShuffle() }
         binding.playerRepeat.setOnClickListener { controller?.cycleRepeat() }
+        binding.playerQueue.setOnClickListener {
+            QueueSheet.newInstance().show(childFragmentManager, QueueSheet.TAG)
+        }
         binding.playerRetry.setOnClickListener { retry() }
         binding.playerYouTubeLogin.setOnClickListener { openYouTubeLogin() }
         binding.playerCopyLogs.setOnClickListener { copyDiagnostics() }
         binding.playerMore.setOnClickListener {
             latest.track?.let { track ->
-                AddToPlaylistSheet.newInstance(track)
-                    .show(childFragmentManager, AddToPlaylistSheet.TAG)
+                TrackMenuSheet.newInstance(track)
+                    .show(childFragmentManager, TrackMenuSheet.TAG)
             }
         }
         listOf(
@@ -143,8 +134,8 @@ class PlayerFragment : Fragment() {
             binding.playerPlay,
             binding.playerNext,
             binding.playerPrevious,
-            binding.playerShuffle,
             binding.playerRepeat,
+            binding.playerQueue,
             binding.playerRetry,
             binding.playerYouTubeLogin,
             binding.playerCopyLogs,
@@ -235,9 +226,9 @@ class PlayerFragment : Fragment() {
         val artwork = track?.artworkUrl()
         if (artwork.isNullOrBlank()) {
             loadedArtworkFor = null
+            backdropJob?.cancel()
             binding.playerCover.setImageResource(R.drawable.bg_cover_placeholder)
             binding.playerBackdrop.setImageResource(R.drawable.bg_cover_placeholder)
-            resetPlayerPalette()
         } else if (loadedArtworkFor != artwork) {
             loadedArtworkFor = artwork
             binding.playerCover.load(artwork) {
@@ -247,21 +238,23 @@ class PlayerFragment : Fragment() {
                 listener(
                     onSuccess = { _, result ->
                         val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
-                        if (bitmap != null) applyArtworkPalette(bitmap)
+                        if (bitmap != null && _binding != null && view != null) {
+                            applyBackdrop(bitmap)
+                        }
                     },
                     onError = { _, result ->
                         AppLog.w(
                             AppLog.TAG_UI,
                             "Falha ao carregar capa do player: ${AppLog.describe(result.throwable)}",
                         )
-                        resetPlayerPalette()
+                        _binding?.let { current ->
+                            backdropJob?.cancel()
+                            current.playerBackdrop.setImageResource(
+                                R.drawable.bg_cover_placeholder,
+                            )
+                        }
                     },
                 )
-            }
-            binding.playerBackdrop.load(artwork) {
-                crossfade(true)
-                placeholder(R.drawable.bg_cover_placeholder)
-                error(R.drawable.bg_cover_placeholder)
             }
         }
 
@@ -270,10 +263,19 @@ class PlayerFragment : Fragment() {
         binding.playerPlay.contentDescription = getString(
             if (state.isPlaying) R.string.player_pause else R.string.player_play,
         )
+        binding.playerMore.isEnabled = track != null
+        binding.playerQueue.isEnabled = track != null
         binding.playerNext.isEnabled = state.hasNext || track != null
         binding.playerPrevious.isEnabled = track != null
-        binding.playerShuffle.isSelected = state.shuffle
         binding.playerRepeat.isSelected = state.repeatMode != Player.REPEAT_MODE_OFF
+        binding.playerRepeatOne.isVisible = state.repeatMode == Player.REPEAT_MODE_ONE
+        binding.playerRepeat.contentDescription = getString(
+            when (state.repeatMode) {
+                Player.REPEAT_MODE_OFF -> R.string.player_repeat_off
+                Player.REPEAT_MODE_ONE -> R.string.player_repeat_one
+                else -> R.string.player_repeat_all
+            },
+        )
 
         val duration = state.durationMs
         binding.playerDuration.text = formatDuration(duration)
@@ -316,14 +318,14 @@ class PlayerFragment : Fragment() {
         if (!isTv()) return
         // O play/pause troca de ícone com uma animação de alpha; escalá-lo no
         // foco cancelaria essa animação. Ele usa apenas o anel de foco bem
-        // visível definido em bg_player_play_focus.
+        // visível definido em bg_player_focus_ring (TV).
         listOf(
             binding.playerBack,
             binding.playerMore,
-            binding.playerShuffle,
             binding.playerPrevious,
             binding.playerNext,
             binding.playerRepeat,
+            binding.playerQueue,
         ).forEach { it.focusScale() }
         binding.playerArtist.focusScale(1.03f)
         binding.playerAlbum.focusScale(1.03f)
@@ -352,6 +354,8 @@ class PlayerFragment : Fragment() {
         }
         binding.playerBack.nextFocusDownId = afterTop
         binding.playerMore.nextFocusDownId = afterTop
+        binding.playerArtist.nextFocusUpId =
+            if (binding.playerMore.isEnabled) R.id.playerMore else R.id.playerBack
         binding.playerAlbum.nextFocusUpId =
             if (binding.playerArtist.isFocusable) R.id.playerArtist else R.id.playerBack
         binding.playerArtist.nextFocusDownId = when {
@@ -374,85 +378,40 @@ class PlayerFragment : Fragment() {
         binding.playerRetry.nextFocusUpId = errorUp
         binding.playerYouTubeLogin.nextFocusUpId = errorUp
         binding.playerCopyLogs.nextFocusUpId = errorUp
+        binding.playerPrevious.nextFocusDownId = R.id.playerRepeat
+        binding.playerNext.nextFocusDownId = R.id.playerQueue
+        binding.playerRepeat.nextFocusUpId = R.id.playerPlay
+        binding.playerRepeat.nextFocusRightId = R.id.playerQueue
+        binding.playerQueue.nextFocusUpId = R.id.playerPlay
+        binding.playerQueue.nextFocusLeftId = R.id.playerRepeat
         binding.playerPlay.nextFocusDownId = when {
             binding.playerRetry.isVisible -> R.id.playerRetry
             binding.playerYouTubeLogin.isVisible -> R.id.playerYouTubeLogin
             binding.playerCopyLogs.isVisible -> R.id.playerCopyLogs
+            binding.playerRepeat.isEnabled -> R.id.playerRepeat
             else -> View.NO_ID
         }
     }
 
-    private fun applyArtworkPalette(bitmap: Bitmap) {
-        val host = context ?: return
-        val accent = themeColor(R.attr.mystAccent, host)
-        val night = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-            Configuration.UI_MODE_NIGHT_YES
-        paletteJob?.cancel()
-        paletteJob = viewLifecycleOwner.lifecycleScope.launch {
-            val palette = withContext(Dispatchers.Default) {
+    private fun applyBackdrop(source: Bitmap) {
+        if (view == null) return
+        backdropJob?.cancel()
+        backdropJob = viewLifecycleOwner.lifecycleScope.launch {
+            val blurred = withContext(Dispatchers.Default) {
                 try {
-                    Palette.from(bitmap)
-                        .clearFilters()
-                        .maximumColorCount(24)
-                        .generate()
+                    // Uma miniatura ampliada pelo ImageView vira um desfoque
+                    // suave em qualquer API, sem precisar de RenderEffect.
+                    Bitmap.createScaledBitmap(source, 64, 64, true)
                 } catch (t: Throwable) {
                     AppLog.w(
                         AppLog.TAG_UI,
-                        "Falha ao extrair cores da capa: ${AppLog.describe(t)}",
+                        "Falha ao desfocar capa do player: ${AppLog.describe(t)}",
                     )
                     null
                 }
             } ?: return@launch
-            val swatch = palette.vibrantSwatch
-                ?: palette.mutedSwatch
-                ?: palette.dominantSwatch
-            val base = swatch?.rgb ?: accent
-            val tint = if (night) {
-                ColorUtils.blendARGB(base, accent, 0.38f)
-            } else {
-                ColorUtils.blendARGB(base, Color.WHITE, 0.66f)
-            }
-            val start = ColorUtils.setAlphaComponent(tint, if (night) 0x72 else 0x5A)
-            val drawable = GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(start, Color.TRANSPARENT),
-            )
             val current = _binding ?: return@launch
-            current.playerTint.background = drawable
-            applyBackdropBlur(current)
-        }
-    }
-
-    private fun resetPlayerPalette() {
-        paletteJob?.cancel()
-        val current = _binding ?: return
-        current.playerTint.setBackgroundResource(R.drawable.bg_player_tint)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            current.playerBackdrop.setRenderEffect(null)
-        }
-    }
-
-    private fun applyBackdropBlur(current: FragmentPlayerBinding) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || isTv()) return
-        try {
-            current.playerBackdrop.setRenderEffect(
-                RenderEffect.createBlurEffect(42f, 42f, Shader.TileMode.CLAMP),
-            )
-        } catch (t: Throwable) {
-            AppLog.w(AppLog.TAG_UI, "Blur do player indisponível: ${AppLog.describe(t)}")
-        }
-    }
-
-    private fun themeColor(attr: Int, host: Context): Int {
-        val value = TypedValue()
-        return if (host.theme.resolveAttribute(attr, value, true)) {
-            if (value.resourceId != 0) {
-                ContextCompat.getColor(host, value.resourceId)
-            } else {
-                value.data
-            }
-        } else {
-            Color.GRAY
+            current.playerBackdrop.setImageBitmap(blurred)
         }
     }
 
@@ -509,8 +468,12 @@ class PlayerFragment : Fragment() {
         binding.playerNext.isEnabled =
             playerController != null && (latest.hasNext || latest.track != null)
         binding.playerPrevious.isEnabled = playerController != null && latest.track != null
-        binding.playerShuffle.isEnabled = playerController != null
+        binding.playerMore.isEnabled = playerController != null && latest.track != null
+        binding.playerQueue.isEnabled = playerController != null && latest.track != null
         binding.playerRepeat.isEnabled = playerController != null
+        binding.playerRepeat.isSelected = false
+        binding.playerRepeatOne.isVisible = false
+        binding.playerRepeat.contentDescription = getString(R.string.player_repeat_off)
         binding.playerSeek.isEnabled = playerController != null && latest.durationMs > 0
         updateTvFocusOrder()
         applyInitialFocus()
@@ -581,6 +544,9 @@ class PlayerFragment : Fragment() {
 
     override fun onDestroyView() {
         AppLog.d(AppLog.TAG_UI, "PlayerFragment.onDestroyView")
+        backdropJob?.cancel()
+        backdropJob = null
+        loadedArtworkFor = null
         super.onDestroyView()
         _binding = null
     }

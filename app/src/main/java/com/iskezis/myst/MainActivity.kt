@@ -119,6 +119,9 @@ class MainActivity : BaseActivity() {
         binding.navBar.navSettings.pressScale()
         binding.navBar.navCenterCard.pressScale()
         binding.miniPlayer.root.pressScale()
+        binding.miniPlayer.miniPrevious.pressScale()
+        binding.miniPlayer.miniPlay.pressScale()
+        binding.miniPlayer.miniNext.pressScale()
 
         binding.miniPlayer.root.setOnClickListener {
             if (navController.currentDestination?.id != R.id.playerFragment) {
@@ -139,6 +142,14 @@ class MainActivity : BaseActivity() {
         binding.miniPlayer.miniPlay.setOnClickListener {
             AppLog.d(AppLog.TAG_UI, "Botão play/pause do mini player")
             (application as MystApp).playerController.toggle()
+        }
+        binding.miniPlayer.miniPrevious.setOnClickListener {
+            AppLog.d(AppLog.TAG_UI, "Botão anterior do mini player")
+            (application as MystApp).playerController.previous()
+        }
+        binding.miniPlayer.miniNext.setOnClickListener {
+            AppLog.d(AppLog.TAG_UI, "Botão próxima do mini player")
+            (application as MystApp).playerController.next()
         }
 
         navController.addOnDestinationChangedListener { _, destination, _ ->

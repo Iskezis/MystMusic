@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="@dimen/mini_player_height"
     app:cardBackgroundColor="?attr/mystGlass"
-    app:cardCornerRadius="26dp"
+    app:cardCornerRadius="28dp"
     app:cardElevation="10dp"
     app:strokeWidth="0dp">
 
@@ -20,69 +20,105 @@
             android:layout_width="@dimen/mini_cover"
             android:layout_height="@dimen/mini_cover"
             android:background="@drawable/bg_cover_placeholder"
-            android:contentDescription="@string/player_play"
+            android:contentDescription="@null"
             android:scaleType="centerCrop"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.CoverSmall" />
 
-        <TextView
-            android:id="@+id/miniTitle"
+        <LinearLayout
+            android:id="@+id/miniTextBlock"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/space_m"
-            android:layout_marginEnd="@dimen/space_s"
-            android:ellipsize="end"
-            android:fontFamily="@font/poppins_medium"
-            android:maxLines="1"
-            android:textColor="?attr/mystOnSurface"
-            android:textSize="@dimen/text_body"
-            app:layout_constraintBottom_toTopOf="@id/miniArtist"
-            app:layout_constraintEnd_toStartOf="@id/miniPlay"
+            android:layout_height="0dp"
+            android:layout_marginStart="@dimen/space_xs"
+            android:layout_marginTop="@dimen/space_s"
+            android:layout_marginEnd="0dp"
+            android:layout_marginBottom="@dimen/space_xs"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            app:layout_constraintBottom_toTopOf="@id/miniProgress"
+            app:layout_constraintEnd_toStartOf="@id/miniControls"
             app:layout_constraintStart_toEndOf="@id/miniCover"
-            app:layout_constraintTop_toTopOf="@id/miniCover" />
+            app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
-            android:id="@+id/miniArtist"
-            android:layout_width="0dp"
+            <TextView
+                android:id="@+id/miniTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="@font/poppins_medium"
+                android:maxLines="1"
+                android:textColor="?attr/mystOnSurface"
+                android:textSize="@dimen/text_body" />
+
+            <TextView
+                android:id="@+id/miniArtist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="@font/poppins_regular"
+                android:maxLines="1"
+                android:textColor="?attr/mystOnSurfaceDim"
+                android:textSize="@dimen/text_small" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/miniControls"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:fontFamily="@font/poppins_regular"
-            android:maxLines="1"
-            android:textColor="?attr/mystOnSurfaceDim"
-            android:textSize="@dimen/text_small"
-            app:layout_constraintBottom_toBottomOf="@id/miniCover"
-            app:layout_constraintEnd_toEndOf="@id/miniTitle"
-            app:layout_constraintStart_toStartOf="@id/miniTitle"
-            app:layout_constraintTop_toBottomOf="@id/miniTitle" />
-
-        <ImageButton
-            android:id="@+id/miniPlay"
-            android:layout_width="@dimen/touch_target"
-            android:layout_height="@dimen/touch_target"
-            android:background="@drawable/bg_play_button"
-            android:contentDescription="@string/player_play"
-            android:padding="13dp"
-            android:src="@drawable/ic_play"
+            android:gravity="center"
+            android:orientation="horizontal"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:tint="?attr/mystOnAccent" />
+            app:layout_constraintTop_toTopOf="parent">
+
+            <ImageButton
+                android:id="@+id/miniPrevious"
+                android:layout_width="@dimen/mini_control"
+                android:layout_height="@dimen/mini_control"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/player_previous"
+                android:padding="14dp"
+                android:src="@drawable/ic_previous"
+                app:tint="?attr/mystOnSurfaceDim" />
+
+            <ImageButton
+                android:id="@+id/miniPlay"
+                android:layout_width="@dimen/mini_play_size"
+                android:layout_height="@dimen/mini_play_size"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/player_play"
+                android:padding="12dp"
+                android:src="@drawable/ic_play"
+                app:tint="?attr/mystOnSurface" />
+
+            <ImageButton
+                android:id="@+id/miniNext"
+                android:layout_width="@dimen/mini_control"
+                android:layout_height="@dimen/mini_control"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/player_next"
+                android:padding="14dp"
+                android:src="@drawable/ic_next"
+                app:tint="?attr/mystOnSurfaceDim" />
+        </LinearLayout>
 
         <ProgressBar
             android:id="@+id/miniProgress"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="0dp"
-            android:layout_height="2dp"
-            android:layout_marginStart="@dimen/space_s"
-            android:layout_marginEnd="@dimen/space_s"
-            android:layout_marginBottom="5dp"
+            android:layout_height="@dimen/mini_progress_height"
+            android:layout_marginStart="@dimen/space_xs"
+            android:layout_marginEnd="0dp"
+            android:layout_marginBottom="7dp"
+            android:indeterminate="false"
             android:max="1000"
-            android:progressBackgroundTint="?attr/mystStroke"
-            android:progressTint="?attr/mystAccent"
+            android:maxHeight="@dimen/mini_progress_height"
+            android:minHeight="@dimen/mini_progress_height"
+            android:progressDrawable="@drawable/progress_mini"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent" />
+            app:layout_constraintEnd_toStartOf="@id/miniControls"
+            app:layout_constraintStart_toEndOf="@id/miniCover" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.0-dev.24 — 31/10/2026
+
+Ajustes visuais pedidos após a revisão da fase 17.
+
+### Alterado
+- **Navbar:** o item central de Playlists usa o novo ícone de biblioteca musical e não tem mais o círculo azul ao redor.
+- **Mini player:** mais alto e mais largo, capa de 56dp, título e artista agrupados, barra de progresso começando depois da capa e controles anterior/play/próxima. O play/pause ficou menor, sem bola azul, e os três controles mantêm alvo de toque de 48dp.
+- **Player:** capa maior (largura útil com proporção 1:1), fundo desfocado da própria capa sem escurecer, título/artista à esquerda e menu de três pontos à direita (baixar, adicionar à playlist, artista/álbum), barra de progresso fina sem bolinha e controles completamente brancos.
+- **Repetição:** botão de infinito no canto inferior esquerdo com três estados: apagado (desligado), aceso (repetir tudo) e aceso com "1" (repetir uma).
+- **Fila:** botão no canto inferior direito abre a fila atual em uma bottom sheet, com capa, título, artista, duração, indicação da faixa tocando e toque para pular.
+- **Estatísticas:** voltaram ao layout anterior à atualização de interface, mantendo os mesmos IDs e todas as funções.
+- **Ícone do app:** novo ícone gerado a partir de `iconmystapp.png`, com versões legacy, redonda, adaptativa (API 26+) e banner da TV.
+
+### Corrigido
+- O player não depende mais de `Palette`/`RenderEffect` para o fundo: a capa é reduzida e ampliada pelo `ImageView`, funcionando em todas as APIs e também na TV.
+- A capa e o fundo do player são recarregados ao recriar a tela, evitando ficar com o placeholder após voltar ao player.
+
 ## 0.2.0-dev.19 — 30/10/2026
 
 Pareamento e sincronização com a TV funcionando com o app em segundo plano ou fechado.
