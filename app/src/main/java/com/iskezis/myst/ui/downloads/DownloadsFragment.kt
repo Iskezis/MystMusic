@@ -78,6 +78,8 @@ class DownloadsFragment : Fragment() {
         }
         binding.downloadsBack.pressScale()
         binding.downloadsRemoveAll.setOnClickListener { confirmRemoveAll() }
+        binding.downloadsRecover.setOnClickListener { viewModel.recover() }
+        binding.downloadsRecover.pressScale()
         binding.downloadsStorage.setOnClickListener {
             runCatching { findNavController().navigate(R.id.storageFragment) }
                 .onFailure {
@@ -118,6 +120,8 @@ class DownloadsFragment : Fragment() {
             formatBytes(state.freeBytes),
         )
         binding.downloadsPath.text = getString(R.string.downloads_path, state.path)
+        binding.downloadsRecover.isVisible = state.activeCount > 0
+        binding.downloadsRecoverHint.isVisible = state.activeCount > 0
         binding.downloadsRemoveAll.isEnabled =
             state.totalCount > 0 && !state.removingAll
         binding.downloadsRemoveAll.setText(

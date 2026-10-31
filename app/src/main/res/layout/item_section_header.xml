@@ -10,16 +10,16 @@
 
     <TextView
         android:id="@+id/sectionTitle"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:fontFamily="@font/poppins_semibold"
-        android:letterSpacing="-0.01"
+        android:letterSpacing="-0.02"
         android:textColor="?attr/mystOnSurface"
-        android:textSize="@dimen/text_section" />
+        android:textSize="24sp" />
 
     <TextView
         android:id="@+id/sectionSubtitle"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
         android:fontFamily="@font/poppins_regular"

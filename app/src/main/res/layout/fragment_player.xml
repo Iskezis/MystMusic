@@ -48,11 +48,11 @@
 
                 <ImageButton
                     android:id="@+id/playerBack"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
+                    android:layout_width="@dimen/touch_target"
+                    android:layout_height="@dimen/touch_target"
                     android:background="@drawable/bg_icon_tile"
                     android:contentDescription="@string/auth_back"
-                    android:padding="10dp"
+                    android:padding="12dp"
                     android:src="@drawable/ic_arrow_down"
                     app:tint="?attr/mystOnSurface" />
 
@@ -84,11 +84,11 @@
 
                 <ImageButton
                     android:id="@+id/playerMore"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
+                    android:layout_width="@dimen/touch_target"
+                    android:layout_height="@dimen/touch_target"
                     android:background="@drawable/bg_icon_tile"
                     android:contentDescription="@string/player_add_playlist"
-                    android:padding="10dp"
+                    android:padding="12dp"
                     android:src="@drawable/ic_add_to_playlist"
                     app:tint="?attr/mystOnSurface" />
             </LinearLayout>

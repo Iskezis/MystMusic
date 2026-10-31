@@ -6,6 +6,9 @@
     <color name="sky_200">#BAE6FD</color>
     <color name="on_accent">#04202E</color>
     <color name="on_image">#FFFFFF</color>
+    <color name="on_image_dim">#CCFFFFFF</color>
+    <color name="featured_scrim_mid">#33000000</color>
+    <color name="featured_scrim_end">#D9000000</color>
     <color name="accent_alpha_16">#2938BDF8</color>
     <color name="accent_alpha_24">#3D38BDF8</color>
 

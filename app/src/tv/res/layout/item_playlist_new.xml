@@ -7,11 +7,9 @@
     android:layout_margin="8dp"
     android:clickable="true"
     android:focusable="true"
-    app:cardBackgroundColor="?attr/mystSurfaceAlt"
+    app:cardBackgroundColor="?attr/mystAccentAlpha16"
     app:cardCornerRadius="@dimen/corner_medium"
-    app:cardElevation="0dp"
-    app:strokeColor="?attr/mystAccentAlpha24"
-    app:strokeWidth="1dp">
+    app:cardElevation="0dp">
 
     <LinearLayout
         android:layout_width="match_parent"

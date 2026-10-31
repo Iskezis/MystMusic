@@ -18,6 +18,7 @@ import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.databinding.FragmentHomeBinding
+import com.iskezis.myst.ui.common.LoadState
 import com.iskezis.myst.ui.common.YouTubeLoginFragment
 import com.iskezis.myst.ui.player.TrackMenuSheet
 import com.iskezis.myst.util.AppLog
@@ -171,10 +172,17 @@ class HomeFragment : YouTubeLoginFragment() {
             items += HomeItem.Header(HomeSection.OFFLINE)
             items += HomeItem.Carousel(HomeSection.OFFLINE, state.downloads)
         } else {
+            val recent = state.recent
+            if (recent is LoadState.Data) {
+                val tracks = recent.value
+                if (tracks.isNotEmpty()) {
+                    items += HomeItem.Featured(tracks.first(), tracks)
+                }
+            }
             items += HomeItem.Header(HomeSection.RECENT)
             items += HomeItem.Carousel(HomeSection.RECENT, state.recent)
             items += HomeItem.Header(HomeSection.TRENDING)
-            items += HomeItem.Carousel(HomeSection.TRENDING, state.trending)
+            items += HomeItem.Ranked(HomeSection.TRENDING, state.trending)
             items += HomeItem.Header(HomeSection.RECOMMENDED)
             items += HomeItem.Carousel(HomeSection.RECOMMENDED, state.recommended)
         }

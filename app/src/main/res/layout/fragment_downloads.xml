@@ -51,11 +51,10 @@
         android:layout_marginStart="@dimen/screen_margin"
         android:layout_marginTop="@dimen/space_m"
         android:layout_marginEnd="@dimen/screen_margin"
-        app:cardBackgroundColor="?attr/mystSurface"
-        app:cardCornerRadius="@dimen/corner_medium"
+        app:cardBackgroundColor="?attr/mystSurfaceAlt"
+        app:cardCornerRadius="@dimen/corner_xlarge"
         app:cardElevation="0dp"
-        app:strokeColor="?attr/mystStroke"
-        app:strokeWidth="1dp">
+        app:strokeWidth="0dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -98,8 +97,10 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/downloadsRemoveAll"
                     style="@style/Widget.MystMusic.Button.Secondary"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:maxLines="1"
                     android:text="@string/downloads_remove_all"
                     app:icon="@drawable/ic_delete"
                     app:iconTint="?attr/mystError" />
@@ -107,11 +108,34 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/downloadsStorage"
                     style="@style/Widget.MystMusic.Button.Secondary"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/space_s"
+                    android:layout_weight="1"
+                    android:maxLines="1"
                     android:text="@string/downloads_open_storage" />
             </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/downloadsRecover"
+                style="@style/Widget.MystMusic.Button.Tonal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_s"
+                android:visibility="gone"
+                android:text="@string/downloads_recover"
+                app:icon="@drawable/ic_sync"
+                app:iconTint="?attr/mystAccentText" />
+
+            <TextView
+                android:id="@+id/downloadsRecoverHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_s"
+                android:visibility="gone"
+                android:text="@string/downloads_recover_hint"
+                android:textColor="?attr/mystOnSurfaceDim"
+                android:textSize="@dimen/text_small" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 

@@ -114,6 +114,7 @@
     <string name="youtube_login_retry">Recarregar login</string>
 
     <string name="playlists_title">Playlists</string>
+    <string name="library_title">Biblioteca</string>
     <string name="playlists_subtitle">Crie, organize e sincronize sua biblioteca.</string>
     <string name="playlists_empty">Crie sua primeira playlist ou importe uma do Spotify.</string>
     <string name="playlists_new">Nova playlist</string>
@@ -410,6 +411,7 @@
     <string name="home_greeting">Olá, %1$s</string>
     <string name="home_greeting_fallback">Olá</string>
     <string name="home_greeting_subtitle">Sua música, do seu jeito</string>
+    <string name="home_continue_listening">Continuar ouvindo</string>
 
     <string name="avatar_crop_title">Ajustar foto</string>
     <string name="avatar_crop_save">Salvar</string>
@@ -431,7 +433,9 @@
 
     <string name="stats_open">Ver estatísticas</string>
     <string name="stats_title">Estatísticas</string>
+    <string name="stats_overline">Sua música</string>
     <string name="stats_subtitle">Seu tempo, suas músicas e seus artistas favoritos.</string>
+    <string name="stats_summary_title">Seu resumo</string>
     <string name="stats_period_week">Semana</string>
     <string name="stats_period_month">Mês</string>
     <string name="stats_period_year">Ano</string>
@@ -503,6 +507,10 @@
     <string name="download_finished_failed">%1$d baixadas, %2$d com falha. Abra Baixadas para tentar de novo.</string>
     <string name="download_cancelled">Downloads cancelados</string>
     <string name="download_cancel">Cancelar</string>
+    <string name="download_recover">Recuperar</string>
+    <string name="downloads_recover">Recuperar downloads</string>
+    <string name="downloads_recovering">Recuperando downloads…</string>
+    <string name="downloads_recover_hint">O progresso parou? Toque em Recuperar para retomar de onde parou.</string>
 
     <string name="track_download">Baixar</string>
     <string name="track_download_remove">Remover download</string>

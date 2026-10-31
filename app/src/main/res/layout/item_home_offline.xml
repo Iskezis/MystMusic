@@ -6,11 +6,10 @@
     android:layout_marginStart="@dimen/screen_margin"
     android:layout_marginTop="@dimen/space_m"
     android:layout_marginEnd="@dimen/screen_margin"
-    app:cardBackgroundColor="?attr/mystSurface"
+    app:cardBackgroundColor="?attr/mystSurfaceAlt"
     app:cardCornerRadius="@dimen/corner_large"
     app:cardElevation="0dp"
-    app:strokeColor="?attr/mystStroke"
-    app:strokeWidth="1dp">
+    app:strokeWidth="0dp">
 
     <LinearLayout
         android:layout_width="match_parent"

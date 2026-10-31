@@ -375,6 +375,34 @@ interface DownloadDao {
     )
     suspend fun resetInterrupted(now: Long)
 
+    /**
+     * Recupera apenas downloads que pararam de dar sinal de vida. Mantém os
+     * bytes já escritos para que o arquivo `.part` continue de onde parou.
+     */
+    @Query(
+        "UPDATE downloads SET status = 'QUEUED', error = NULL, updatedAt = :now " +
+            "WHERE userId = :userId AND status = 'DOWNLOADING' AND updatedAt < :cutoff " +
+            "AND videoId NOT IN (:exclude)",
+    )
+    suspend fun recoverStalled(
+        userId: Long,
+        cutoff: Long,
+        now: Long,
+        exclude: List<String>,
+    ): Int
+
+    @Query(
+        "UPDATE downloads SET status = 'QUEUED', error = NULL, updatedAt = :now " +
+            "WHERE userId = :userId AND videoId = :videoId AND status = 'DOWNLOADING'",
+    )
+    suspend fun requeueOne(userId: Long, videoId: String, now: Long): Int
+
+    @Query(
+        "SELECT COUNT(*) FROM downloads WHERE userId = :userId AND status = 'DOWNLOADING' " +
+            "AND updatedAt < :cutoff",
+    )
+    suspend fun stalledCount(userId: Long, cutoff: Long): Int
+
     @Query(
         "UPDATE downloads SET status = 'FAILED', error = :reason, updatedAt = :now " +
             "WHERE userId = :userId AND status IN ('QUEUED', 'DOWNLOADING')",

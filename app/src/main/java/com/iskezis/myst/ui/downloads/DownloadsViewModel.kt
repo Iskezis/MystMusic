@@ -40,6 +40,11 @@ data class DownloadsUiState(
 
     val totalCount: Int
         get() = (items as? LoadState.Data)?.value?.size ?: 0
+
+    val activeCount: Int
+        get() = (items as? LoadState.Data)?.value?.count {
+            it.status == DownloadStatus.QUEUED || it.status == DownloadStatus.DOWNLOADING
+        } ?: 0
 }
 
 /**
@@ -146,6 +151,17 @@ class DownloadsViewModel(private val app: MystApp) : ViewModel() {
                 _state.update { it.copy(messageRes = R.string.downloads_error) }
             }
         }
+    }
+
+    /**
+     * Destrava a fila quando o progresso congela (troca de rede, Doze, processo
+     * encerrado pelo fabricante). O serviço devolve as linhas para QUEUED e
+     * retoma os arquivos `.part` com Range.
+     */
+    fun recover() {
+        DownloadService.recover(app)
+        _state.update { it.copy(messageRes = R.string.downloads_recovering) }
+        refreshSpace()
     }
 
     fun removeAll() {

@@ -5,10 +5,9 @@
     android:layout_width="match_parent"
     android:layout_height="@dimen/mini_player_height"
     app:cardBackgroundColor="?attr/mystGlass"
-    app:cardCornerRadius="22dp"
-    app:cardElevation="12dp"
-    app:strokeColor="?attr/mystStroke"
-    app:strokeWidth="1dp">
+    app:cardCornerRadius="26dp"
+    app:cardElevation="10dp"
+    app:strokeWidth="0dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -60,11 +59,11 @@
 
         <ImageButton
             android:id="@+id/miniPlay"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
             android:background="@drawable/bg_play_button"
             android:contentDescription="@string/player_play"
-            android:padding="11dp"
+            android:padding="13dp"
             android:src="@drawable/ic_play"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"

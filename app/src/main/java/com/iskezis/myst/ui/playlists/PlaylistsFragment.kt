@@ -81,6 +81,15 @@ class PlaylistsFragment : YouTubeLoginFragment() {
                 .show(childFragmentManager, SpotifyImportSheet.TAG)
         }
         binding.spotifyButton.pressScale()
+        binding.playlistsNewQuick.setOnClickListener { showCreateDialog() }
+        binding.playlistsNewQuick.pressScale()
+        binding.playlistsDownloadsQuick.setOnClickListener {
+            runCatching { findNavController().navigate(R.id.downloadsFragment) }
+                .onFailure {
+                    AppLog.failure(AppLog.TAG_UI, "Falha abrindo Baixadas", it)
+                }
+        }
+        binding.playlistsDownloadsQuick.pressScale()
         binding.playlistsYtBanner.ytBannerAction.setOnClickListener { requestYouTubeLogin() }
         binding.playlistsState.stateRetry.setOnClickListener {
             if (currentState.errorRes != null) viewModel.retry() else showCreateDialog()

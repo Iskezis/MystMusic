@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rankedRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_track_row"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:minHeight="64dp"
+    android:orientation="horizontal"
+    android:paddingStart="8dp"
+    android:paddingTop="4dp"
+    android:paddingEnd="4dp"
+    android:paddingBottom="4dp">
+
+    <TextView
+        android:id="@+id/rankedPosition"
+        android:layout_width="30dp"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/poppins_semibold"
+        android:gravity="center"
+        android:textColor="?attr/mystAccentText"
+        android:textSize="@dimen/text_body" />
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/rankedCover"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:background="@drawable/bg_cover_placeholder"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.CoverSmall" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/space_m"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/rankedTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_medium"
+            android:maxLines="1"
+            android:textColor="?attr/mystOnSurface"
+            android:textSize="@dimen/text_body" />
+
+        <TextView
+            android:id="@+id/rankedArtist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_regular"
+            android:maxLines="1"
+            android:textColor="?attr/mystOnSurfaceDim"
+            android:textSize="@dimen/text_small" />
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/rankedMore"
+        android:layout_width="@dimen/touch_target"
+        android:layout_height="@dimen/touch_target"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/common_more"
+        android:padding="14dp"
+        android:src="@drawable/ic_more"
+        app:tint="?attr/mystOnSurfaceDim" />
+</LinearLayout>

@@ -229,9 +229,9 @@
         <item name="rippleColor">?attr/mystOnAccent</item>
     </style>
 
-    <style name="Widget.MystMusic.Button.Secondary" parent="Widget.Material3.Button.OutlinedButton">
+    <style name="Widget.MystMusic.Button.Secondary" parent="Widget.Material3.Button.TonalButton">
         <item name="android:textColor">?attr/mystAccentText</item>
-        <item name="strokeColor">?attr/mystStrokeStrong</item>
+        <item name="backgroundTint">?attr/mystSurfaceAlt</item>
         <item name="cornerRadius">@dimen/corner_pill</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:textSize">@dimen/text_button</item>
@@ -240,9 +240,8 @@
         <item name="iconTint">?attr/mystAccentText</item>
     </style>
 
-    <style name="Widget.MystMusic.Button.Danger" parent="Widget.Material3.Button.OutlinedButton">
+    <style name="Widget.MystMusic.Button.Danger" parent="Widget.Material3.Button.TextButton">
         <item name="android:textColor">?attr/mystError</item>
-        <item name="strokeColor">?attr/mystError</item>
         <item name="cornerRadius">@dimen/corner_pill</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:textSize">@dimen/text_button</item>
@@ -269,26 +268,23 @@
     </style>
 
     <style name="Widget.MystMusic.Card" parent="Widget.Material3.CardView.Filled">
-        <item name="cardBackgroundColor">?attr/mystSurface</item>
-        <item name="cardCornerRadius">@dimen/corner_large</item>
+        <item name="cardBackgroundColor">?attr/mystSurfaceAlt</item>
+        <item name="cardCornerRadius">28dp</item>
         <item name="cardElevation">0dp</item>
-        <item name="strokeColor">?attr/mystStroke</item>
-        <item name="strokeWidth">1dp</item>
+        <item name="strokeWidth">0dp</item>
     </style>
 
     <style name="Widget.MystMusic.Card.Glass" parent="Widget.Material3.CardView.Filled">
         <item name="cardBackgroundColor">?attr/mystGlass</item>
-        <item name="cardCornerRadius">@dimen/corner_xlarge</item>
+        <item name="cardCornerRadius">32dp</item>
         <item name="cardElevation">0dp</item>
-        <item name="strokeColor">?attr/mystStroke</item>
-        <item name="strokeWidth">1dp</item>
+        <item name="strokeWidth">0dp</item>
     </style>
 
     <style name="Widget.MystMusic.Chip" parent="Widget.Material3.Chip.Filter">
         <item name="android:textColor">@color/chip_text</item>
         <item name="chipBackgroundColor">@color/chip_background</item>
-        <item name="chipStrokeColor">@color/chip_stroke</item>
-        <item name="chipStrokeWidth">1dp</item>
+        <item name="chipStrokeWidth">0dp</item>
         <item name="checkedIconVisible">false</item>
         <item name="android:fontFamily">@font/poppins_medium</item>
         <item name="android:textSize">@dimen/text_small</item>
@@ -297,16 +293,22 @@
         <item name="chipCornerRadius">@dimen/corner_pill</item>
     </style>
 
-    <style name="Widget.MystMusic.TextInput" parent="Widget.Material3.TextInputLayout.OutlinedBox">
-        <item name="boxStrokeColor">@color/selector_text_input_stroke</item>
-        <item name="boxBackgroundColor">?attr/mystGlass</item>
-        <item name="boxStrokeWidth">1dp</item>
+    <!--
+        Campos preenchidos, sem contorno: o novo visual usa superfícies
+        tonais contínuas em vez de caixas com borda.
+    -->
+    <style name="Widget.MystMusic.TextInput" parent="Widget.Material3.TextInputLayout.FilledBox">
+        <item name="boxBackgroundColor">?attr/mystSurfaceAlt</item>
+        <item name="boxStrokeWidth">0dp</item>
+        <item name="boxStrokeWidthFocused">0dp</item>
         <item name="boxCornerRadiusTopStart">@dimen/corner_pill</item>
         <item name="boxCornerRadiusTopEnd">@dimen/corner_pill</item>
         <item name="boxCornerRadiusBottomStart">@dimen/corner_pill</item>
         <item name="boxCornerRadiusBottomEnd">@dimen/corner_pill</item>
         <item name="hintTextColor">?attr/mystAccentText</item>
         <item name="android:textColorHint">?attr/mystOnSurfaceDim</item>
+        <item name="startIconTint">?attr/mystAccentText</item>
+        <item name="endIconTint">?attr/mystOnSurfaceDim</item>
     </style>
 
     <style name="ShapeAppearance.MystMusic.Cover" parent="">

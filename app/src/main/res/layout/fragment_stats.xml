@@ -5,61 +5,63 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingStart="@dimen/screen_margin"
         android:paddingTop="@dimen/space_m"
         android:paddingEnd="@dimen/screen_margin"
-        android:fontFamily="@font/poppins_semibold"
-        android:letterSpacing="0.12"
-        android:text="@string/app_name"
-        android:textAllCaps="true"
-        android:textColor="?attr/mystAccentText"
-        android:textSize="@dimen/text_label" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="@dimen/screen_margin"
-        android:paddingTop="@dimen/space_xs"
-        android:paddingEnd="@dimen/screen_margin">
-
-        <ImageButton
-            android:id="@+id/statsBack"
-            android:layout_width="@dimen/touch_target"
-            android:layout_height="@dimen/touch_target"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/common_back"
-            android:focusable="true"
-            android:padding="12dp"
-            android:src="@drawable/ic_back"
-            app:tint="?attr/mystOnSurface" />
+        android:orientation="vertical">
 
         <TextView
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/space_s"
-            android:layout_weight="1"
             android:fontFamily="@font/poppins_semibold"
-            android:letterSpacing="-0.02"
-            android:text="@string/stats_title"
-            android:textColor="?attr/mystOnSurface"
-            android:textSize="30sp" />
-    </LinearLayout>
+            android:letterSpacing="0.12"
+            android:text="@string/stats_overline"
+            android:textAllCaps="true"
+            android:textColor="?attr/mystAccentText"
+            android:textSize="@dimen/text_label" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:paddingStart="@dimen/screen_margin"
-        android:paddingEnd="@dimen/screen_margin"
-        android:fontFamily="@font/poppins_regular"
-        android:text="@string/stats_subtitle"
-        android:textColor="?attr/mystOnSurfaceDim"
-        android:textSize="@dimen/text_small" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/statsBack"
+                android:layout_width="@dimen/touch_target"
+                android:layout_height="@dimen/touch_target"
+                android:layout_marginStart="-12dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/common_back"
+                android:focusable="true"
+                android:padding="12dp"
+                android:src="@drawable/ic_back"
+                app:tint="?attr/mystOnSurface" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_xs"
+                android:layout_weight="1"
+                android:fontFamily="@font/poppins_semibold"
+                android:letterSpacing="-0.03"
+                android:text="@string/stats_title"
+                android:textColor="?attr/mystOnSurface"
+                android:textSize="32sp" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="@font/poppins_regular"
+            android:text="@string/stats_subtitle"
+            android:textColor="?attr/mystOnSurfaceDim"
+            android:textSize="@dimen/text_body" />
+    </LinearLayout>
 
     <HorizontalScrollView
         android:layout_width="match_parent"
@@ -143,106 +145,133 @@
                 android:paddingEnd="@dimen/screen_margin"
                 android:paddingBottom="@dimen/content_bottom_padding">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.card.MaterialCardView
-                        style="@style/Widget.MystMusic.Card"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="@dimen/space_m">
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:text="@string/stats_time_label"
-                                android:textColor="?attr/mystOnSurfaceDim"
-                                android:textSize="@dimen/text_small" />
-
-                            <TextView
-                                android:id="@+id/statsTimeValue"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/space_xs"
-                                android:fontFamily="@font/poppins_medium"
-                                android:maxLines="2"
-                                android:textColor="?attr/mystOnSurface"
-                                android:textSize="26sp" />
-
-                            <TextView
-                                android:id="@+id/statsTimeCompare"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/space_xs"
-                                android:textColor="?attr/mystAccentText"
-                                android:textSize="12sp" />
-                        </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <com.google.android.material.card.MaterialCardView
-                        style="@style/Widget.MystMusic.Card"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="@dimen/space_s"
-                        android:layout_weight="1">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="@dimen/space_m">
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:text="@string/stats_plays_label"
-                                android:textColor="?attr/mystOnSurfaceDim"
-                                android:textSize="@dimen/text_small" />
-
-                            <TextView
-                                android:id="@+id/statsPlaysValue"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/space_xs"
-                                android:fontFamily="@font/poppins_medium"
-                                android:textColor="?attr/mystOnSurface"
-                                android:textSize="26sp" />
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/space_xs"
-                                android:text="@string/stats_plays_hint"
-                                android:textColor="?attr/mystOnSurfaceDim"
-                                android:textSize="12sp" />
-                        </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
-                </LinearLayout>
-
                 <com.google.android.material.card.MaterialCardView
-                    style="@style/Widget.MystMusic.Card"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_m">
+                    app:cardBackgroundColor="?attr/mystSurfaceAlt"
+                    app:cardCornerRadius="@dimen/corner_xlarge"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="@dimen/space_m">
+                        android:padding="@dimen/space_l">
 
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:fontFamily="@font/poppins_medium"
+                            android:text="@string/stats_summary_title"
+                            android:textColor="?attr/mystOnSurface"
+                            android:textSize="18sp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_m"
+                            android:orientation="horizontal">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/stats_time_label"
+                                    android:textColor="?attr/mystOnSurfaceDim"
+                                    android:textSize="@dimen/text_small" />
+
+                                <TextView
+                                    android:id="@+id/statsTimeValue"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="@dimen/space_xs"
+                                    android:fontFamily="@font/poppins_semibold"
+                                    android:letterSpacing="-0.03"
+                                    android:maxLines="2"
+                                    android:textColor="?attr/mystOnSurface"
+                                    android:textSize="30sp" />
+
+                                <TextView
+                                    android:id="@+id/statsTimeCompare"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="@dimen/space_xs"
+                                    android:fontFamily="@font/poppins_medium"
+                                    android:textColor="?attr/mystAccentText"
+                                    android:textSize="@dimen/text_small" />
+                            </LinearLayout>
+
+                            <View
+                                android:layout_width="1dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginStart="@dimen/space_m"
+                                android:layout_marginEnd="@dimen/space_m"
+                                android:background="?attr/mystStroke" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/stats_plays_label"
+                                    android:textColor="?attr/mystOnSurfaceDim"
+                                    android:textSize="@dimen/text_small" />
+
+                                <TextView
+                                    android:id="@+id/statsPlaysValue"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="@dimen/space_xs"
+                                    android:fontFamily="@font/poppins_semibold"
+                                    android:letterSpacing="-0.03"
+                                    android:textColor="?attr/mystOnSurface"
+                                    android:textSize="30sp" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="@dimen/space_xs"
+                                    android:text="@string/stats_plays_hint"
+                                    android:textColor="?attr/mystOnSurfaceDim"
+                                    android:textSize="@dimen/text_small" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_m"
+                    app:cardBackgroundColor="?attr/mystSurfaceAlt"
+                    app:cardCornerRadius="@dimen/corner_xlarge"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingTop="@dimen/space_m"
+                        android:paddingBottom="@dimen/space_s">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/poppins_semibold"
+                            android:letterSpacing="-0.01"
+                            android:paddingStart="@dimen/space_m"
+                            android:paddingEnd="@dimen/space_m"
                             android:text="@string/stats_top_songs"
                             android:textColor="?attr/mystOnSurface"
                             android:textSize="@dimen/text_title" />
@@ -257,21 +286,28 @@
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
-                    style="@style/Widget.MystMusic.Card"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_m">
+                    android:layout_marginTop="@dimen/space_m"
+                    app:cardBackgroundColor="?attr/mystSurfaceAlt"
+                    app:cardCornerRadius="@dimen/corner_xlarge"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="@dimen/space_m">
+                        android:paddingTop="@dimen/space_m"
+                        android:paddingBottom="@dimen/space_s">
 
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:fontFamily="@font/poppins_medium"
+                            android:fontFamily="@font/poppins_semibold"
+                            android:letterSpacing="-0.01"
+                            android:paddingStart="@dimen/space_m"
+                            android:paddingEnd="@dimen/space_m"
                             android:text="@string/stats_top_artists"
                             android:textColor="?attr/mystOnSurface"
                             android:textSize="@dimen/text_title" />
@@ -286,21 +322,28 @@
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
-                    style="@style/Widget.MystMusic.Card"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_m">
+                    android:layout_marginTop="@dimen/space_m"
+                    app:cardBackgroundColor="?attr/mystSurfaceAlt"
+                    app:cardCornerRadius="@dimen/corner_xlarge"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="@dimen/space_m">
+                        android:paddingTop="@dimen/space_m"
+                        android:paddingBottom="@dimen/space_s">
 
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:fontFamily="@font/poppins_medium"
+                            android:fontFamily="@font/poppins_semibold"
+                            android:letterSpacing="-0.01"
+                            android:paddingStart="@dimen/space_m"
+                            android:paddingEnd="@dimen/space_m"
                             android:text="@string/stats_top_albums"
                             android:textColor="?attr/mystOnSurface"
                             android:textSize="@dimen/text_title" />
@@ -315,10 +358,13 @@
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
-                    style="@style/Widget.MystMusic.Card"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_m">
+                    android:layout_marginTop="@dimen/space_m"
+                    app:cardBackgroundColor="?attr/mystSurfaceAlt"
+                    app:cardCornerRadius="@dimen/corner_xlarge"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -329,7 +375,8 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:fontFamily="@font/poppins_medium"
+                            android:fontFamily="@font/poppins_semibold"
+                            android:letterSpacing="-0.01"
                             android:text="@string/stats_hour_title"
                             android:textColor="?attr/mystOnSurface"
                             android:textSize="@dimen/text_title" />
@@ -337,6 +384,7 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
                             android:text="@string/stats_hour_subtitle"
                             android:textColor="?attr/mystOnSurfaceDim"
                             android:textSize="@dimen/text_small" />
@@ -351,10 +399,13 @@
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
-                    style="@style/Widget.MystMusic.Card"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_m">
+                    android:layout_marginTop="@dimen/space_m"
+                    app:cardBackgroundColor="?attr/mystSurfaceAlt"
+                    app:cardCornerRadius="@dimen/corner_xlarge"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -365,7 +416,8 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:fontFamily="@font/poppins_medium"
+                            android:fontFamily="@font/poppins_semibold"
+                            android:letterSpacing="-0.01"
                             android:text="@string/stats_activity_title"
                             android:textColor="?attr/mystOnSurface"
                             android:textSize="@dimen/text_title" />
@@ -374,6 +426,7 @@
                             android:id="@+id/statsActivitySubtitle"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
                             android:textColor="?attr/mystOnSurfaceDim"
                             android:textSize="@dimen/text_small" />
 
@@ -387,10 +440,13 @@
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
-                    style="@style/Widget.MystMusic.Card"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_m">
+                    android:layout_marginTop="@dimen/space_m"
+                    app:cardBackgroundColor="?attr/mystSurfaceAlt"
+                    app:cardCornerRadius="@dimen/corner_xlarge"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -416,7 +472,7 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="@dimen/space_xs"
-                                android:fontFamily="@font/poppins_medium"
+                                android:fontFamily="@font/poppins_semibold"
                                 android:textColor="?attr/mystOnSurface"
                                 android:textSize="26sp" />
                         </LinearLayout>
@@ -446,7 +502,7 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="@dimen/space_xs"
-                                android:fontFamily="@font/poppins_medium"
+                                android:fontFamily="@font/poppins_semibold"
                                 android:textColor="?attr/mystOnSurface"
                                 android:textSize="26sp" />
                         </LinearLayout>
@@ -469,24 +525,10 @@
                 android:paddingTop="@dimen/space_m"
                 android:paddingEnd="@dimen/screen_margin">
 
-                <LinearLayout
+                <View
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="110dp"
-                        android:layout_weight="1"
-                        android:background="@drawable/bg_skeleton" />
-
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="110dp"
-                        android:layout_marginStart="@dimen/space_s"
-                        android:layout_weight="1"
-                        android:background="@drawable/bg_skeleton" />
-                </LinearLayout>
+                    android:layout_height="140dp"
+                    android:background="@drawable/bg_skeleton" />
 
                 <View
                     android:layout_width="180dp"

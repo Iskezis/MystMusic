@@ -13,9 +13,12 @@ import com.iskezis.myst.R
 import com.iskezis.myst.data.account.AvatarStore
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.databinding.ItemCarouselBinding
+import com.iskezis.myst.databinding.ItemHomeFeaturedBinding
 import com.iskezis.myst.databinding.ItemHomeHeaderBinding
 import com.iskezis.myst.databinding.ItemHomeOfflineBinding
+import com.iskezis.myst.databinding.ItemHomeRankedBinding
 import com.iskezis.myst.databinding.ItemHomeSearchBinding
+import com.iskezis.myst.databinding.ItemRankedTrackBinding
 import com.iskezis.myst.databinding.ItemSectionHeaderBinding
 import com.iskezis.myst.ui.common.LoadState
 import com.iskezis.myst.ui.common.TrackCardAdapter
@@ -27,8 +30,10 @@ sealed interface HomeItem {
     data class Greeting(val name: String, val avatarPath: String?) : HomeItem
     object Search : HomeItem
     object Offline : HomeItem
+    data class Featured(val track: Track, val queue: List<Track>) : HomeItem
     data class Header(val section: HomeSection) : HomeItem
     data class Carousel(val section: HomeSection, val state: LoadState<List<Track>>) : HomeItem
+    data class Ranked(val section: HomeSection, val state: LoadState<List<Track>>) : HomeItem
 }
 
 class HomeAdapter(
@@ -49,8 +54,10 @@ class HomeAdapter(
         is HomeItem.Greeting -> TYPE_GREETING
         is HomeItem.Search -> TYPE_SEARCH
         is HomeItem.Offline -> TYPE_OFFLINE
+        is HomeItem.Featured -> TYPE_FEATURED
         is HomeItem.Header -> TYPE_HEADER
         is HomeItem.Carousel -> TYPE_CAROUSEL
+        is HomeItem.Ranked -> TYPE_RANKED
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -62,7 +69,19 @@ class HomeAdapter(
                 ItemHomeOfflineBinding.inflate(inflater, parent, false),
                 onRetryOffline,
             )
+            TYPE_FEATURED -> FeaturedHolder(
+                ItemHomeFeaturedBinding.inflate(inflater, parent, false),
+                onPlay,
+            )
             TYPE_HEADER -> HeaderHolder(ItemSectionHeaderBinding.inflate(inflater, parent, false))
+            TYPE_RANKED -> RankedHolder(
+                ItemHomeRankedBinding.inflate(inflater, parent, false),
+                onPlay,
+                onMore,
+                onRetryRecent,
+                onRetryTrending,
+                onRetryRecommended,
+            )
             else -> CarouselHolder(
                 ItemCarouselBinding.inflate(inflater, parent, false),
                 onPlay,
@@ -81,8 +100,10 @@ class HomeAdapter(
             is HomeItem.Greeting -> (holder as GreetingHolder).bind(item, onAvatar, onStats)
             is HomeItem.Search -> (holder as SearchHolder).bind(onSearch)
             is HomeItem.Offline -> (holder as OfflineHolder).bind()
+            is HomeItem.Featured -> (holder as FeaturedHolder).bind(item)
             is HomeItem.Header -> (holder as HeaderHolder).bind(item)
             is HomeItem.Carousel -> (holder as CarouselHolder).bind(item)
+            is HomeItem.Ranked -> (holder as RankedHolder).bind(item)
         }
     }
 
@@ -137,6 +158,139 @@ class HomeAdapter(
 
         fun bind() {
             binding.homeOfflineRetry.setOnClickListener { onRetry() }
+        }
+    }
+
+    private class FeaturedHolder(
+        private val binding: ItemHomeFeaturedBinding,
+        private val onPlay: (List<Track>, Int) -> Unit,
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(item: HomeItem.Featured) {
+            val context = binding.root.context
+            val track = item.track
+            binding.homeFeaturedTitle.text = track.title.ifBlank {
+                context.getString(R.string.player_unknown_title)
+            }
+            binding.homeFeaturedArtist.text = track.artist.ifBlank {
+                context.getString(R.string.player_unknown_artist)
+            }
+            binding.homeFeaturedCover.load(track.artworkUrl()) {
+                crossfade(true)
+                placeholder(R.drawable.bg_cover_placeholder)
+                error(R.drawable.bg_cover_placeholder)
+            }
+            val index = item.queue.indexOfFirst { it.videoId == track.videoId }
+                .coerceAtLeast(0)
+            val play = { onPlay(item.queue, index) }
+            binding.homeFeaturedCard.contentDescription = context.getString(
+                R.string.content_song,
+                track.title,
+            )
+            binding.homeFeaturedCard.setOnClickListener { play() }
+            binding.homeFeaturedPlay.setOnClickListener { play() }
+        }
+    }
+
+    private class RankedHolder(
+        private val binding: ItemHomeRankedBinding,
+        private val onPlay: (List<Track>, Int) -> Unit,
+        private val onMore: (Track) -> Unit,
+        private val onRetryRecent: () -> Unit,
+        private val onRetryTrending: () -> Unit,
+        private val onRetryRecommended: () -> Unit,
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(item: HomeItem.Ranked) {
+            val context = binding.root.context
+            when (val state = item.state) {
+                is LoadState.Loading -> {
+                    binding.rankedContainer.visibility = View.GONE
+                    binding.rankedState.stateRoot.visibility = View.GONE
+                    binding.rankedShimmer.visibility = View.VISIBLE
+                    binding.rankedShimmer.startShimmer()
+                }
+                is LoadState.Data -> {
+                    binding.rankedShimmer.stopShimmer()
+                    binding.rankedShimmer.visibility = View.GONE
+                    binding.rankedState.stateRoot.visibility = View.GONE
+                    binding.rankedContainer.visibility = View.VISIBLE
+                    bindTracks(state.value)
+                }
+                is LoadState.Empty -> {
+                    binding.rankedShimmer.stopShimmer()
+                    binding.rankedShimmer.visibility = View.GONE
+                    binding.rankedContainer.visibility = View.GONE
+                    showState(
+                        icon = R.drawable.ic_music,
+                        title = context.getString(R.string.state_empty),
+                        retry = false,
+                    )
+                }
+                is LoadState.Error -> {
+                    binding.rankedShimmer.stopShimmer()
+                    binding.rankedShimmer.visibility = View.GONE
+                    binding.rankedContainer.visibility = View.GONE
+                    showState(
+                        icon = R.drawable.ic_cloud_off,
+                        title = context.getString(state.messageRes),
+                        retry = true,
+                    )
+                    binding.rankedState.stateRetry.setOnClickListener {
+                        when (item.section) {
+                            HomeSection.RECENT -> onRetryRecent()
+                            HomeSection.TRENDING -> onRetryTrending()
+                            HomeSection.RECOMMENDED -> onRetryRecommended()
+                            HomeSection.OFFLINE -> Unit
+                        }
+                    }
+                }
+            }
+        }
+
+        private fun bindTracks(tracks: List<Track>) {
+            val context = binding.root.context
+            val inflater = LayoutInflater.from(context)
+            binding.rankedContainer.removeAllViews()
+            tracks.take(5).forEachIndexed { index, track ->
+                val row = ItemRankedTrackBinding.inflate(
+                    inflater,
+                    binding.rankedContainer,
+                    false,
+                )
+                row.rankedPosition.text = (index + 1).toString().padStart(2, '0')
+                row.rankedCover.load(track.artworkUrl()) {
+                    crossfade(true)
+                    placeholder(R.drawable.bg_cover_placeholder)
+                    error(R.drawable.bg_cover_placeholder)
+                }
+                row.rankedCover.contentDescription = context.getString(
+                    R.string.content_cover,
+                    track.title,
+                )
+                row.rankedTitle.text = track.title.ifBlank {
+                    context.getString(R.string.player_unknown_title)
+                }
+                row.rankedArtist.text = track.artist.ifBlank {
+                    context.getString(R.string.player_unknown_artist)
+                }
+                row.rankedRoot.contentDescription = context.getString(
+                    R.string.content_song,
+                    track.title,
+                )
+                row.rankedRoot.setOnClickListener { onPlay(tracks, index) }
+                row.rankedMore.setOnClickListener { onMore(track) }
+                binding.rankedContainer.addView(row.root)
+            }
+        }
+
+        private fun showState(icon: Int, title: String, retry: Boolean) {
+            binding.rankedState.stateRoot.visibility = View.VISIBLE
+            binding.rankedState.stateIcon.setImageResource(icon)
+            binding.rankedState.stateTitle.text = title
+            binding.rankedState.stateSubtitle.visibility = View.GONE
+            binding.rankedState.stateRetry.visibility = if (retry) View.VISIBLE else View.GONE
+            if (!retry) binding.rankedState.stateRetry.setOnClickListener(null)
         }
     }
 
@@ -246,9 +400,13 @@ class HomeAdapter(
                 oldItem is HomeItem.Greeting && newItem is HomeItem.Greeting -> true
                 oldItem === HomeItem.Search && newItem === HomeItem.Search -> true
                 oldItem === HomeItem.Offline && newItem === HomeItem.Offline -> true
+                oldItem is HomeItem.Featured && newItem is HomeItem.Featured ->
+                    oldItem.track.videoId == newItem.track.videoId
                 oldItem is HomeItem.Header && newItem is HomeItem.Header ->
                     oldItem.section == newItem.section
                 oldItem is HomeItem.Carousel && newItem is HomeItem.Carousel ->
+                    oldItem.section == newItem.section
+                oldItem is HomeItem.Ranked && newItem is HomeItem.Ranked ->
                     oldItem.section == newItem.section
                 else -> false
             }
@@ -263,5 +421,7 @@ class HomeAdapter(
         private const val TYPE_HEADER = 2
         private const val TYPE_CAROUSEL = 3
         private const val TYPE_OFFLINE = 4
+        private const val TYPE_FEATURED = 5
+        private const val TYPE_RANKED = 6
     }
 }

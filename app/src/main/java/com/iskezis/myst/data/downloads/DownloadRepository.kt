@@ -14,6 +14,9 @@ object DownloadStatus {
     const val FAILED = "FAILED"
 }
 
+/** Tempo sem progresso real que caracteriza um download travado. */
+const val DOWNLOAD_STALL_TIMEOUT_MS = 60_000L
+
 data class EnqueueResult(
     val added: Int,
     val alreadyDownloaded: Int,
@@ -127,6 +130,42 @@ class DownloadRepository(
      * que ficaram DOWNLOADING de um processo morto voltam para a fila.
      */
     suspend fun resetInterrupted() = dao.resetInterrupted(System.currentTimeMillis())
+
+    /**
+     * Recupera downloads que ficaram DOWNLOADING sem atualizar o progresso.
+     * [exclude] protege faixas que ainda pertencem a um worker ativo: quem
+     * devolve essas linhas à fila é o próprio worker, evitando que dois
+     * workers escrevam no mesmo arquivo `.part`.
+     */
+    suspend fun recoverStalled(
+        userId: Long,
+        stallMs: Long = DOWNLOAD_STALL_TIMEOUT_MS,
+        exclude: Set<String> = emptySet(),
+    ): Int {
+        if (userId <= 0L) return 0
+        val now = System.currentTimeMillis()
+        val recovered = dao.recoverStalled(
+            userId,
+            now - stallMs,
+            now,
+            if (exclude.isEmpty()) listOf("") else exclude.toList(),
+        )
+        if (recovered > 0) {
+            AppLog.i(AppLog.TAG_DOWNLOAD, "$recovered download(s) parado(s) devolvido(s) à fila")
+        }
+        return recovered
+    }
+
+    /** Reenfileira uma faixa específica sem apagar o arquivo parcial. */
+    suspend fun requeueOne(item: DownloadEntity) {
+        if (item.userId <= 0L) return
+        dao.requeueOne(item.userId, item.videoId, System.currentTimeMillis())
+    }
+
+    suspend fun stalledCount(userId: Long, stallMs: Long = DOWNLOAD_STALL_TIMEOUT_MS): Int {
+        if (userId <= 0L) return 0
+        return dao.stalledCount(userId, System.currentTimeMillis() - stallMs)
+    }
 
     suspend fun queued(userId: Long): List<DownloadEntity> = dao.queued(userId)
 

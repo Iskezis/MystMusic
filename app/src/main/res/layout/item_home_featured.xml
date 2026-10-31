@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/homeFeaturedCard"
+    android:layout_width="match_parent"
+    android:layout_height="216dp"
+    android:layout_marginStart="@dimen/screen_margin"
+    android:layout_marginTop="@dimen/space_m"
+    android:layout_marginEnd="@dimen/screen_margin"
+    android:clickable="true"
+    android:focusable="true"
+    app:cardBackgroundColor="?attr/mystSurfaceAlt"
+    app:cardCornerRadius="30dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="0dp">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/homeFeaturedCover"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_cover_placeholder"
+            android:contentDescription="@null"
+            android:scaleType="centerCrop"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.CoverLarge" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_featured_scrim" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="76dp"
+            android:paddingBottom="18dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/poppins_semibold"
+                android:letterSpacing="0.12"
+                android:text="@string/home_continue_listening"
+                android:textAllCaps="true"
+                android:textColor="@color/on_image_dim"
+                android:textSize="@dimen/text_label" />
+
+            <TextView
+                android:id="@+id/homeFeaturedTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:ellipsize="end"
+                android:fontFamily="@font/poppins_semibold"
+                android:letterSpacing="-0.02"
+                android:maxLines="2"
+                android:textColor="@color/white"
+                android:textSize="25sp" />
+
+            <TextView
+                android:id="@+id/homeFeaturedArtist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:fontFamily="@font/poppins_medium"
+                android:maxLines="1"
+                android:textColor="@color/on_image_dim"
+                android:textSize="@dimen/text_small" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/homeFeaturedPlay"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="18dp"
+            android:layout_marginBottom="18dp"
+            android:background="@drawable/bg_play_button"
+            android:contentDescription="@string/player_play"
+            android:elevation="4dp"
+            android:padding="13dp"
+            android:src="@drawable/ic_play"
+            app:tint="?attr/mystOnAccent" />
+    </FrameLayout>
+</com.google.android.material.card.MaterialCardView>

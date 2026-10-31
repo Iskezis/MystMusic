@@ -5,15 +5,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <View
-        android:id="@+id/artistHeroBg"
-        android:layout_width="0dp"
-        android:layout_height="440dp"
-        android:background="@drawable/bg_hero"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
     <LinearLayout
         android:id="@+id/artistTopBar"
         android:layout_width="0dp"
@@ -75,94 +66,107 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_horizontal"
-                    android:orientation="vertical"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
                     android:paddingStart="@dimen/screen_margin"
-                    android:paddingTop="@dimen/space_s"
+                    android:paddingTop="@dimen/space_m"
                     android:paddingEnd="@dimen/screen_margin">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/poppins_semibold"
-                        android:letterSpacing="0.12"
-                        android:text="@string/browse_artist"
-                        android:textAllCaps="true"
-                        android:textColor="?attr/mystAccentText"
-                        android:textSize="@dimen/text_label" />
 
                     <com.google.android.material.imageview.ShapeableImageView
                         android:id="@+id/artistCover"
                         android:layout_width="@dimen/artist_cover"
                         android:layout_height="@dimen/artist_cover"
-                        android:layout_marginTop="@dimen/space_m"
                         android:background="@drawable/bg_cover_placeholder"
                         android:contentDescription="@null"
-                        android:elevation="12dp"
+                        android:elevation="8dp"
                         android:scaleType="centerCrop"
                         app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.Circle" />
 
-                    <TextView
-                        android:id="@+id/artistName"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_m"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/poppins_semibold"
-                        android:gravity="center"
-                        android:letterSpacing="-0.02"
-                        android:maxLines="2"
-                        android:textColor="?attr/mystOnSurface"
-                        android:textSize="30sp" />
-
-                    <TextView
-                        android:id="@+id/artistListeners"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:fontFamily="@font/poppins_regular"
-                        android:gravity="center"
-                        android:textColor="?attr/mystOnSurfaceDim"
-                        android:textSize="@dimen/text_small"
-                        android:visibility="gone" />
-
                     <LinearLayout
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_m"
-                        android:gravity="center"
-                        android:orientation="horizontal">
+                        android:layout_marginStart="@dimen/space_l"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/artistPlayAll"
-                            style="@style/Widget.MystMusic.Button.Primary"
+                        <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/playlist_play_all"
-                            app:icon="@drawable/ic_play"
-                            app:iconTint="?attr/mystOnAccent" />
+                            android:fontFamily="@font/poppins_semibold"
+                            android:letterSpacing="0.12"
+                            android:text="@string/browse_artist"
+                            android:textAllCaps="true"
+                            android:textColor="?attr/mystAccentText"
+                            android:textSize="@dimen/text_label" />
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/artistShuffle"
-                            style="@style/Widget.MystMusic.Button.Secondary"
-                            android:layout_width="wrap_content"
+                        <TextView
+                            android:id="@+id/artistName"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="@dimen/space_s"
-                            android:text="@string/playlist_shuffle"
-                            app:icon="@drawable/ic_shuffle"
-                            app:iconTint="?attr/mystAccentText" />
+                            android:layout_marginTop="@dimen/space_xs"
+                            android:ellipsize="end"
+                            android:fontFamily="@font/poppins_semibold"
+                            android:letterSpacing="-0.03"
+                            android:maxLines="3"
+                            android:textColor="?attr/mystOnSurface"
+                            android:textSize="30sp" />
+
+                        <TextView
+                            android:id="@+id/artistListeners"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_xs"
+                            android:fontFamily="@font/poppins_regular"
+                            android:textColor="?attr/mystOnSurfaceDim"
+                            android:textSize="@dimen/text_small"
+                            android:visibility="gone" />
                     </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingStart="@dimen/screen_margin"
+                    android:paddingTop="@dimen/space_m"
+                    android:paddingEnd="@dimen/screen_margin">
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/artistDownload"
-                        style="@style/Widget.MystMusic.Button.Tonal"
-                        android:layout_width="wrap_content"
+                        android:id="@+id/artistPlayAll"
+                        style="@style/Widget.MystMusic.Button.Primary"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_s"
-                        android:text="@string/download_all_artist"
-                        app:icon="@drawable/ic_arrow_down"
+                        android:layout_weight="1"
+                        android:text="@string/playlist_play_all"
+                        app:icon="@drawable/ic_play"
+                        app:iconGravity="textStart"
+                        app:iconTint="?attr/mystOnAccent" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/artistShuffle"
+                        style="@style/Widget.MystMusic.Button.Secondary"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_s"
+                        android:layout_weight="1"
+                        android:text="@string/playlist_shuffle"
+                        app:icon="@drawable/ic_shuffle"
+                        app:iconGravity="textStart"
                         app:iconTint="?attr/mystAccentText" />
                 </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/artistDownload"
+                    style="@style/Widget.MystMusic.Button.Tonal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/screen_margin"
+                    android:layout_marginTop="@dimen/space_s"
+                    android:layout_marginEnd="@dimen/screen_margin"
+                    android:text="@string/download_all_artist"
+                    app:icon="@drawable/ic_arrow_down"
+                    app:iconGravity="textStart"
+                    app:iconTint="?attr/mystAccentText" />
 
                 <LinearLayout
                     android:id="@+id/artistSongsSection"

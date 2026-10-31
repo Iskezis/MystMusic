@@ -8,8 +8,10 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -37,6 +39,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import okhttp3.Call
 import okhttp3.Headers
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -68,6 +72,9 @@ class DownloadService : Service() {
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
+        // Um servidor que entrega bytes muito devagar não pode prender a fila
+        // para sempre; o limite é generoso para arquivos grandes em 3G.
+        .callTimeout(30, TimeUnit.MINUTES)
         .retryOnConnectionFailure(true)
         .followRedirects(true)
         .build()
@@ -75,7 +82,16 @@ class DownloadService : Service() {
     private val claimMutex = Mutex()
     private val cancelled = ConcurrentHashMap.newKeySet<String>()
     private val cancelRequested = AtomicBoolean(false)
+    private val activeCalls = ConcurrentHashMap<String, Call>()
+    private val activeWork = ConcurrentHashMap.newKeySet<String>()
+    private val recovering = ConcurrentHashMap.newKeySet<String>()
+    private val recoveryInFlight = AtomicBoolean(false)
     private var workerJob: Job? = null
+    private var watchdogJob: Job? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
+    private var foregroundStarted = false
+    private var lastRecoveryAt = 0L
     private var total = 0
     private var finished = 0
     private var failed = 0
@@ -89,16 +105,19 @@ class DownloadService : Service() {
         storage = app.downloadStorage
         resolver = StreamResolver(app)
         createChannel()
+        isRunning = true
         AppLog.i(AppLog.TAG_DOWNLOAD, "DownloadService criado")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_CANCEL_ALL -> {
+                if (!ensureForeground()) return START_NOT_STICKY
                 cancelAll()
-                return START_NOT_STICKY
+                return START_STICKY
             }
             ACTION_CANCEL_ONE -> {
+                if (!ensureForeground()) return START_NOT_STICKY
                 val videoId = intent.getStringExtra(EXTRA_VIDEO_ID)
                 if (videoId.isNullOrBlank()) {
                     if (workerJob?.isActive != true) stopSelf()
@@ -113,13 +132,27 @@ class DownloadService : Service() {
                 }
                 return START_STICKY
             }
+            ACTION_RECOVER -> {
+                if (!ensureForeground()) return START_NOT_STICKY
+                // Mesmo com o serviço vivo, a recuperação manual precisa
+                // destravar chamadas de rede pendentes e devolver a fila.
+                startWork()
+                recoverDownloads(force = true)
+                return START_STICKY
+            }
         }
+        if (!ensureForeground()) return START_NOT_STICKY
+        startWork()
+        return START_STICKY
+    }
+
+    private fun ensureForeground(): Boolean {
+        if (foregroundStarted) return true
         val started = startForegroundSafely(
             buildNotification(null, 0, 0, preparing = true, done = false),
         )
-        if (!started) return START_NOT_STICKY
-        startWork()
-        return START_STICKY
+        if (started) foregroundStarted = true
+        return started
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -137,12 +170,15 @@ class DownloadService : Service() {
                 total = if (userId > 0L) repository.activeCount(userId) else 0
                 if (total <= 0) {
                     // Nada na fila: não deixa uma notificação "0 de 0".
+                    releaseLocks()
                     stopForegroundCompat()
                     stopSelf()
                     return@launch
                 }
                 finished = 0
                 failed = 0
+                acquireLocks()
+                startWatchdog()
                 AppLog.i(AppLog.TAG_DOWNLOAD, "Fila iniciada com $total faixa(s)")
                 try {
                     coroutineScope {
@@ -155,6 +191,8 @@ class DownloadService : Service() {
                 } catch (t: Throwable) {
                     AppLog.failure(AppLog.TAG_DOWNLOAD, "Fila de downloads interrompida", t)
                 } finally {
+                    stopWatchdog()
+                    releaseLocks()
                     if (cancelRequested.get()) {
                         // O cancelamento precisa terminar mesmo que o serviço
                         // seja encerrado em seguida (stopSelf cancela o scope).
@@ -172,15 +210,46 @@ class DownloadService : Service() {
 
     private suspend fun worker() {
         while (scope.isActive && !cancelRequested.get()) {
-            val item = claimNext() ?: return
-            if (cancelled.contains(item.videoId)) continue
-            val succeeded = downloadWithRetries(item)
-            if (succeeded) {
-                finished++
-            } else {
-                failed++
+            val item = claimNext()
+            if (item == null) {
+                // Um worker pode chegar antes do outro terminar de reivindicar
+                // a última linha. Se ainda houver fila real, espera em vez de
+                // encerrar o serviço e deixar downloads órfãos.
+                val userId = app.session.mystUserId
+                val stillActive = userId > 0L &&
+                    repository.activeCount(userId) > 0
+                if (stillActive) {
+                    // Inclui DOWNLOADING do outro worker e linhas devolvidas
+                    // à fila no meio da recuperação. Não encerra a notificação
+                    // enquanto existir trabalho real.
+                    delay(300)
+                    continue
+                }
+                // Pequena janela para o "Recuperar"/watchdog reenfileirar uma
+                // linha logo depois da última verificação.
+                delay(500)
+                if (userId > 0L && repository.activeCount(userId) > 0) continue
+                return
             }
-            cancelled.remove(item.videoId)
+            if (cancelled.contains(item.videoId)) continue
+            activeWork += item.videoId
+            try {
+                val succeeded = downloadWithRetries(item)
+                if (succeeded) {
+                    finished++
+                } else {
+                    // Uma recuperação/cancelamento devolve a faixa à fila e
+                    // não deve contar como falha.
+                    val status = runCatching {
+                        repository.find(item.userId, item.videoId)?.status
+                    }.getOrNull()
+                    if (status == DownloadStatus.FAILED) failed++
+                }
+            } finally {
+                activeWork.remove(item.videoId)
+                recovering.remove(item.videoId)
+                cancelled.remove(item.videoId)
+            }
             notifyProgress(null, 0, 0, done = false)
         }
     }
@@ -214,16 +283,34 @@ class DownloadService : Service() {
             if (cancelRequested.get() || cancelled.contains(item.videoId)) return false
             // Perder a rede não queima tentativas: a faixa fica aguardando e
             // continua sozinha quando a conexão voltar.
-            if (!waitForNetwork(item.videoId)) return false
+            if (!waitForNetwork(item.videoId)) {
+                // A recuperação interrompeu a espera de rede. Devolve a linha
+                // à fila imediatamente em vez de deixá-la presa em DOWNLOADING
+                // até o próximo ciclo do watchdog.
+                if (recovering.remove(item.videoId)) {
+                    repository.requeueOne(item)
+                }
+                return false
+            }
             try {
                 downloadOnce(item)
                 return true
             } catch (cancelledError: DownloadCancelledException) {
-                storage.partFile(item.videoId).delete()
+                // Recuperação mantém o .part para continuar com Range; um
+                // cancelamento de verdade apaga o parcial.
+                if (recovering.remove(item.videoId)) {
+                    repository.requeueOne(item)
+                } else {
+                    storage.partFile(item.videoId).delete()
+                }
                 return false
             } catch (cancelledError: CancellationException) {
                 throw cancelledError
             } catch (t: Throwable) {
+                if (recovering.remove(item.videoId)) {
+                    repository.requeueOne(item)
+                    return false
+                }
                 lastError = t
                 AppLog.w(
                     AppLog.TAG_DOWNLOAD,
@@ -242,12 +329,17 @@ class DownloadService : Service() {
     }
 
     private suspend fun downloadOnce(item: DownloadEntity) {
-        val info = resolver.resolve(item.videoId)
+        val info = withTimeoutOrNull(RESOLVE_TIMEOUT_MS) {
+            resolver.resolve(item.videoId)
+        } ?: throw IOException("Tempo esgotado ao preparar o áudio")
         val part = storage.partFile(item.videoId)
         part.parentFile?.mkdirs()
         val startOffset = if (part.isFile) part.length() else 0L
         val request = buildRequest(info, startOffset)
-        http.newCall(request).execute().use { response ->
+        val call = http.newCall(request)
+        activeCalls[item.videoId] = call
+        try {
+            call.execute().use { response ->
             if (response.code == 416) {
                 part.delete()
                 throw IOException("Servidor recusou a retomada")
@@ -308,13 +400,14 @@ class DownloadService : Service() {
             // enquanto o arquivo era escrito. Não renomeia para não deixar um
             // arquivo órfão que a conta não consegue mais gerenciar.
             val current = repository.find(item.userId, item.videoId)
+            val isRecovering = recovering.contains(item.videoId)
             if (
                 cancelRequested.get() ||
                 cancelled.contains(item.videoId) ||
                 current == null ||
                 current.status != DownloadStatus.DOWNLOADING
             ) {
-                part.delete()
+                if (!isRecovering) part.delete()
                 throw DownloadCancelledException()
             }
             val finalFile = storage.audioFile(item.videoId)
@@ -332,6 +425,9 @@ class DownloadService : Service() {
                 "Áudio salvo: ${finalFile.absolutePath} " +
                     "(${formatBytes(finalFile.length())})",
             )
+            }
+        } finally {
+            activeCalls.remove(item.videoId, call)
         }
     }
 
@@ -346,7 +442,12 @@ class DownloadService : Service() {
             "Sem conexão; $videoId aguardando a rede voltar",
         )
         notifyProgress(null, 0, 0, done = false, waiting = true)
-        while (scope.isActive && !cancelRequested.get() && !cancelled.contains(videoId)) {
+        while (
+            scope.isActive &&
+            !cancelRequested.get() &&
+            !cancelled.contains(videoId) &&
+            !recovering.contains(videoId)
+        ) {
             delay(NETWORK_POLL_MS)
             if (app.networkMonitor.isOnline()) return true
         }
@@ -421,6 +522,134 @@ class DownloadService : Service() {
 
     private fun concurrency(): Int = if (BuildConfig.FLAVOR == "tv") 1 else 2
 
+    /**
+     * Recuperação em duas camadas: o watchdog chama sozinho quando o
+     * progresso congela, e o botão "Recuperar" força a mesma rotina. Chamadas
+     * OkHttp pendentes são canceladas, as linhas voltam para QUEUED e os
+     * workers retomam o arquivo `.part` com Range.
+     */
+    private fun recoverDownloads(force: Boolean) {
+        val userId = app.session.mystUserId
+        if (userId <= 0L) return
+        if (!recoveryInFlight.compareAndSet(false, true)) return
+        scope.launch {
+            try {
+                val now = System.currentTimeMillis()
+                if (!force && now - lastRecoveryAt < RECOVERY_COOLDOWN_MS) return@launch
+                lastRecoveryAt = now
+                AppLog.i(
+                    AppLog.TAG_DOWNLOAD,
+                    if (force) "Recuperação manual dos downloads" else "Recuperação automática",
+                )
+                val active = activeWork.toList()
+                active.forEach { videoId ->
+                    // Só sinaliza e cancela a chamada. O worker que é dono da
+                    // linha faz o requeue no catch, preservando a exclusividade
+                    // do arquivo `.part`.
+                    recovering += videoId
+                    activeCalls[videoId]?.cancel()
+                }
+                val recovered = runCatching {
+                    repository.recoverStalled(userId, exclude = active.toSet())
+                }.getOrDefault(0)
+                // Se um worker terminar entre a foto de `activeWork` e a
+                // marcação, o marcador não pode vazar para uma próxima
+                // tentativa da mesma faixa.
+                scope.launch {
+                    delay(RECOVERY_MARKER_TTL_MS)
+                    recovering.removeAll { it !in activeWork }
+                }
+                if (workerJob?.isActive != true) {
+                    startWork()
+                } else {
+                    notifyProgress(null, 0, 0, done = false)
+                }
+                AppLog.i(
+                    AppLog.TAG_DOWNLOAD,
+                    "Recuperação concluída: $recovered faixa(s) antiga(s), ${active.size} ativa(s)",
+                )
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_DOWNLOAD, "Falha recuperando downloads", t)
+            } finally {
+                recoveryInFlight.set(false)
+            }
+        }
+    }
+
+    private fun startWatchdog() {
+        if (watchdogJob?.isActive == true) return
+        watchdogJob = scope.launch {
+            while (isActive) {
+                delay(WATCHDOG_INTERVAL_MS)
+                val userId = app.session.mystUserId
+                if (userId <= 0L) continue
+                val stalled = runCatching { repository.stalledCount(userId) }
+                    .getOrDefault(0)
+                if (stalled > 0) {
+                    AppLog.w(
+                        AppLog.TAG_DOWNLOAD,
+                        "$stalled download(s) sem progresso; tentando recuperar",
+                    )
+                    recoverDownloads(force = false)
+                } else if (workerJob?.isActive != true) {
+                    val active = runCatching { repository.activeCount(userId) }
+                        .getOrDefault(0)
+                    if (active > 0) startWork()
+                }
+            }
+        }
+    }
+
+    private fun stopWatchdog() {
+        watchdogJob?.cancel()
+        watchdogJob = null
+    }
+
+    /**
+     * O foreground service sozinho não impede o aparelho de dormir. Com a tela
+     * apagada, o Android pode suspender a CPU/rede e o progresso congelar; os
+     * locks mantêm a fila andando até o último arquivo.
+     */
+    private fun acquireLocks() {
+        if (wakeLock?.isHeld != true) {
+            runCatching {
+                val power = getSystemService(Context.POWER_SERVICE) as PowerManager
+                wakeLock = power.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK,
+                    "MystMusic:downloads",
+                ).apply {
+                    setReferenceCounted(false)
+                    acquire()
+                }
+            }.onFailure {
+                AppLog.failure(AppLog.TAG_DOWNLOAD, "Falha adquirindo WakeLock", it)
+            }
+        }
+        if (wifiLock?.isHeld != true) {
+            runCatching {
+                val wifi = applicationContext
+                    .getSystemService(Context.WIFI_SERVICE) as? WifiManager
+                @Suppress("DEPRECATION")
+                val mode = WifiManager.WIFI_MODE_FULL_HIGH_PERF
+                wifiLock = wifi?.createWifiLock(mode, "MystMusic:downloads")?.apply {
+                    setReferenceCounted(false)
+                    acquire()
+                }
+            }.onFailure {
+                AppLog.failure(AppLog.TAG_DOWNLOAD, "Falha adquirindo WifiLock", it)
+            }
+        }
+    }
+
+    private fun releaseLocks() {
+        runCatching { if (wakeLock?.isHeld == true) wakeLock?.release() }
+        wakeLock = null
+        runCatching { if (wifiLock?.isHeld == true) wifiLock?.release() }
+        wifiLock = null
+    }
+
     private fun startForegroundSafely(notification: Notification): Boolean {
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
@@ -472,6 +701,12 @@ class DownloadService : Service() {
             this,
             1,
             Intent(this, DownloadService::class.java).setAction(ACTION_CANCEL_ALL),
+            pendingFlags(),
+        )
+        val recover = PendingIntent.getService(
+            this,
+            2,
+            Intent(this, DownloadService::class.java).setAction(ACTION_RECOVER),
             pendingFlags(),
         )
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
@@ -536,6 +771,11 @@ class DownloadService : Service() {
         )
         builder.setProgress(100, itemPercent, (preparing || waiting) && item == null)
         builder.addAction(
+            R.drawable.ic_sync,
+            getString(R.string.download_recover),
+            recover,
+        )
+        builder.addAction(
             R.drawable.ic_close,
             getString(R.string.download_cancel),
             cancel,
@@ -567,6 +807,8 @@ class DownloadService : Service() {
 
     private fun finishNotification(success: Boolean, cancelled: Boolean = false) {
         if (!finishedOnce.compareAndSet(false, true)) return
+        stopWatchdog()
+        releaseLocks()
         if (success) failed = 0
         runCatching {
             val notification = buildNotification(
@@ -622,6 +864,7 @@ class DownloadService : Service() {
     }
 
     private fun stopForegroundCompat() {
+        foregroundStarted = false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_DETACH)
         } else {
@@ -635,8 +878,13 @@ class DownloadService : Service() {
 
     override fun onDestroy() {
         AppLog.i(AppLog.TAG_DOWNLOAD, "DownloadService.onDestroy")
+        isRunning = false
         cancelRequested.set(true)
+        activeCalls.values.forEach { call -> runCatching { call.cancel() } }
+        activeCalls.clear()
         workerJob?.cancel()
+        stopWatchdog()
+        releaseLocks()
         scope.cancel()
         super.onDestroy()
     }
@@ -651,6 +899,7 @@ class DownloadService : Service() {
         private const val NOTIFICATION_ID = 41
         private const val ACTION_CANCEL_ALL = "com.iskezis.myst.action.CANCEL_DOWNLOADS"
         private const val ACTION_CANCEL_ONE = "com.iskezis.myst.action.CANCEL_DOWNLOAD"
+        private const val ACTION_RECOVER = "com.iskezis.myst.action.RECOVER_DOWNLOADS"
         private const val EXTRA_VIDEO_ID = "videoId"
         private const val MIN_FREE_BYTES = 200L * 1024L * 1024L
         private const val MIN_AUDIO_BYTES = 24L * 1024L
@@ -659,6 +908,15 @@ class DownloadService : Service() {
         private const val NOTIFY_INTERVAL_MS = 900L
         private const val NETWORK_POLL_MS = 2_000L
         private const val MAX_ATTEMPTS = 3
+        private const val WATCHDOG_INTERVAL_MS = 15_000L
+        private const val RECOVERY_COOLDOWN_MS = 45_000L
+        private const val RECOVERY_MARKER_TTL_MS = 10_000L
+        private const val RESOLVE_TIMEOUT_MS = 90_000L
+
+        /** Visível para a tela Baixadas mostrar o estado real do serviço. */
+        @Volatile
+        var isRunning: Boolean = false
+            private set
 
         fun start(context: Context) {
             runCatching {
@@ -677,7 +935,8 @@ class DownloadService : Service() {
 
         fun cancelAll(context: Context) {
             runCatching {
-                context.startService(
+                ContextCompat.startForegroundService(
+                    context,
                     Intent(context, DownloadService::class.java).setAction(ACTION_CANCEL_ALL),
                 )
             }.onFailure {
@@ -687,13 +946,29 @@ class DownloadService : Service() {
 
         fun cancel(context: Context, videoId: String) {
             runCatching {
-                context.startService(
+                ContextCompat.startForegroundService(
+                    context,
                     Intent(context, DownloadService::class.java)
                         .setAction(ACTION_CANCEL_ONE)
                         .putExtra(EXTRA_VIDEO_ID, videoId),
                 )
             }.onFailure {
                 AppLog.failure(AppLog.TAG_DOWNLOAD, "Falha cancelando download $videoId", it)
+            }
+        }
+
+        /**
+         * Botão "Recuperar": acorda o serviço, cancela chamadas pendentes e
+         * devolve a fila. Seguro mesmo se o serviço já estiver rodando.
+         */
+        fun recover(context: Context) {
+            runCatching {
+                ContextCompat.startForegroundService(
+                    context,
+                    Intent(context, DownloadService::class.java).setAction(ACTION_RECOVER),
+                )
+            }.onFailure {
+                AppLog.failure(AppLog.TAG_DOWNLOAD, "Falha recuperando downloads", it)
             }
         }
 
