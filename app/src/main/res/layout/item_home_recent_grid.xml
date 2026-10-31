@@ -4,11 +4,12 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
-    <LinearLayout
-        android:id="@+id/recentGridContainer"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recentGridList"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:clipToPadding="false"
+        android:overScrollMode="never"
         android:paddingStart="@dimen/screen_margin"
         android:paddingTop="@dimen/space_s"
         android:paddingEnd="@dimen/screen_margin"
@@ -30,78 +31,36 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:baselineAligned="false"
+            android:orientation="horizontal"
+            android:weightSum="4">
 
-            <LinearLayout
-                android:layout_width="match_parent"
+            <include
+                layout="@layout/item_recent_skeleton"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:baselineAligned="false"
-                android:orientation="horizontal"
-                android:weightSum="4">
+                android:layout_marginEnd="@dimen/space_s"
+                android:layout_weight="1" />
 
-                <include
-                    layout="@layout/item_recent_skeleton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="@dimen/space_s"
-                    android:layout_weight="1" />
-
-                <include
-                    layout="@layout/item_recent_skeleton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="@dimen/space_s"
-                    android:layout_weight="1" />
-
-                <include
-                    layout="@layout/item_recent_skeleton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="@dimen/space_s"
-                    android:layout_weight="1" />
-
-                <include
-                    layout="@layout/item_recent_skeleton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
+            <include
+                layout="@layout/item_recent_skeleton"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_xs"
-                android:baselineAligned="false"
-                android:orientation="horizontal"
-                android:weightSum="4">
+                android:layout_marginEnd="@dimen/space_s"
+                android:layout_weight="1" />
 
-                <include
-                    layout="@layout/item_recent_skeleton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="@dimen/space_s"
-                    android:layout_weight="1" />
+            <include
+                layout="@layout/item_recent_skeleton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/space_s"
+                android:layout_weight="1" />
 
-                <include
-                    layout="@layout/item_recent_skeleton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="@dimen/space_s"
-                    android:layout_weight="1" />
-
-                <include
-                    layout="@layout/item_recent_skeleton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="@dimen/space_s"
-                    android:layout_weight="1" />
-
-                <include
-                    layout="@layout/item_recent_skeleton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-            </LinearLayout>
+            <include
+                layout="@layout/item_recent_skeleton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
         </LinearLayout>
     </com.facebook.shimmer.ShimmerFrameLayout>
 

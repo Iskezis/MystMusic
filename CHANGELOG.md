@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0-dev.27 — 31/10/2026
+
+Ajustes finais pedidos depois do dev.26.
+
+### Corrigido
+- **Recentes em linha deslizante:** a seção voltou a ser horizontal, mas agora mostra exatamente quatro capas por vez; as músicas mais antigas aparecem ao deslizar para o lado, na ordem do mais recente para o mais antigo.
+- **Campo de busca:** o texto digitado ficava sobre o placeholder "Buscar músicas, artistas, álbuns...". O campo deixou de usar o hint flutuante do `TextInputLayout` e passou a usar o hint simples do próprio `EditText`, com gravidade centralizada; o digitado e o placeholder nunca ocupam o mesmo espaço.
+
 ## 0.2.0-dev.26 — 31/10/2026
 
 Ajustes pedidos depois da revisão do dev.25.
