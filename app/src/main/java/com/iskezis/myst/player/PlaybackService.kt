@@ -575,15 +575,23 @@ class PlaybackService : MediaSessionService() {
          */
         fun stopNow(context: Context) {
             if (!playbackActive) return
+            val intent = Intent(context, PlaybackService::class.java).setAction(ACTION_STOP)
             runCatching {
-                context.startService(
-                    Intent(context, PlaybackService::class.java).setAction(ACTION_STOP),
-                )
+                context.startService(intent)
             }.onFailure {
                 AppLog.w(
                     AppLog.TAG_PLAYER,
                     "Não foi possível enviar a parada ao PlaybackService: ${it.message}",
                 )
+                // Em segundo plano o Android pode recusar startService(). Parar
+                // o serviço é permitido e garante que o som não continue; o
+                // último trecho já foi enviado pelo PlayerController antes.
+                runCatching { context.stopService(intent) }.onFailure { stopError ->
+                    AppLog.w(
+                        AppLog.TAG_PLAYER,
+                        "Também não foi possível encerrar o PlaybackService: ${stopError.message}",
+                    )
+                }
             }
         }
 
