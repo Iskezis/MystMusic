@@ -106,7 +106,10 @@ class UpdateUi(
                 val manual = manualCheckPending
                 manualCheckPending = false
                 val release = state.release
-                if (!manual && manager.dismissedVersionCode == release.versionCode) return
+                val alreadyHandled =
+                    manager.dismissedVersionCode == release.versionCode ||
+                        manager.popupShownVersionCode == release.versionCode
+                if (!manual && alreadyHandled) return
                 if (availableDialog?.isShowing == true) return
                 showAvailable(release)
             }
@@ -216,6 +219,7 @@ class UpdateUi(
         dialog.setOnDismissListener {
             if (availableDialog === dialog) availableDialog = null
         }
+        manager.markPopupShown(release)
         availableDialog = dialog
         dialog.show()
     }

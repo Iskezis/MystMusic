@@ -281,6 +281,8 @@ class GitHubUpdateRepository(context: Context) {
             .ifBlank {
                 release.name.trim().removePrefix("v").ifBlank { remoteCode.toString() }
             }
+            .replace(Regex("(?i)-beta$"), " Beta")
+            .replace(Regex("(?i)-alpha$"), " Alpha")
         return UpdateCheckResult.Available(
             AppRelease(
                 versionName = versionName,

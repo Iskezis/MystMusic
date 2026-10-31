@@ -1,70 +1,119 @@
 # MystMusic
 
-Android music app (Kotlin + XML) featuring YouTube Music (via InnerTube), Spotify playlist importing (via link), Discord Rich Presence, and a 32-bit version for Android TV.
+Android music app (Kotlin + XML) featuring YouTube Music playback through InnerTube, a local Myst account, Spotify playlist importing, offline downloads, Discord Rich Presence, and a 32-bit Android TV build.
 
 - **App Name:** MystMusic
 - **Package:** `com.iskezis.myst`
-- **Current Version:** 0.2.0-dev.5 (versionCode 14) · **Public alpha:** 0.1.0 Alpha (versionCode 9)
-- **Status:** Alpha testing phase; includes unofficial integrations for YouTube Music and Discord.
-- **Theme Color:** Sky blue (simple gradients, minimalist and modern aesthetic).
+- **Current Version:** 0.1.8 Beta (`versionCode 39`)
+- **Status:** Beta; includes unofficial YouTube Music and Discord integrations.
+- **Theme Color:** Sky blue (`#38BDF8`), simple two-color gradients, minimalist surfaces.
 - **UI Language:** Portuguese (Brazil).
-- **Build Process:** Handled exclusively via GitHub Actions (repository already configured in `git remote`).
-- **Final APKs:** `apks/app.apk` (mobile) and `apks/app-tv.apk` (Android TV, armeabi-v7a).
+- **Build Process:** Handled exclusively via GitHub Actions.
+- **Final APKs:** `apks/app.apk` (mobile) and `apks/app-tv.apk` (Android TV, `armeabi-v7a`).
 
-## Scope of Version 0.1.0 Alpha
+## What's new in 0.1.8 Beta
 
-### Login/Authentication
-1. Login via YouTube account (Google WebView → cookies → InnerTube session).
-2. Create Myst account / Login (local app account, stored on the device; passwords secured using PBKDF2).
-3. Android TV: Upon launch, requires synchronization via a 5-digit code displayed on the mobile app.
+- **In-app updates:** when the app opens with both accounts signed in, it checks the latest GitHub Release. A pop-up shows the current → new version, download size, release notes and the buttons **Atualizar** / **Agora não**. Choosing "Agora não" keeps the current version, and the notice appears again the next time the app opens. A GitHub button next to Statistics allows a manual check.
+- **Download and install:** the APK is downloaded with progress, percentage, size and a Cancel button. When the release publishes `SHA256SUMS.txt`, the SHA-256 is verified before install. The app opens the Android installer and explains how to allow "install unknown apps" when needed.
+- **Stable releases:** the `Release` workflow publishes `app.apk`, `app-tv.apk` and `SHA256SUMS.txt` on GitHub Releases using the stable keystore stored in GitHub Secrets.
 
-### Navigation (Home Screen)
-- Search bar at the top.
-- Section 1: **Recent** (what the user has just listened to).
-- Section 2 (scrolling down): **Trending** (based on user preferences).
-- Section 3: **Recommended** (based on user preferences).
-- Floating navigation bar, centered at the bottom with rounded corners: **Browse | Playlists (center, highlighted) | Settings**.
+The complete history is in [CHANGELOG.md](CHANGELOG.md).
 
-### Playlists
-- Create, rename, change cover image, reorder tracks (drag & drop), and remove items. - **"Integrate from Spotify"** button: opens a pop-up with a text field to paste a playlist link → imports and maps the tracks to YouTube Music.
+## Features
 
-### Settings
-- **Log out** option only (for YouTube or Myst). (Exception documented in AGENTS.md: Discord item.)
+### Accounts and profile
 
-### Player
-- Mini-player + full-screen mode, media notifications, and Discord RPC showing the current track.
+- Mandatory dual login: a YouTube account **and** a local Myst account. The navigation only opens when both are signed in.
+- Myst account creation with profile photo (gallery picker + circular crop, 512 px JPEG).
+- The Myst identity is always the primary profile shown in the header and Settings; the YouTube account appears as a secondary connection.
+- Portable `Mystaccount.json`: internal automatic copy plus an optional external copy chosen through the system file picker. It restores profile, avatar, playlists, history, playback statistics, preferences and the YouTube Music cache. YouTube cookies and Discord tokens are not written to the file.
+- Per-account isolation of recent tracks, likes, playlists, history, preferences and statistics.
+- Logout from Myst, YouTube or both. On the TV, any logout returns to the pairing screen.
 
-### TV (`tv` flavor)
-- Layouts designed for 10-foot UI, D-pad navigation, pairing screen with a 5-digit code, `minSdk 21`, and `armeabi-v7a` ABI.
+### Navigation and discovery
 
-## Portable Myst account (`Mystaccount.json`, 0.2.0-dev.7)
-- When a Myst account is created, the app generates an internal `Mystaccount.json` and offers to save a copy to Downloads, Drive or another folder chosen by the user.
-- The login screen has **Entrar com Mystaccount.json**. After choosing the file and confirming, the app restores the Myst profile, avatar, Myst playlists, YouTube Music library cache (playlists, cached tracks, recent history and sync timestamps), play history, artist affinity and the appearance preferences (Claro/Escuro/Sistema and AMOLED). If the same account already exists on the device, the data is merged without deleting local playlists or history.
-- The internal copy is rewritten automatically after every change to the account (profile, Myst and YouTube playlists, tracks, history, affinity and appearance). When the file provider grants persistent write access, the external copy is updated automatically too; otherwise the app shows that a new copy must be saved manually. Importing a file also re-links that same file for automatic updates when the provider allows it.
-- The file deliberately **does not contain YouTube cookies, Discord tokens or other sessions**. After restoring the Myst account, the app asks for the YouTube login again; the restored YouTube cache is shown immediately while the account reconnects.
-- Treat the file as a key: it contains the PBKDF2 salt/hash and the account data, so anyone with the file can sign in to the Myst account. Keep it private.
-- Settings → **Conta Myst** shows the synchronization status and has a **Salvar Mystaccount.json** button. The TV flavor hides this section because the account arrives through pairing.
+- Home with greeting, search pill, "Continuar ouvindo", Recentes in pages of four songs (swipe sideways for 5–8, 9–12…), Em Alta as a ranked list, and Recomendados in a horizontal carousel.
+- Search across songs, artists, albums and playlists with filter chips.
+- Artist profile, album screen and public playlist screen, with pagination and a "Copiar para Myst" action for public YouTube Music playlists.
+- Recent searches per Myst account, recorded only when the user confirms a search or selects a result.
+- YouTube Music library sync: the account's playlists, listening history and personalised recommendations are cached in Room and refreshed in the background.
+- Dedicated Statistics screen: listening time, play count, top songs/artists/albums, 24-hour and per-day charts, current streak and record.
 
-## Installation (alpha)
-1. Download `apks/app.apk` for mobile or `apks/app-tv.apk` for Android TV.
-2. Enable the installation of apps from unknown sources for the browser or file manager you are using.
+### Playlists and Spotify
+
+- Create, rename, change the cover image, reorder tracks by drag & drop, remove tracks and play Myst playlists.
+- YouTube Music playlists are shown read-only in a separate library section; "Copiar para Myst" creates an editable local copy without changing the original.
+- **Integrar do Spotify:** paste a playlist link in the pop-up and the app maps each track to YouTube Music, preserving the original order and skipping ambiguous covers/karaoke/remixes.
+
+### Player and Discord
+
+- Media3/ExoPlayer playback with a media notification, queue, repeat (off / all / one) and a full-screen player.
+- Real blurred cover backdrop, square artwork, three-dot track menu (download, add to playlist, artist, album) and queue sheet that starts at the current track.
+- Mini player with artwork, title/artist, progress under the controls and previous/play/next buttons.
+- Opt-in Discord Rich Presence showing the current song and artist, with progress when the duration is known. The app warns that Discord RPC uses a user token and may conflict with Discord's terms.
+
+### Downloads and offline use
+
+- Long-press a song to download it, or download an entire album, playlist, artist discography or the complete "Músicas em alta" catalog.
+- Downloads run in a foreground service with a queue, notification, retry/recover action, `Range` resume, `WakeLock` and `WifiLock`.
+- Offline playback and download badges throughout the UI.
+- Settings → Armazenamento shows used space, downloaded songs and the Media3 cache, with cache size/retention limits and individual or bulk removal.
+
+### Themes and appearance
+
+- System, Light, Dark and AMOLED Black themes, persisted per device.
+- No hard-coded surface/text colours in layouts: screens use theme attributes, so light/dark/AMOLED work across every screen and on TV.
+- Appearance screen in Settings with live theme cards; AMOLED is available when the effective theme is dark.
+
+### Android TV
+
+- `tv` flavor with 10-foot layouts, D-pad focus rings and an explicit focus order.
+- Pairing by a 5-digit code over the local Wi-Fi network (HTTP server + NSD discovery). The phone sends both accounts, the Myst avatar, playlists and preferences; the TV keeps an in-memory session while paired.
+- TV build uses `armeabi-v7a` only and does not persist the Myst account to disk.
+
+### Diagnostics
+
+- Settings → Logs e diagnóstico shows the recent log, allows copying, clearing and sharing through a non-exported `FileProvider`.
+- A previous crash stack is saved and included in the next diagnostic report. No cookies or tokens are written to the log.
+
+## Installation
+
+1. Download `apks/app.apk` for a phone/tablet or `apks/app-tv.apk` for Android TV.
+2. Allow installation from unknown sources for the browser or file manager you are using.
 3. If you have an APK older than `0.2.0-dev.4`, uninstall it **once** before installing (the development signing key changed). From `0.2.0-dev.4` onward, updates install over the previous version and keep the Myst account, playlists, history and statistics.
-4. On the TV, open the app and use the displayed 5-digit code to pair it with your mobile device (both must be on the same Wi-Fi network).
+4. On the TV, open the app and use the displayed 5-digit code to pair it with the phone (both devices must be on the same Wi-Fi network).
+5. When a new release is available, use the in-app pop-up or the GitHub button. If the Android installer refuses the update because of a different signature, uninstall the old version once and install the new APK.
+
+## Build and release
+
+- `build.yml` runs on every push to `main`/`master` (and manually), builds the `mobile` and `tv` flavors, verifies the APK signature and uploads the APKs as workflow artifacts.
+- `release.yml` runs when a tag matching `v*` is pushed (or manually with a tag), builds signed release APKs, verifies the signature and publishes a GitHub Release with exactly these assets:
+  - `app.apk` (mobile)
+  - `app-tv.apk` (Android TV)
+  - `SHA256SUMS.txt` (SHA-256 of both APKs)
+- Repository secrets required: `MYST_KEYSTORE_B64` (base64 of the keystore), `MYST_KEYSTORE_PASSWORD`, `MYST_KEY_ALIAS` and `MYST_KEY_PASSWORD`.
+- Never commit the keystore or its passwords. Keep the same signing key for every future update; changing it forces users to uninstall and lose local data.
+- The first line of `RELEASE_NOTES.md` must be `versionCode: <n>`; the app uses it to compare the installed version with the release. `versionCode` must always increase.
+- Current tag: `v0.1.8-beta`.
+
+## Security and privacy
+
+- The Myst account password is stored as a PBKDF2 hash; sessions use `EncryptedSharedPreferences`.
+- `Mystaccount.json` is a credential: it contains the PBKDF2 salt/hash and account data. Keep it private.
+- The update checker only accepts HTTPS URLs from this repository's GitHub Releases. No GitHub token is embedded in the APK; the release repository must be public for anonymous API access.
+- Downloaded APKs stay in the app's private cache and are shared with the Android installer only through a temporary read permission.
 
 ## Known limitations
-- YouTube Music is accessed via InnerTube (an unofficial API), and Discord RPC uses a user token. These integrations may change or stop working without notice; Discord RPC is an opt-in feature and includes a risk warning.
-- Development APKs use a stable signing key stored only in GitHub Secrets, so they are not suitable for store publication, but updates no longer require uninstalling. The Myst account is local: keep Android backup enabled **and/or** save a `Mystaccount.json` copy to restore the database on a new device/install. The encrypted session is deliberately not backed up, so you sign in again after a restore; the login screen lists the accounts restored from the database and can also restore a `Mystaccount.json` file.
-- Spotify imports map tracks based on title, artist, and duration; ambiguous tracks may be skipped, with an on-screen notification provided. - Pairing a mobile device with a TV requires both devices to be on the same Wi-Fi network.
-- Playback depends on the AAC/Opus codecs available on the device or the TV.
 
-## Build and signing
-- Builds run only on GitHub Actions (`.github/workflows/build.yml`). With the stable secrets present, the workflow produces signed **release** APKs; without them it falls back to debug APKs and prints a warning.
-- Repository secrets required: `MYST_KEYSTORE_B64` (base64 of the keystore), `MYST_KEYSTORE_PASSWORD`, `MYST_KEY_ALIAS` and `MYST_KEY_PASSWORD`.
-- Never commit the keystore or the passwords. Keep the same key for every future update; changing it forces users to uninstall and lose local data.
-- The first build after switching from the per-run debug key requires one uninstall. After that, `versionCode` must always increase for in-place updates.
+- YouTube Music is accessed through InnerTube, an unofficial API, and may change or stop working without notice.
+- Discord RPC uses a user token; it is opt-in and includes a risk warning. Discord may change or restrict this flow.
+- Offline downloading of YouTube Music audio may conflict with YouTube's Terms of Service. The app keeps files private to the app and shows a notice before the first download.
+- Spotify imports depend on title, artist and duration matching; ambiguous tracks may be skipped and are reported on screen.
+- Pairing a phone with a TV requires both devices to be on the same Wi-Fi network.
+- The TV system installer may limit in-app updates; if that happens, download `app-tv.apk` from the GitHub Release or transfer it with a downloader.
+- Playback depends on the AAC/Opus codecs available on the device or TV. The app prioritises AAC for compatibility with 32-bit TVs.
+- The Myst account is local to the device. Keep Android backup enabled and/or save a `Mystaccount.json` copy. Encrypted sessions are deliberately not backed up, so YouTube login is required again after a restore.
 
 ## Changelog
-See [CHANGELOG.md](CHANGELOG.md) for the 0.2.0-dev.5 portable-account notes and the 0.1.0 Alpha release notes.
 
-## Important
-The application for Android TVs has not been released yet, as it is still in the testing phase. In the future, this version will become available, alongside interface updates, new languages, customization options, and full integration with other applications.
+See [CHANGELOG.md](CHANGELOG.md) for the complete version history, including the final 0.1.8 Beta release.

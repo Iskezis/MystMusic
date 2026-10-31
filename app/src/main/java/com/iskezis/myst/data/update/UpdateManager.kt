@@ -72,6 +72,15 @@ class UpdateManager(context: Context) {
     var installPermissionPending: Boolean = false
         private set
 
+    /**
+     * Evita repetir o pop-up a cada volta à Home no mesmo processo. É zerado
+     * quando o app abre ou quando a verificação automática volta a rodar
+     * depois de 6 horas em segundo plano.
+     */
+    @Volatile
+    var popupShownVersionCode: Int = -1
+        private set
+
     private var checkJob: Job? = null
     private var downloadJob: Job? = null
     private var lastAutomaticCheck = 0L
@@ -85,6 +94,11 @@ class UpdateManager(context: Context) {
             ) {
                 return
             }
+        }
+        if (manual || lastAutomaticCheck == 0L ||
+            now - lastAutomaticCheck >= AUTOMATIC_CHECK_INTERVAL_MS
+        ) {
+            popupShownVersionCode = -1
         }
         lastAutomaticCheck = now
         lastCheckWasManual = manual
@@ -109,6 +123,10 @@ class UpdateManager(context: Context) {
 
     fun dismiss(release: AppRelease) {
         dismissedVersionCode = release.versionCode
+    }
+
+    fun markPopupShown(release: AppRelease) {
+        popupShownVersionCode = release.versionCode
     }
 
     fun markInstallPermissionPending() {

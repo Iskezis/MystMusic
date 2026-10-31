@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.1.8 Beta — 31/10/2026
+
+Versão final de teste, consolidando as fases 1–19 e o novo fluxo de atualização.
+
+**Versão:** `versionName "0.1.8 Beta"` · `versionCode 39` · tag `v0.1.8-beta`. O `versionCode` continua acima do `0.2.0-dev.29` (38), então a instalação por cima mantém os dados.
+
+### Destaques
+- **Atualização pelo próprio app:** verificação automática ao abrir (limitada a uma vez a cada 6 horas), pop-up com versão atual → nova, tamanho, novidades, **Atualizar** e **Agora não**; botão do GitHub no cabeçalho para verificação manual; download com progresso/cancelamento, verificação SHA-256 quando disponível, `FileProvider` privado e fluxo de permissão para instalar apps desconhecidos. O aviso volta na próxima abertura quando o usuário escolhe "Agora não".
+- **Release automatizada:** workflow `release.yml` publica `app.apk`, `app-tv.apk` e `SHA256SUMS.txt` em uma GitHub Release a partir de tags `v*`, com a keystore estável dos Secrets e verificação de assinatura.
+- **Contas e dados:** login duplo obrigatório (YouTube + Myst), foto de perfil, `Mystaccount.json` portátil, dados isolados por conta, Estatísticas completas e sincronização da biblioteca do YouTube Music.
+- **Descoberta:** busca de músicas/artistas/álbuns/playlists, perfil de artista, telas de álbum e playlist, Recomendados/Em Alta e Recentes em páginas de quatro músicas.
+- **Conteúdo:** playlists Myst editáveis, cópia de playlists públicas do YouTube Music, importação do Spotify, downloads offline de música/álbum/playlist/artista e cache gerenciável.
+- **Experiência:** player Media3 com fila/repetição, mini player, blur real da capa, notificação de mídia, Discord RPC opt-in, temas Sistema/Claro/Escuro/Preto AMOLED, animações e diagnóstico de logs.
+- **TV:** flavor 32 bits (`armeabi-v7a`), layouts 10-foot, foco por D-pad e pareamento por código de 5 dígitos na rede local.
+
+### Correções finais
+- Recentes em páginas de quatro músicas com deslize lateral; "Continuar ouvindo" desacoplado dos Recentes; buscas recentes por conta; "1" no canto do infinito; artista do mini player abaixo do título; barra de progresso sob os controles; fila começando na faixa atual; álbuns automáticos nas Estatísticas; ícone anterior restaurado; capas baixadas ocultas da galeria; campo de busca sem sobreposição com o placeholder.
+
+## 0.2.0-dev.29 — 31/10/2026
+
+Atualização pelo GitHub, assinatura estável na Release e aviso de nova versão.
+
+### Novo
+- **Pop-up de atualização:** ao abrir o app já logado, o MystMusic consulta a release mais recente do GitHub. Quando o `versionCode` remoto é maior que o instalado, aparece "Nova versão disponível" com `v atual → v nova`, tamanho do download, novidades da release (roláveis) e os botões **Atualizar** e **Agora não**. "Agora não" mantém a versão atual e o aviso volta na próxima abertura; "Atualizar" baixa e abre o instalador.
+- **Botão do GitHub:** o cabeçalho da Navegação ganhou um botão ao lado de Estatísticas para verificar atualizações manualmente. Sem versão nova, mostra "Você já está na versão mais recente"; em falha de rede/limite do GitHub, mostra a mensagem com **Tentar novamente**.
+- **Download com progresso:** APK baixado em `cacheDir/updates` com barra, porcentagem, tamanho e **Cancelar**; `.part` + renomeação e verificação SHA-256 quando a release publica `SHA256SUMS.txt`.
+- **Instalação:** `FileProvider` separado (`.updates`), permissão `REQUEST_INSTALL_PACKAGES` e fluxo para liberar "instalar apps desconhecidos"; ao voltar das configurações, a instalação é retomada. Erros de assinatura são explicados com a instrução de desinstalar uma única vez.
+- **TV:** o mesmo fluxo usa `app-tv.apk`, com o botão **Atualizar** recebendo o foco inicial no controle remoto.
+
+### Build e release
+- Novo workflow `.github/workflows/release.yml`: em tag `v*` (ou execução manual com tag), compila `mobile` e `tv` em release com a keystore dos Secrets, verifica a assinatura, publica `app.apk`, `app-tv.apk` e `SHA256SUMS.txt` na GitHub Release e marca como pré-release.
+- `RELEASE_NOTES.md` começa com `versionCode: 38`, lido pelo app; o restante vira as notas do pop-up.
+- `BuildConfig.GITHUB_REPO` usa `GITHUB_REPOSITORY` no CI e cai para `Iskezis/MystMusic` localmente, sem token embutido.
+- Build `41229787261` verde nos dois flavors; APKs publicados em `apks/app.apk` e `apks/app-tv.apk`.
+
 ## 0.2.0-dev.28 — 31/10/2026
 
 Correção do formato dos Recentes conforme o esclarecimento do usuário.
