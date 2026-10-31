@@ -354,9 +354,12 @@ class DownloadService : Service() {
     }
 
     private fun buildRequest(info: StreamInfo, startOffset: Long): Request {
+        val headers = Headers.Builder().apply {
+            info.headers.forEach { (name, value) -> add(name, value) }
+        }.build()
         val builder = Request.Builder()
             .url(info.url)
-            .headers(Headers.of(info.headers))
+            .headers(headers)
             .header("Accept", "*/*")
         if (startOffset > 0L) {
             builder.header("Range", "bytes=$startOffset-")
