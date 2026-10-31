@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.8 Beta 3 — 31/10/2026
+
+Correção do “erro ao analisar o pacote” ao instalar a atualização baixada pelo próprio app.
+
+**Versão:** `versionName "0.1.8 Beta 3"` · `versionCode 42` · tag `v0.1.8-beta.3`. A build 42 instala por cima da 41 (e das anteriores com a mesma assinatura), mantendo conta Myst, playlists, histórico e estatísticas.
+
+### Corrigido
+- **Instalação pelo `PackageInstaller`:** o APK deixou de ser entregue ao instalador por uma URI temporária do `FileProvider` em `cacheDir`, que alguns instaladores de fabricante não conseguiam ler e reportavam como pacote inválido. O app agora abre uma sessão do `PackageInstaller`, grava o APK nela e recebe o resultado por um `BroadcastReceiver` próprio. O `FileProvider` `.updates` e seu arquivo de caminhos foram removidos.
+- **Validação do download:** antes de iniciar a instalação, o arquivo precisa ter o tamanho exato informado pela API do GitHub, passar no SHA-256 quando `SHA256SUMS.txt` existe, começar com a assinatura ZIP, declarar o pacote `com.iskezis.myst` e ter um `versionCode` maior que o instalado. Um HTML de erro do servidor ou um APK truncado agora vira a mensagem “o arquivo baixado não é um APK válido” com **Tentar novamente**.
+- **Checksum mais rígido:** se a release publica `SHA256SUMS.txt` mas não contém a linha do asset esperado, a atualização falha em vez de pular a verificação silenciosamente.
+- **Falhas do instalador visíveis:** erros da sessão do `PackageInstaller` (bloqueio de fontes desconhecidas, assinatura diferente, arquivo inválido, incompatibilidade ou armazenamento) aparecem em uma notificação com o motivo e abrem o MystMusic ao tocar.
+
+### Build e release
+- `versionCode 42`, `versionName "0.1.8 Beta 3"`, tag `v0.1.8-beta.3` (pré-release).
+- `RELEASE_NOTES.md` começa com `versionCode: 42`; o pop-up de atualização mostra o download e usa `app-tv.apk` no flavor de TV.
+
 ## 0.1.8 Beta 2 — 31/10/2026
 
 Correção das estatísticas reproduzidas na TV e atualização ao vivo da tela de Estatísticas.

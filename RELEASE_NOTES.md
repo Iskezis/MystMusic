@@ -1,27 +1,23 @@
-versionCode: 41
-## MystMusic 0.1.8 Beta 2
+versionCode: 42
+## MystMusic 0.1.8 Beta 3
 
-Atualização de correção da beta, focada nas estatísticas reproduzidas na TV e na atualização em tempo real da tela de Estatísticas.
+Atualização de correção da instalação do APK pelo próprio app. O APK e a assinatura continuam os mesmos; esta build corrige o caminho até o instalador do Android.
 
 ### Correção desta build
-- **Estatísticas da TV:** cada reprodução feita na TV agora é confirmada pelo celular antes de os dados temporários serem descartados. Se o celular estiver dormindo, fora da rede ou com o app fechado, a TV guarda os eventos pendentes e os reenvia na próxima abertura ou no próximo pareamento com a mesma conta Myst. Nenhuma reprodução é perdida ao desligar a TV.
-- **Estatísticas ao vivo no celular:** se a tela de Estatísticas estiver aberta quando a TV sincronizar, os números, gráficos e tops são atualizados automaticamente, sem precisar sair e voltar da tela.
-- **Teclado da TV:** mantido o layout em duas colunas com rolagem e teclas de 52 dp do hotfix anterior; os cinco dígitos continuam visíveis em telas de 540 dp.
+- **Fim do “erro ao analisar o pacote”:** o APK baixado agora é entregue ao Android por uma sessão do `PackageInstaller`, em vez de uma URI temporária do `FileProvider` em `cacheDir`. O instalador do próprio sistema grava o arquivo na sessão e não depende de permissão temporária, de cache do app ou do suporte do instalador de fábrica a `content://`.
+- **APK validado antes de instalar:** o download confere o tamanho informado pelo GitHub, o SHA-256 quando a release publica `SHA256SUMS.txt`, a assinatura ZIP, o pacote `com.iskezis.myst` e se o `versionCode` é maior que o instalado. Se o arquivo chegou truncado ou o servidor devolveu outra coisa, o app mostra “APK inválido” e oferece **Tentar novamente**, sem abrir o instalador.
+- **Falhas visíveis:** se o Android recusar a sessão de instalação, o motivo aparece em uma notificação: permissão de fontes desconhecidas bloqueada, assinatura diferente, APK inválido, incompatibilidade ou falta de espaço.
+- **Sem regressão de dados:** a atualização instala por cima da Beta 2 (versionCode 41), da Beta 1 (40) e das versões anteriores com a mesma assinatura, mantendo conta Myst, playlists, histórico e estatísticas.
 
-### Destaques
-- **Atualização pelo GitHub:** ao abrir o app logado, a MystMusic verifica se há uma release mais nova. O pop-up mostra a versão atual → nova, o tamanho e as novidades, com **Atualizar** e **Agora não**. Se você escolher "Agora não", o aviso volta na próxima abertura. O botão do GitHub no cabeçalho também verifica manualmente.
-- **Download e instalação:** o APK é baixado com barra de progresso e opção de cancelar; quando a release publica `SHA256SUMS.txt`, a integridade é conferida. O app abre o instalador do Android e explica como liberar "instalar apps desconhecidos" quando necessário.
-- **Conta dupla:** login obrigatório com YouTube **e** conta Myst, foto de perfil, dados separados por conta e backup portátil `Mystaccount.json`.
-- **YouTube Music:** playlists, histórico e recomendações da sua conta aparecem na Navegação, em Playlists e em Recentes.
-- **Busca completa:** músicas, artistas, álbuns e playlists, com perfil do artista e telas de álbum/playlist; playlists públicas podem ser copiadas para a Myst.
-- **Downloads offline:** baixe uma música, um álbum, uma playlist ou toda a discografia de um artista; gerencie o espaço e ouça sem rede.
-- **Aparência e estatísticas:** temas Sistema, Claro, Escuro e Preto AMOLED; Estatísticas com tempo ouvido, tops e gráficos.
-- **Player, Discord e TV:** player completo com fila e repetição, Discord RPC opt-in e flavor de TV 32 bits com pareamento por código de 5 dígitos.
+### Destaques que continuam
+- **Atualização pelo GitHub:** verificação automática ao abrir, pop-up com versão atual → nova, tamanho e novidades, além do botão do GitHub para verificar manualmente e **Agora não** para adiar.
+- **Estatísticas da TV:** as reproduções da TV ficam em um outbox em disco até o celular confirmar a gravação e a tela de Estatísticas do celular atualiza ao vivo.
+- **Conta dupla, YouTube Music, busca completa, downloads offline, player Media3, Discord RPC, temas Sistema/Claro/Escuro/AMOLED e TV de 32 bits com pareamento por código.**
 
 ### Build e assinatura
-- `versionCode: 41`, compilado pelos workflows do GitHub Actions com a keystore estável dos Secrets.
-- Instala por cima da build 40 mantendo conta Myst, playlists, histórico e estatísticas.
-- Assets desta release: `app.apk` (celular), `app-tv.apk` (Android TV, armeabi-v7a) e `SHA256SUMS.txt`.
+- `versionCode: 42`, compilado pelos workflows do GitHub Actions com a keystore estável dos Secrets.
+- Assets desta release: `app.apk` (celular), `app-tv.apk` (Android TV, `armeabi-v7a`) e `SHA256SUMS.txt`.
+- A release é uma pré-release por ser um beta; o app lê o `versionCode` da primeira linha do corpo e aceita a atualização.
 
 ### Observação
-- Se o Android recusar a instalação por diferença de assinatura, desinstale a versão antiga uma única vez. A partir da `0.2.0-dev.4`, as atualizações instalam por cima e mantêm os dados da conta Myst.
+- Se o Android recusar a instalação por diferença de assinatura, desinstale a versão antiga uma única vez. A partir da `0.2.0-dev.4`, as versões publicadas usam a mesma keystore e instalam por cima, mantendo os dados da conta Myst.

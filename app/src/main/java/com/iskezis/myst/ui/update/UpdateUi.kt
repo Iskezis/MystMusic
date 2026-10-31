@@ -10,7 +10,6 @@ import android.text.method.ScrollingMovementMethod
 import android.view.View
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.content.res.AppCompatResources
-import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -20,6 +19,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.R
+import com.iskezis.myst.data.update.ApkInstaller
 import com.iskezis.myst.data.update.AppRelease
 import com.iskezis.myst.data.update.UpdateCheckState
 import com.iskezis.myst.data.update.UpdateDownloadState
@@ -361,30 +361,26 @@ class UpdateUi(
     }
 
     private fun launchInstaller(file: File) {
-        val uri = try {
-            FileProvider.getUriForFile(
-                context,
-                "${BuildConfig.APPLICATION_ID}.updates",
-                file,
-            )
-        } catch (t: Throwable) {
-            AppLog.failure(AppLog.TAG_UPDATE, "Falha criando URI do APK baixado", t)
+        if (installing) return
+        if (!file.isFile || file.length() <= 0L) {
+            AppLog.w(AppLog.TAG_UPDATE, "APK de atualização ausente ou vazio")
             showInstallError()
             return
         }
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "application/vnd.android.package-archive")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        try {
-            fragment.startActivity(intent)
-            manager.markInstallLaunched()
-        } catch (t: ActivityNotFoundException) {
-            AppLog.failure(AppLog.TAG_UPDATE, "Instalador do Android não encontrado", t)
-            showInstallError()
+        installing = true
+        fragment.viewLifecycleOwner.lifecycleScope.launch {
+            val started = ApkInstaller(context).install(file)
+            installing = false
+            if (!fragment.isAdded) return@launch
+            if (started) {
+                manager.markInstallLaunched()
+            } else {
+                showInstallError()
+            }
         }
     }
+
+    private var installing = false
 
     private fun showInstallError() {
         auxiliaryDialog?.dismiss()

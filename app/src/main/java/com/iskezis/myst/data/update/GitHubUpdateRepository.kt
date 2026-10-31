@@ -1,7 +1,10 @@
 package com.iskezis.myst.data.update
 
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.annotation.StringRes
+import androidx.core.content.pm.PackageInfoCompat
 import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.R
 import com.iskezis.myst.util.AppLog
@@ -209,6 +212,13 @@ class GitHubUpdateRepository(context: Context) {
                 if (expectedLength != null && downloaded != expectedLength) {
                     throw UpdateException(R.string.update_error_download)
                 }
+                // O tamanho informado pela API é a referência do asset. Alguns
+                // proxies devolvem uma página HTML com HTTP 200 e Content-Length
+                // próprio; sem esta conferência o arquivo inválido chegaria ao
+                // instalador do Android como "erro ao analisar o pacote".
+                if (release.assetSize > 0L && downloaded != release.assetSize) {
+                    throw UpdateException(R.string.update_error_download)
+                }
 
                 release.checksumUrl?.let { checksumUrl ->
                     val assetName = release.assetUrl.toHttpUrlOrNull()
@@ -222,6 +232,7 @@ class GitHubUpdateRepository(context: Context) {
                     part.copyTo(target, overwrite = true)
                     part.delete()
                 }
+                validateDownloadedApk(target)
                 onProgress(target.length(), target.length())
                 target
             }
@@ -342,7 +353,7 @@ class GitHubUpdateRepository(context: Context) {
             .firstOrNull { it.size == 2 && it[1].removePrefix("*") == assetName }
             ?.first()
             ?.lowercase(Locale.US)
-            ?: return
+            ?: throw UpdateException(R.string.update_error_checksum)
         if (!expected.matches(Regex("[0-9a-f]{64}"))) {
             throw UpdateException(R.string.update_error_checksum)
         }
@@ -360,6 +371,46 @@ class GitHubUpdateRepository(context: Context) {
         if (actual != expected) {
             file.delete()
             throw UpdateException(R.string.update_error_checksum)
+        }
+    }
+
+    /**
+     * Confere que o arquivo baixado é mesmo um APK do MystMusic mais novo que
+     * a versão instalada. O instalador do Android só recebe arquivos que
+     * passaram por aqui, evitando o erro genérico de "pacote inválido" quando
+     * o download foi truncado ou o servidor devolveu outra coisa.
+     */
+    @Suppress("DEPRECATION")
+    private fun validateDownloadedApk(file: File) {
+        try {
+            if (!file.isFile || file.length() <= 0L) {
+                throw UpdateException(R.string.update_error_invalid_apk)
+            }
+            val header = ByteArray(4)
+            val read = file.inputStream().use { it.read(header) }
+            if (read != header.size || !header.contentEquals(ZIP_MAGIC)) {
+                throw UpdateException(R.string.update_error_invalid_apk)
+            }
+            val manager = appContext.packageManager
+            val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                manager.getPackageArchiveInfo(
+                    file.absolutePath,
+                    PackageManager.PackageInfoFlags.of(0),
+                )
+            } else {
+                manager.getPackageArchiveInfo(file.absolutePath, 0)
+            }
+            if (info == null || info.packageName != appContext.packageName) {
+                throw UpdateException(R.string.update_error_invalid_apk)
+            }
+            if (PackageInfoCompat.getLongVersionCode(info) <= BuildConfig.VERSION_CODE.toLong()) {
+                throw UpdateException(R.string.update_error_invalid_apk)
+            }
+        } catch (t: Throwable) {
+            file.delete()
+            if (t is UpdateException) throw t
+            AppLog.failure(AppLog.TAG_UPDATE, "APK baixado inválido", t)
+            throw UpdateException(R.string.update_error_invalid_apk, t)
         }
     }
 
@@ -426,6 +477,7 @@ class GitHubUpdateRepository(context: Context) {
         private const val PROGRESS_INTERVAL_MS = 150L
         private const val MAX_NOTES_CHARS = 8_000
         private const val CACHE_MAX_AGE_MS = 7L * 24 * 60 * 60 * 1000
+        private val ZIP_MAGIC = byteArrayOf(0x50, 0x4b, 0x03, 0x04)
         private val REPO_PATTERN = Regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
         private val VERSION_CODE_PATTERN = Regex(
             pattern = "(?im)^\\s*versionCode\\s*:\\s*(\\d+)\\s*$",

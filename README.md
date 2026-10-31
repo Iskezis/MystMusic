@@ -4,20 +4,21 @@ Android music app (Kotlin + XML) featuring YouTube Music playback through InnerT
 
 - **App Name:** MystMusic
 - **Package:** `com.iskezis.myst`
-- **Current Version:** 0.1.8 Beta 2 (`versionCode 41`)
+- **Current Version:** 0.1.8 Beta 3 (`versionCode 42`)
 - **Status:** Beta; includes unofficial YouTube Music and Discord integrations.
 - **Theme Color:** Sky blue (`#38BDF8`), simple two-color gradients, minimalist surfaces.
 - **UI Language:** Portuguese (Brazil).
 - **Build Process:** Handled exclusively via GitHub Actions.
 - **Final APKs:** `apks/app.apk` (mobile) and `apks/app-tv.apk` (Android TV, `armeabi-v7a`).
 
-## What's new in 0.1.8 Beta 2
+## What's new in 0.1.8 Beta 3
 
-- **TV statistics sync:** plays on the TV are now kept in a disk outbox until the phone confirms they were saved, then restored and re-sent on the next app start or pairing with the same Myst account. The Statistics screen also reloads live when a TV snapshot arrives.
-- **In-app updates:** when the app opens with both accounts signed in, it checks the latest GitHub Release. A pop-up shows the current → new version, download size, release notes and the buttons **Atualizar** / **Agora não**. Choosing "Agora não" keeps the current version, and the notice appears again the next time the app opens. A GitHub button next to Statistics allows a manual check.
-- **Download and install:** the APK is downloaded with progress, percentage, size and a Cancel button. When the release publishes `SHA256SUMS.txt`, the SHA-256 is verified before install. The app opens the Android installer and explains how to allow "install unknown apps" when needed.
+- **Update installation fixed:** the downloaded APK is now handed to Android through a `PackageInstaller` session instead of a temporary `FileProvider` URI in the app cache. This fixes the “error parsing the package” message reported by some phone and TV installers, which could not read the cached file.
+- **APK validation before install:** the download must match the GitHub asset size and the published SHA-256, start with a valid ZIP header, declare `com.iskezis.myst`, and have a newer `versionCode`. Invalid files show a clear error and a retry button instead of opening the installer.
+- **Visible installer failures:** blocked installs, signature conflicts, invalid packages, incompatible devices and low storage are reported in a notification with the reason.
+- **TV statistics sync:** plays on the TV are kept in a disk outbox until the phone confirms they were saved, then restored and re-sent on the next app start or pairing with the same Myst account. The Statistics screen also reloads live when a TV snapshot arrives.
+- **In-app updates:** when the app opens with both accounts signed in, it checks the latest GitHub Release. A pop-up shows the current → new version, download size, release notes and the buttons **Atualizar** / **Agora não**. A GitHub button next to Statistics allows a manual check.
 - **Stable releases:** the `Release` workflow publishes `app.apk`, `app-tv.apk` and `SHA256SUMS.txt` on GitHub Releases using the stable keystore stored in GitHub Secrets.
-- **TV pairing fix:** the pairing screen uses a two-column layout (code on the left, numeric keypad on the right) and scrolls on smaller TV viewports. The 5-digit keypad is no longer cut off, and D-pad focus is explicit on every key.
 
 The complete history is in [CHANGELOG.md](CHANGELOG.md).
 
@@ -96,7 +97,7 @@ The complete history is in [CHANGELOG.md](CHANGELOG.md).
 - Repository secrets required: `MYST_KEYSTORE_B64` (base64 of the keystore), `MYST_KEYSTORE_PASSWORD`, `MYST_KEY_ALIAS` and `MYST_KEY_PASSWORD`.
 - Never commit the keystore or its passwords. Keep the same signing key for every future update; changing it forces users to uninstall and lose local data.
 - The first line of `RELEASE_NOTES.md` must be `versionCode: <n>`; the app uses it to compare the installed version with the release. `versionCode` must always increase.
-- Current tag: `v0.1.8-beta.2`.
+- Current tag: `v0.1.8-beta.3`.
 
 ## Security and privacy
 

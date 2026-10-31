@@ -139,6 +139,11 @@
             </intent-filter>
         </receiver>
 
+        <!-- Resultado da sessão do PackageInstaller usada pela atualização. -->
+        <receiver
+            android:name=".data.update.UpdateInstallReceiver"
+            android:exported="false" />
+
         <!--
           Autoridade interna usada apenas pelo botão "Compartilhar" da tela de
           logs. Não é exportada; cada Intent concede leitura temporária da URI.
@@ -151,21 +156,6 @@
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/log_file_paths" />
-        </provider>
-
-        <!--
-          Autoridade separada para o APK de atualização em cacheDir/updates.
-          O instalador do sistema recebe leitura temporária apenas da URI
-          enviada no Intent; nada é exposto para outros aplicativos.
-        -->
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.updates"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/update_file_paths" />
         </provider>
     </application>
 </manifest>
