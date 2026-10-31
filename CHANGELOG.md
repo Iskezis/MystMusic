@@ -4,7 +4,7 @@
 
 Versão final de teste, consolidando as fases 1–19 e o novo fluxo de atualização.
 
-**Versão:** `versionName "0.1.8 Beta"` · `versionCode 39` · tag `v0.1.8-beta`. O `versionCode` continua acima do `0.2.0-dev.29` (38), então a instalação por cima mantém os dados.
+**Versão:** `versionName "0.1.8 Beta"` · `versionCode 40` · tag `v0.1.8-beta` (o APK de código 39 foi substituído pelo hotfix 40). O `versionCode` continua acima do `0.2.0-dev.29` (38), então a instalação por cima mantém os dados.
 
 ### Destaques
 - **Atualização pelo próprio app:** verificação automática ao abrir (limitada a uma vez a cada 6 horas), pop-up com versão atual → nova, tamanho, novidades, **Atualizar** e **Agora não**; botão do GitHub no cabeçalho para verificação manual; download com progresso/cancelamento, verificação SHA-256 quando disponível, `FileProvider` privado e fluxo de permissão para instalar apps desconhecidos. O aviso volta na próxima abertura quando o usuário escolhe "Agora não".
@@ -17,6 +17,7 @@ Versão final de teste, consolidando as fases 1–19 e o novo fluxo de atualiza�
 
 ### Correções finais
 - Recentes em páginas de quatro músicas com deslize lateral; "Continuar ouvindo" desacoplado dos Recentes; buscas recentes por conta; "1" no canto do infinito; artista do mini player abaixo do título; barra de progresso sob os controles; fila começando na faixa atual; álbuns automáticos nas Estatísticas; ícone anterior restaurado; capas baixadas ocultas da galeria; campo de busca sem sobreposição com o placeholder.
+- **Hotfix 40 — teclado da TV:** a tela de pareamento saiu do layout vertical fixo de 640dp (que passava da altura de 540dp das TVs e cortava as últimas teclas) para um `ScrollView` com duas colunas: código/instruções à esquerda e teclado numérico de 3×4 à direita. Cada tecla tem 104×52dp, margem de 4dp, padding horizontal reduzido e `nextFocus*` explícito para o D-pad; o botão de confirmação continua desabilitado até os 5 dígitos.
 
 ## 0.2.0-dev.29 — 31/10/2026
 

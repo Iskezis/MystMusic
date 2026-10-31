@@ -40,6 +40,14 @@
     <dimen name="text_small">16sp</dimen>
     <dimen name="text_label">18sp</dimen>
     <dimen name="text_button">18sp</dimen>
+    <dimen name="pairing_key_width">104dp</dimen>
+    <dimen name="pairing_key_height">52dp</dimen>
+    <dimen name="pairing_key_margin">4dp</dimen>
+    <dimen name="pairing_key_text">22sp</dimen>
+    <dimen name="pairing_code_width">320dp</dimen>
+    <dimen name="pairing_code_height">76dp</dimen>
+    <dimen name="pairing_code_text">42sp</dimen>
+    <dimen name="pairing_retry_width">280dp</dimen>
     <dimen name="touch_target">56dp</dimen>
     <dimen name="space_xs">6dp</dimen>
     <dimen name="space_s">12dp</dimen>
