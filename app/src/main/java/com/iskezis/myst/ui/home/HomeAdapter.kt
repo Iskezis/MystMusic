@@ -14,17 +14,19 @@ import com.iskezis.myst.data.account.AvatarStore
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.databinding.ItemCarouselBinding
 import com.iskezis.myst.databinding.ItemHomeHeaderBinding
+import com.iskezis.myst.databinding.ItemHomeOfflineBinding
 import com.iskezis.myst.databinding.ItemHomeSearchBinding
 import com.iskezis.myst.databinding.ItemSectionHeaderBinding
 import com.iskezis.myst.ui.common.LoadState
 import com.iskezis.myst.ui.common.TrackCardAdapter
 import java.io.File
 
-enum class HomeSection { RECENT, TRENDING, RECOMMENDED }
+enum class HomeSection { RECENT, TRENDING, RECOMMENDED, OFFLINE }
 
 sealed interface HomeItem {
     data class Greeting(val name: String, val avatarPath: String?) : HomeItem
     object Search : HomeItem
+    object Offline : HomeItem
     data class Header(val section: HomeSection) : HomeItem
     data class Carousel(val section: HomeSection, val state: LoadState<List<Track>>) : HomeItem
 }
@@ -38,6 +40,7 @@ class HomeAdapter(
     private val onRetryRecent: () -> Unit,
     private val onRetryTrending: () -> Unit,
     private val onRetryRecommended: () -> Unit,
+    private val onRetryOffline: () -> Unit,
 ) : ListAdapter<HomeItem, RecyclerView.ViewHolder>(Diff) {
 
     private val cardPool = RecyclerView.RecycledViewPool()
@@ -45,6 +48,7 @@ class HomeAdapter(
     override fun getItemViewType(position: Int): Int = when (getItem(position)) {
         is HomeItem.Greeting -> TYPE_GREETING
         is HomeItem.Search -> TYPE_SEARCH
+        is HomeItem.Offline -> TYPE_OFFLINE
         is HomeItem.Header -> TYPE_HEADER
         is HomeItem.Carousel -> TYPE_CAROUSEL
     }
@@ -54,6 +58,10 @@ class HomeAdapter(
         return when (viewType) {
             TYPE_GREETING -> GreetingHolder(ItemHomeHeaderBinding.inflate(inflater, parent, false))
             TYPE_SEARCH -> SearchHolder(ItemHomeSearchBinding.inflate(inflater, parent, false))
+            TYPE_OFFLINE -> OfflineHolder(
+                ItemHomeOfflineBinding.inflate(inflater, parent, false),
+                onRetryOffline,
+            )
             TYPE_HEADER -> HeaderHolder(ItemSectionHeaderBinding.inflate(inflater, parent, false))
             else -> CarouselHolder(
                 ItemCarouselBinding.inflate(inflater, parent, false),
@@ -63,6 +71,7 @@ class HomeAdapter(
                 onRetryRecent,
                 onRetryTrending,
                 onRetryRecommended,
+                onRetryOffline,
             )
         }
     }
@@ -71,6 +80,7 @@ class HomeAdapter(
         when (val item = getItem(position)) {
             is HomeItem.Greeting -> (holder as GreetingHolder).bind(item, onAvatar, onStats)
             is HomeItem.Search -> (holder as SearchHolder).bind(onSearch)
+            is HomeItem.Offline -> (holder as OfflineHolder).bind()
             is HomeItem.Header -> (holder as HeaderHolder).bind(item)
             is HomeItem.Carousel -> (holder as CarouselHolder).bind(item)
         }
@@ -120,14 +130,29 @@ class HomeAdapter(
         }
     }
 
+    private class OfflineHolder(
+        private val binding: ItemHomeOfflineBinding,
+        private val onRetry: () -> Unit,
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        fun bind() {
+            binding.homeOfflineRetry.setOnClickListener { onRetry() }
+        }
+    }
+
     private class HeaderHolder(private val binding: ItemSectionHeaderBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: HomeItem.Header) {
             val context = binding.root.context
             binding.sectionTitle.setText(sectionTitleRes(item.section))
-            if (item.section == HomeSection.RECENT) {
-                binding.sectionSubtitle.setText(R.string.section_recent_subtitle)
+            val subtitle = when (item.section) {
+                HomeSection.RECENT -> R.string.section_recent_subtitle
+                HomeSection.OFFLINE -> R.string.section_downloads_subtitle
+                else -> null
+            }
+            if (subtitle != null) {
+                binding.sectionSubtitle.setText(subtitle)
                 binding.sectionSubtitle.visibility = View.VISIBLE
             } else {
                 binding.sectionSubtitle.visibility = View.GONE
@@ -144,6 +169,7 @@ class HomeAdapter(
         private val onRetryRecent: () -> Unit,
         private val onRetryTrending: () -> Unit,
         private val onRetryRecommended: () -> Unit,
+        private val onRetryOffline: () -> Unit,
     ) : RecyclerView.ViewHolder(binding.root) {
 
         private val cards = TrackCardAdapter(onPlay, onMore)
@@ -177,12 +203,18 @@ class HomeAdapter(
                     binding.carouselShimmer.visibility = View.GONE
                     binding.carouselList.visibility = View.GONE
                     binding.carouselState.visibility = View.VISIBLE
-                    binding.carouselStateIcon.setImageResource(R.drawable.ic_music)
-                    binding.carouselStateTitle.text = context.getString(
-                        if (item.section == HomeSection.RECENT) {
-                            R.string.section_personalize_hint
+                    binding.carouselStateIcon.setImageResource(
+                        if (item.section == HomeSection.OFFLINE) {
+                            R.drawable.ic_arrow_down
                         } else {
-                            R.string.state_empty
+                            R.drawable.ic_music
+                        },
+                    )
+                    binding.carouselStateTitle.text = context.getString(
+                        when (item.section) {
+                            HomeSection.RECENT -> R.string.section_personalize_hint
+                            HomeSection.OFFLINE -> R.string.home_offline_empty_title
+                            else -> R.string.state_empty
                         },
                     )
                     binding.carouselRetry.visibility = View.GONE
@@ -200,6 +232,7 @@ class HomeAdapter(
                             HomeSection.RECENT -> onRetryRecent()
                             HomeSection.TRENDING -> onRetryTrending()
                             HomeSection.RECOMMENDED -> onRetryRecommended()
+                            HomeSection.OFFLINE -> onRetryOffline()
                         }
                     }
                 }
@@ -212,6 +245,7 @@ class HomeAdapter(
             when {
                 oldItem is HomeItem.Greeting && newItem is HomeItem.Greeting -> true
                 oldItem === HomeItem.Search && newItem === HomeItem.Search -> true
+                oldItem === HomeItem.Offline && newItem === HomeItem.Offline -> true
                 oldItem is HomeItem.Header && newItem is HomeItem.Header ->
                     oldItem.section == newItem.section
                 oldItem is HomeItem.Carousel && newItem is HomeItem.Carousel ->
@@ -228,5 +262,6 @@ class HomeAdapter(
         private const val TYPE_SEARCH = 1
         private const val TYPE_HEADER = 2
         private const val TYPE_CAROUSEL = 3
+        private const val TYPE_OFFLINE = 4
     }
 }

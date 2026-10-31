@@ -18,4 +18,9 @@
     <!-- Cookies do WebView e arquivos baixados não entram no backup. -->
     <exclude domain="root" path="app_webview/" />
     <exclude domain="file" path="downloads/" />
+    <!-- Downloads offline: áudio e capas não viajam no backup. O domínio
+         "external" é relativo a getExternalFilesDir(); a pasta privada usada
+         sem acesso total fica em Music/MystMusic/MystDownload. -->
+    <exclude domain="external" path="Music/MystMusic/MystDownload/" />
+    <exclude domain="file" path="offline/" />
 </full-backup-content>

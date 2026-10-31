@@ -35,6 +35,21 @@ class StreamResolver(private val app: MystApp) : ResolvingDataSource.Resolver {
             "ExoPlayer pediu stream de $videoId " +
                 "(posição=${dataSpec.position}, tamanho=${dataSpec.length})",
         )
+        // Download concluído tem prioridade sobre a rede. O arquivo é privado
+        // do app (ou está na pasta MystDownload com permissão explícita) e toca
+        // mesmo sem internet.
+        val local = app.downloadIndex.localFile(videoId)
+        if (local != null) {
+            AppLog.i(
+                AppLog.TAG_STREAM,
+                "Reproduzindo download offline: $videoId (${local.absolutePath})",
+            )
+            return dataSpec.buildUpon()
+                .setUri(Uri.fromFile(local))
+                .setKey("myst-file:$videoId")
+                .setHttpRequestHeaders(emptyMap())
+                .build()
+        }
         val info = resolve(videoId)
         AppLog.d(
             AppLog.TAG_STREAM,
@@ -43,6 +58,9 @@ class StreamResolver(private val app: MystApp) : ResolvingDataSource.Resolver {
         )
         return dataSpec.buildUpon()
             .setUri(Uri.parse(info.url))
+            // Chave estável para o cache: a URL do googlevideo muda a cada
+            // resolução e sem isso o cache nunca acertaria entre sessões.
+            .setKey("myst-stream:$videoId")
             .setHttpRequestHeaders(info.headers)
             .build()
     }

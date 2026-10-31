@@ -37,6 +37,7 @@ object TrackRowBinder {
         binding.rowDuration.text = formatDuration(track.durationMs)
         binding.rowDuration.visibility =
             if (track.durationMs > 0) View.VISIBLE else View.GONE
+        binding.rowDownloadBadge.videoId = track.videoId
 
         val artistClickable = onArtistClick != null && track.artist.isNotBlank()
         binding.rowArtist.isClickable = artistClickable

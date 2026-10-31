@@ -59,11 +59,12 @@ abstract class BaseBrowseDetailFragment : Fragment() {
         onPlayAll: () -> Unit,
         onShuffle: () -> Unit,
         onCopy: () -> Unit,
+        onDownload: () -> Unit,
         onRetry: () -> Unit,
         onLoadMore: () -> Unit,
         onArtist: (Track) -> Unit,
     ) {
-        headerAdapter = BrowseHeaderAdapter(onPlayAll, onShuffle, onCopy)
+        headerAdapter = BrowseHeaderAdapter(onPlayAll, onShuffle, onCopy, onDownload)
         trackAdapter = TrackRowAdapter(
             onPlay = { tracks, index ->
                 (requireActivity().application as MystApp).playerController.play(tracks, index)

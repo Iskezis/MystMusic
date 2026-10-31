@@ -21,8 +21,9 @@ import com.iskezis.myst.BuildConfig
         YtSyncEntity::class,
         PairTombstoneEntity::class,
         PlayEventEntity::class,
+        DownloadEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -33,6 +34,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun youTubeLibraryDao(): YouTubeLibraryDao
     abstract fun pairTombstoneDao(): PairTombstoneDao
     abstract fun playEventDao(): PlayEventDao
+    abstract fun downloadDao(): DownloadDao
 
     companion object {
         @Volatile
@@ -62,7 +64,13 @@ abstract class AppDatabase : RoomDatabase() {
                 AppDatabase::class.java,
                 "mystmusic.db",
             )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(
+                    MIGRATION_1_2,
+                    MIGRATION_2_3,
+                    MIGRATION_3_4,
+                    MIGRATION_4_5,
+                    MIGRATION_5_6,
+                )
                 .build()
         }
 
@@ -357,6 +365,50 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS `index_play_events_userId_artist` " +
                         "ON `play_events` (`userId`, `artist`)",
+                )
+            }
+        }
+
+        /**
+         * 0.2.0-dev.20: downloads offline. A tabela é nova e não toca em
+         * nenhuma linha existente; a migração é segura para atualizar por cima
+         * da dev.19 com o app já usando o banco.
+         */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `downloads` (
+                        `userId` INTEGER NOT NULL,
+                        `videoId` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `artist` TEXT NOT NULL,
+                        `album` TEXT NOT NULL,
+                        `thumbnailUrl` TEXT,
+                        `durationMs` INTEGER NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `bytes` INTEGER NOT NULL,
+                        `totalBytes` INTEGER NOT NULL,
+                        `path` TEXT,
+                        `coverPath` TEXT,
+                        `error` TEXT,
+                        `artistId` TEXT,
+                        `albumId` TEXT,
+                        `addedAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`userId`, `videoId`),
+                        FOREIGN KEY(`userId`) REFERENCES `users`(`id`)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_downloads_userId_status` " +
+                        "ON `downloads` (`userId`, `status`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_downloads_userId_addedAt` " +
+                        "ON `downloads` (`userId`, `addedAt`)",
                 )
             }
         }

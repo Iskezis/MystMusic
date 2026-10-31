@@ -12,6 +12,11 @@ import com.iskezis.myst.data.account.TvEphemeralData
 import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.PlaylistRepository
 import com.iskezis.myst.data.discord.DiscordPresenceManager
+import com.iskezis.myst.data.downloads.AudioCache
+import com.iskezis.myst.data.downloads.DownloadIndex
+import com.iskezis.myst.data.downloads.DownloadRepository
+import com.iskezis.myst.data.downloads.DownloadStorage
+import com.iskezis.myst.data.downloads.StoragePreferences
 import com.iskezis.myst.data.pairing.PairedSyncManager
 import com.iskezis.myst.data.pairing.PhonePairingSession
 import com.iskezis.myst.data.settings.AppearancePreferences
@@ -23,6 +28,7 @@ import com.iskezis.myst.data.youtube.YouTubeLibraryRepository
 import com.iskezis.myst.data.youtube.YouTubeRepository
 import com.iskezis.myst.player.PlayerController
 import com.iskezis.myst.util.AppLog
+import com.iskezis.myst.util.NetworkMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -56,6 +62,14 @@ class MystApp : Application(), ImageLoaderFactory {
     val database: AppDatabase by lazy { AppDatabase.get(this) }
     val session: SessionManager by lazy { SessionManager(this) }
     val appearance: AppearancePreferences by lazy { AppearancePreferences(this) }
+    val storagePreferences: StoragePreferences by lazy { StoragePreferences(this) }
+    val downloadStorage: DownloadStorage by lazy { DownloadStorage(this) }
+    val downloads: DownloadRepository by lazy {
+        DownloadRepository(database, downloadStorage)
+    }
+    val downloadIndex: DownloadIndex by lazy { DownloadIndex(this) }
+    val audioCache: AudioCache by lazy { AudioCache(this, storagePreferences) }
+    val networkMonitor: NetworkMonitor by lazy { NetworkMonitor(this) }
     val innerTube: InnerTubeClient by lazy { InnerTubeClient(this, session) }
     val youtube: YouTubeRepository by lazy { YouTubeRepository(innerTube) }
     val accountFiles: MystAccountFileRepository by lazy {
@@ -102,6 +116,24 @@ class MystApp : Application(), ImageLoaderFactory {
         AppCompatDelegate.setDefaultNightMode(appearance.nightMode)
         AppLog.attach(this)
         installCrashLogger()
+        downloadIndex.start()
+        backgroundScope.launch {
+            runCatching { downloadStorage.prepare() }.onFailure {
+                AppLog.failure(
+                    AppLog.TAG_DB,
+                    "Não foi possível preparar a pasta de downloads",
+                    it,
+                )
+            }
+            runCatching {
+                // Abre o cache antes de podar; no início do processo ele ainda
+                // não existe e trim() sozinho não faria nada.
+                audioCache.cache()
+                audioCache.trim()
+            }.onFailure {
+                AppLog.failure(AppLog.TAG_PLAYER, "Falha preparando a poda do cache", it)
+            }
+        }
         if (BuildConfig.FLAVOR == "tv") {
             // TV = terminal temporário. Remove resíduos de versões antigas
             // antes de qualquer tela; o banco novo será em memória.

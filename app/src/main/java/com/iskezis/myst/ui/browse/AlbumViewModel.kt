@@ -136,6 +136,28 @@ class AlbumViewModel(
         }
     }
 
+    /**
+     * Carrega todas as faixas do álbum para o "Baixar tudo". Não altera a
+     * lista visível: o download acontece em segundo plano e a tela continua
+     * exatamente onde o usuário estava.
+     */
+    suspend fun loadAllTracks(): List<Track> {
+        val loaded = page ?: app.youtube.albumPage(albumId).also { page = it }
+        val cover = loaded.thumbnailUrl?.takeIf { it.isNotBlank() }
+            ?: fallbackThumbnail.takeIf { it.isNotBlank() }
+        var tracks = loaded.tracks.withCover(cover)
+        var token = loaded.continuation
+        var pages = 0
+        while (token != null && tracks.size < MAX_DOWNLOAD_TRACKS && pages < MAX_DOWNLOAD_PAGES) {
+            val next = app.youtube.browseContinuation(token)
+            tracks = (tracks + next.tracks.withCover(cover))
+                .distinctBy { it.videoId }
+            token = next.continuation?.takeIf { it != token }
+            pages++
+        }
+        return tracks
+    }
+
     private fun meta(loaded: AlbumPage): String {
         val artist = loaded.artist.ifBlank { fallbackArtist }
             .ifBlank { app.getString(R.string.browse_artist_unknown) }
@@ -152,6 +174,9 @@ class AlbumViewModel(
         if (cover.isNullOrBlank()) this else map { it.copy(thumbnailUrl = cover) }
 
     companion object {
+        private const val MAX_DOWNLOAD_TRACKS = 500
+        private const val MAX_DOWNLOAD_PAGES = 12
+
         fun factory(
             app: Application,
             albumId: String,

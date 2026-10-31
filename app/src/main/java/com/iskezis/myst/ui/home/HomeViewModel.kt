@@ -15,12 +15,15 @@ import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.ui.common.LoadState
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -31,8 +34,10 @@ data class HomeUiState(
     val recent: LoadState<List<Track>> = LoadState.Loading,
     val trending: LoadState<List<Track>> = LoadState.Loading,
     val recommended: LoadState<List<Track>> = LoadState.Loading,
+    val downloads: LoadState<List<Track>> = LoadState.Loading,
     val refreshing: Boolean = false,
     val sessionExpired: Boolean = false,
+    val offline: Boolean = false,
 )
 
 class HomeViewModel(private val app: MystApp) : ViewModel() {
@@ -50,6 +55,8 @@ class HomeViewModel(private val app: MystApp) : ViewModel() {
         AppLog.d(AppLog.TAG_TUBE, "HomeViewModel init")
         refreshAccount()
         observeRecent()
+        observeConnectivity()
+        observeDownloads()
         // Em Alta e Recomendados usam o histórico e a afinidade da conta do
         // YouTube. O histórico é atualizado antes para a primeira carga já
         // refletir os dados reais, não apenas o cache vazio.
@@ -72,6 +79,61 @@ class HomeViewModel(private val app: MystApp) : ViewModel() {
             AppLog.d(AppLog.TAG_UI, "Home: usuário atual=$name avatar=${user?.avatarPath != null}")
             _state.update { it.copy(accountName = name, avatarPath = user?.avatarPath) }
         }
+    }
+
+    /**
+     * Sem internet a Navegação não mostra erros de rede: ela passa a exibir
+     * um aviso amigável e as músicas baixadas. Ao voltar a conexão, as seções
+     * normais são recarregadas automaticamente.
+     */
+    private fun observeConnectivity() {
+        viewModelScope.launch {
+            app.networkMonitor.online.collect { online ->
+                val wasOffline = _state.value.offline
+                _state.update { it.copy(offline = !online) }
+                if (online && wasOffline) {
+                    AppLog.i(AppLog.TAG_UI, "Conexão voltou; atualizando a Navegação")
+                    refresh()
+                }
+            }
+        }
+    }
+
+    private fun observeDownloads() {
+        val userId = app.session.session?.userId
+        if (userId == null || userId <= 0L) {
+            _state.update { it.copy(downloads = LoadState.Empty) }
+            return
+        }
+        viewModelScope.launch {
+            app.downloads.observeDone(userId)
+                .map { list -> list.map { item -> app.downloads.trackFor(item) } }
+                .flowOn(Dispatchers.IO)
+                .catch { t ->
+                    AppLog.failure(AppLog.TAG_DB, "Falha observando baixadas na home", t)
+                    _state.update {
+                        it.copy(downloads = LoadState.Error(R.string.downloads_error))
+                    }
+                }
+                .collect { tracks ->
+                    _state.update {
+                        it.copy(
+                            downloads = if (tracks.isEmpty()) {
+                                LoadState.Empty
+                            } else {
+                                LoadState.Data(tracks)
+                            },
+                        )
+                    }
+                }
+        }
+    }
+
+    /** "Verificar conexão" do estado offline. */
+    fun retryOffline() {
+        if (!app.networkMonitor.isOnline()) return
+        _state.update { it.copy(offline = false) }
+        refresh()
     }
 
     private fun observeRecent() {
@@ -270,4 +332,5 @@ internal fun sectionTitleRes(section: HomeSection): Int = when (section) {
     HomeSection.RECENT -> R.string.section_recent
     HomeSection.TRENDING -> R.string.section_trending
     HomeSection.RECOMMENDED -> R.string.section_recommended
+    HomeSection.OFFLINE -> R.string.section_downloads
 }

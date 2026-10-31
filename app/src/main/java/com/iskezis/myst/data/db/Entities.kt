@@ -250,6 +250,53 @@ data class YtSyncEntity(
 )
 
 /**
+ * Download offline de uma faixa. O arquivo pode estar na pasta pública
+ * `MystMusic/MystDownload` (quando o usuário concedeu acesso) ou no diretório
+ * externo privado do app. `path` guarda sempre o caminho real do arquivo para
+ * que uma mudança de permissão não torne downloads antigos invisíveis.
+ *
+ * A chave é por conta Myst: trocar de conta mostra somente as faixas dela,
+ * mas o mesmo arquivo pode ser compartilhado por duas contas no disco. A
+ * remoção só apaga o arquivo quando nenhuma outra conta ainda o referencia.
+ */
+@Entity(
+    tableName = "downloads",
+    primaryKeys = ["userId", "videoId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = UserEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["userId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [
+        Index(value = ["userId", "status"]),
+        Index(value = ["userId", "addedAt"]),
+    ],
+)
+data class DownloadEntity(
+    val userId: Long,
+    val videoId: String,
+    val title: String,
+    val artist: String,
+    val album: String = "",
+    val thumbnailUrl: String? = null,
+    val durationMs: Long = 0L,
+    /** QUEUED, DOWNLOADING, DONE ou FAILED. */
+    val status: String,
+    val bytes: Long = 0L,
+    val totalBytes: Long = 0L,
+    val path: String? = null,
+    val coverPath: String? = null,
+    val error: String? = null,
+    val artistId: String? = null,
+    val albumId: String? = null,
+    val addedAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+)
+
+/**
  * Tempo realmente ouvido em uma faixa, base das Estatísticas. O evento é
  * gravado ao trocar de música, terminar, pausar por mais de 30 s ou fechar o
  * serviço. `playedMs` acumula apenas o tempo em reprodução (pausas e saltos

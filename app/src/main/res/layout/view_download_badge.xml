@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="20dp"
+    android:layout_height="20dp">
+
+    <com.google.android.material.progressindicator.CircularProgressIndicator
+        android:id="@+id/downloadProgress"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:indeterminate="true"
+        android:visibility="gone"
+        app:indicatorColor="?attr/mystAccentText"
+        app:indicatorSize="20dp"
+        app:trackColor="?attr/mystStroke"
+        app:trackThickness="2dp" />
+
+    <ImageView
+        android:id="@+id/downloadDone"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:contentDescription="@string/track_download_done"
+        android:padding="2dp"
+        android:src="@drawable/ic_check"
+        android:visibility="gone"
+        app:tint="?attr/mystAccentText" />
+
+    <ImageView
+        android:id="@+id/downloadFailed"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:contentDescription="@string/downloads_status_failed"
+        android:padding="2dp"
+        android:src="@drawable/ic_cloud_off"
+        android:visibility="gone"
+        app:tint="?attr/mystError" />
+</merge>

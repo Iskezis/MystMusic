@@ -17,6 +17,7 @@ class PlaylistTrackAdapter(
     private val onPlay: (List<Track>, Int) -> Unit,
     private val onRemove: (Track, Int) -> Unit,
     private val editable: Boolean = true,
+    private val onMore: ((Track) -> Unit)? = null,
 ) : RecyclerView.Adapter<PlaylistTrackAdapter.Holder>() {
 
     private var items: List<Track> = emptyList()
@@ -77,7 +78,7 @@ class PlaylistTrackAdapter(
     override fun getItemCount(): Int = items.size
 
     override fun onBindViewHolder(holder: Holder, position: Int) {
-        holder.bind(items[position], items, onPlay, onRemove, editable)
+        holder.bind(items[position], items, onPlay, onRemove, editable, onMore)
         if (editable) {
             holder.dragHandle.setOnTouchListener { _, event ->
                 if (event.actionMasked == MotionEvent.ACTION_DOWN) {
@@ -99,10 +100,11 @@ class PlaylistTrackAdapter(
             onPlay: (List<Track>, Int) -> Unit,
             onRemove: (Track, Int) -> Unit,
             editable: Boolean,
+            onMore: ((Track) -> Unit)?,
         ) {
             val context = binding.root.context
             binding.trackDrag.isVisible = editable
-            binding.trackMore.isVisible = editable
+            binding.trackMore.isVisible = editable || onMore != null
             binding.trackTitle.text = track.title.ifBlank {
                 context.getString(R.string.player_unknown_title)
             }
@@ -121,9 +123,18 @@ class PlaylistTrackAdapter(
             binding.trackDuration.text = formatDuration(track.durationMs)
             binding.trackDuration.visibility =
                 if (track.durationMs > 0) View.VISIBLE else View.GONE
+            binding.trackDownloadBadge.videoId = track.videoId
             binding.root.setOnClickListener {
                 val index = tracks.indexOfFirst { it.videoId == track.videoId }
                 onPlay(tracks, if (index >= 0) index else 0)
+            }
+            binding.root.setOnLongClickListener {
+                if (onMore == null) {
+                    false
+                } else {
+                    onMore.invoke(track)
+                    true
+                }
             }
             binding.trackMore.setOnClickListener(
                 if (editable) {
@@ -134,7 +145,9 @@ class PlaylistTrackAdapter(
                         }
                     }
                 } else {
-                    null
+                    onMore?.let { action ->
+                        View.OnClickListener { action(track) }
+                    }
                 },
             )
         }

@@ -129,6 +129,16 @@
                             app:icon="@drawable/ic_shuffle"
                             app:iconTint="?attr/mystAccentText" />
                     </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/artistDownload"
+                        style="@style/Widget.MystMusic.Button.Secondary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_s"
+                        android:text="@string/download_all_artist"
+                        app:icon="@drawable/ic_arrow_down"
+                        app:iconTint="?attr/mystAccentText" />
                 </LinearLayout>
 
                 <LinearLayout

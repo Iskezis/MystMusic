@@ -447,7 +447,9 @@ class MainActivity : BaseActivity() {
                 destinationId == R.id.artistFragment ||
                 destinationId == R.id.albumFragment ||
                 destinationId == R.id.publicPlaylistFragment
-        binding.navBar.navPlaylists.isSelected = destinationId == R.id.playlistsFragment
+        binding.navBar.navPlaylists.isSelected =
+            destinationId == R.id.playlistsFragment ||
+                destinationId == R.id.downloadsFragment
         binding.navBar.navSettings.isSelected =
             destinationId == R.id.settingsFragment || destinationId == R.id.appearanceFragment
         animateNavBar(visible = destinationId != R.id.playerFragment)

@@ -33,6 +33,8 @@ data class PlaylistsUiState(
     val ytErrorRes: Int? = null,
     val ytSessionExpired: Boolean = false,
     val ytCached: Boolean = false,
+    val downloadCount: Int = 0,
+    val downloadBytes: Long = 0L,
 )
 
 class PlaylistsViewModel(private val app: MystApp) : ViewModel() {
@@ -51,6 +53,7 @@ class PlaylistsViewModel(private val app: MystApp) : ViewModel() {
         AppLog.d(AppLog.TAG_DB, "PlaylistsViewModel init")
         observe()
         observeYouTube()
+        observeDownloads()
         refreshYouTube(force = false)
     }
 
@@ -118,6 +121,24 @@ class PlaylistsViewModel(private val app: MystApp) : ViewModel() {
                     AppLog.d(AppLog.TAG_DB, "Playlists observadas: ${list.size}")
                     _state.update {
                         it.copy(loading = false, playlists = list, errorRes = null)
+                    }
+                }
+        }
+    }
+
+    private fun observeDownloads() {
+        val userId = app.session.session?.userId ?: return
+        viewModelScope.launch {
+            app.downloads.observeDone(userId)
+                .catch { t ->
+                    AppLog.failure(AppLog.TAG_DB, "Falha observando downloads", t)
+                }
+                .collect { list ->
+                    _state.update {
+                        it.copy(
+                            downloadCount = list.size,
+                            downloadBytes = list.sumOf { item -> item.bytes },
+                        )
                     }
                 }
         }

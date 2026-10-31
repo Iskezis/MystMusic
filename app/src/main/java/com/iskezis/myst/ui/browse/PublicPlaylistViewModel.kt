@@ -11,6 +11,7 @@ import com.iskezis.myst.R
 import com.iskezis.myst.data.youtube.MusicException
 import com.iskezis.myst.data.youtube.PlaylistPage
 import com.iskezis.myst.data.youtube.SessionExpiredException
+import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.ui.common.LoadState
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CancellationException
@@ -143,6 +144,25 @@ class PublicPlaylistViewModel(
                 _state.update { it.copy(loadingMore = false, loadMoreError = true) }
             }
         }
+    }
+
+    /**
+     * Carrega todas as faixas da playlist pública para o "Baixar tudo".
+     * Respeita os mesmos limites da cópia para não baixar uma playlist
+     * infinita por engano.
+     */
+    suspend fun loadAllTracks(): List<Track> {
+        val loaded = page ?: app.youtube.publicPlaylistPage(playlistId).also { page = it }
+        var all = loaded.tracks
+        var token = loaded.continuation
+        var pages = 0
+        while (token != null && all.size < MAX_COPY_TRACKS && pages < MAX_COPY_PAGES) {
+            val next = app.youtube.browseContinuation(token)
+            all = (all + next.tracks).distinctBy { it.videoId }
+            token = next.continuation?.takeIf { it != token }
+            pages++
+        }
+        return all.distinctBy { it.videoId }
     }
 
     fun copyToMyst() {

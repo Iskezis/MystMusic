@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/downloadRow"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="@dimen/space_s"
+    android:layout_marginEnd="@dimen/space_s"
+    android:layout_marginBottom="@dimen/space_xs"
+    android:background="@drawable/bg_track_row"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:minHeight="@dimen/track_row_height"
+    android:orientation="horizontal"
+    android:padding="@dimen/space_s">
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/downloadCover"
+        android:layout_width="@dimen/track_thumb"
+        android:layout_height="@dimen/track_thumb"
+        android:background="@drawable/bg_cover_placeholder"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.Cover" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/space_m"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/downloadTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:maxLines="1"
+            android:textColor="?attr/mystOnSurface"
+            android:textSize="@dimen/text_body" />
+
+        <TextView
+            android:id="@+id/downloadArtist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?attr/mystOnSurfaceDim"
+            android:textSize="@dimen/text_small" />
+
+        <TextView
+            android:id="@+id/downloadStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?attr/mystAccentText"
+            android:textSize="@dimen/text_small" />
+
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/downloadProgress"
+            android:layout_width="140dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:indeterminate="false"
+            android:max="100"
+            android:visibility="gone"
+            app:indicatorColor="?attr/mystAccentText"
+            app:trackColor="?attr/mystStroke"
+            app:trackThickness="3dp" />
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/downloadAction"
+        android:layout_width="@dimen/touch_target"
+        android:layout_height="@dimen/touch_target"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/downloads_remove"
+        android:padding="12dp"
+        android:src="@drawable/ic_close"
+        app:tint="?attr/mystOnSurfaceDim" />
+</LinearLayout>

@@ -33,6 +33,7 @@ object AppLog {
     const val TAG_STREAM = "MystStream"
     const val TAG_TUBE = "MystTube"
     const val TAG_DB = "MystDb"
+    const val TAG_DOWNLOAD = "MystDownload"
     const val TAG_AUTH = "MystAuth"
     const val TAG_SPOTIFY = "MystSpotify"
     const val TAG_DISCORD = "MystDiscord"

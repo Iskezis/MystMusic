@@ -13,6 +13,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
@@ -68,6 +69,18 @@ class HomeFragment : YouTubeLoginFragment() {
             onRetryRecent = viewModel::retryRecent,
             onRetryTrending = viewModel::retryTrending,
             onRetryRecommended = viewModel::retryRecommended,
+            onRetryOffline = {
+                val app = requireActivity().application as MystApp
+                if (app.networkMonitor.isOnline()) {
+                    viewModel.retryOffline()
+                } else {
+                    Snackbar.make(
+                        binding.root,
+                        R.string.home_offline_still,
+                        Snackbar.LENGTH_LONG,
+                    ).show()
+                }
+            },
         )
         binding.homeList.layoutManager = LinearLayoutManager(requireContext())
         binding.homeList.adapter = adapter
@@ -148,19 +161,24 @@ class HomeFragment : YouTubeLoginFragment() {
                 "recomendados=${state.recommended.javaClass.simpleName}",
         )
         binding.homeRefresh.isRefreshing = state.refreshing
-        binding.homeYtBanner.ytBannerRoot.isVisible = state.sessionExpired
-        adapter.submitList(
-            listOf(
-                HomeItem.Greeting(state.accountName, state.avatarPath),
-                HomeItem.Search,
-                HomeItem.Header(HomeSection.RECENT),
-                HomeItem.Carousel(HomeSection.RECENT, state.recent),
-                HomeItem.Header(HomeSection.TRENDING),
-                HomeItem.Carousel(HomeSection.TRENDING, state.trending),
-                HomeItem.Header(HomeSection.RECOMMENDED),
-                HomeItem.Carousel(HomeSection.RECOMMENDED, state.recommended),
-            ),
+        binding.homeYtBanner.ytBannerRoot.isVisible = state.sessionExpired && !state.offline
+        val items = mutableListOf<HomeItem>(
+            HomeItem.Greeting(state.accountName, state.avatarPath),
+            HomeItem.Search,
         )
+        if (state.offline) {
+            items += HomeItem.Offline
+            items += HomeItem.Header(HomeSection.OFFLINE)
+            items += HomeItem.Carousel(HomeSection.OFFLINE, state.downloads)
+        } else {
+            items += HomeItem.Header(HomeSection.RECENT)
+            items += HomeItem.Carousel(HomeSection.RECENT, state.recent)
+            items += HomeItem.Header(HomeSection.TRENDING)
+            items += HomeItem.Carousel(HomeSection.TRENDING, state.trending)
+            items += HomeItem.Header(HomeSection.RECOMMENDED)
+            items += HomeItem.Carousel(HomeSection.RECOMMENDED, state.recommended)
+        }
+        adapter.submitList(items)
     }
 
     override fun onDestroyView() {

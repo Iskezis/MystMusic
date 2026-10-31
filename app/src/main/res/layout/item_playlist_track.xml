@@ -67,6 +67,13 @@
         android:textColor="?attr/mystOnSurfaceDim"
         android:textSize="@dimen/text_small" />
 
+    <com.iskezis.myst.ui.common.DownloadBadgeView
+        android:id="@+id/trackDownloadBadge"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginStart="4dp"
+        android:visibility="gone" />
+
     <ImageButton
         android:id="@+id/trackMore"
         android:layout_width="40dp"

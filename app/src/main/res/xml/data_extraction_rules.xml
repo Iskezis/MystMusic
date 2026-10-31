@@ -14,6 +14,8 @@
         <exclude domain="file" path="myst_last_crash.txt" />
         <exclude domain="root" path="app_webview/" />
         <exclude domain="file" path="downloads/" />
+        <exclude domain="external" path="Music/MystMusic/MystDownload/" />
+        <exclude domain="file" path="offline/" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="myst_session.xml" />
@@ -24,5 +26,7 @@
         <exclude domain="file" path="myst_last_crash.txt" />
         <exclude domain="root" path="app_webview/" />
         <exclude domain="file" path="downloads/" />
+        <exclude domain="external" path="Music/MystMusic/MystDownload/" />
+        <exclude domain="file" path="offline/" />
     </device-transfer>
 </data-extraction-rules>

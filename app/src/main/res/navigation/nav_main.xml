@@ -30,6 +30,11 @@
         android:label="@string/stats_title" />
 
     <fragment
+        android:id="@+id/downloadsFragment"
+        android:name="com.iskezis.myst.ui.downloads.DownloadsFragment"
+        android:label="@string/downloads_title" />
+
+    <fragment
         android:id="@+id/searchFragment"
         android:name="com.iskezis.myst.ui.search.SearchFragment"
         android:label="@string/search_title">

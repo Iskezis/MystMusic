@@ -284,6 +284,126 @@ interface YouTubeLibraryDao {
 }
 
 @Dao
+interface DownloadDao {
+    @Query("SELECT * FROM downloads ORDER BY addedAt DESC")
+    fun observeAll(): Flow<List<DownloadEntity>>
+
+    @Query("SELECT * FROM downloads WHERE userId = :userId ORDER BY addedAt DESC")
+    fun observe(userId: Long): Flow<List<DownloadEntity>>
+
+    @Query("SELECT * FROM downloads WHERE userId = :userId AND status = :status ORDER BY addedAt DESC")
+    fun observeByStatus(userId: Long, status: String): Flow<List<DownloadEntity>>
+
+    @Query("SELECT * FROM downloads WHERE userId = :userId AND videoId = :videoId LIMIT 1")
+    fun observeOne(userId: Long, videoId: String): Flow<DownloadEntity?>
+
+    @Query("SELECT * FROM downloads WHERE userId = :userId AND videoId = :videoId LIMIT 1")
+    suspend fun find(userId: Long, videoId: String): DownloadEntity?
+
+    @Query("SELECT * FROM downloads WHERE userId = :userId ORDER BY addedAt DESC")
+    suspend fun all(userId: Long): List<DownloadEntity>
+
+    @Query("SELECT * FROM downloads WHERE userId = :userId AND status = :status ORDER BY addedAt DESC")
+    suspend fun byStatus(userId: Long, status: String): List<DownloadEntity>
+
+    @Query(
+        "SELECT * FROM downloads WHERE userId = :userId AND status = 'QUEUED' " +
+            "ORDER BY addedAt ASC",
+    )
+    suspend fun queued(userId: Long): List<DownloadEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(download: DownloadEntity)
+
+    @Query(
+        "UPDATE downloads SET title = :title, artist = :artist, album = :album, " +
+            "thumbnailUrl = :thumbnailUrl, durationMs = :durationMs, " +
+            "artistId = :artistId, albumId = :albumId, status = 'QUEUED', " +
+            "bytes = 0, totalBytes = 0, path = NULL, coverPath = NULL, error = NULL, " +
+            "addedAt = :addedAt, updatedAt = :addedAt " +
+            "WHERE userId = :userId AND videoId = :videoId",
+    )
+    suspend fun requeue(
+        userId: Long,
+        videoId: String,
+        title: String,
+        artist: String,
+        album: String,
+        thumbnailUrl: String?,
+        durationMs: Long,
+        artistId: String?,
+        albumId: String?,
+        addedAt: Long,
+    )
+
+    @Query(
+        "UPDATE downloads SET status = 'DOWNLOADING', error = NULL, updatedAt = :now " +
+            "WHERE userId = :userId AND videoId = :videoId AND status = 'QUEUED'",
+    )
+    suspend fun markDownloading(userId: Long, videoId: String, now: Long): Int
+
+    @Query(
+        "UPDATE downloads SET bytes = :bytes, totalBytes = :totalBytes, updatedAt = :now " +
+            "WHERE userId = :userId AND videoId = :videoId AND status = 'DOWNLOADING'",
+    )
+    suspend fun progress(userId: Long, videoId: String, bytes: Long, totalBytes: Long, now: Long)
+
+    @Query(
+        "UPDATE downloads SET status = 'DONE', bytes = :bytes, totalBytes = :totalBytes, " +
+            "path = :path, coverPath = :coverPath, error = NULL, updatedAt = :now " +
+            "WHERE userId = :userId AND videoId = :videoId",
+    )
+    suspend fun markDone(
+        userId: Long,
+        videoId: String,
+        bytes: Long,
+        totalBytes: Long,
+        path: String,
+        coverPath: String?,
+        now: Long,
+    ): Int
+
+    @Query(
+        "UPDATE downloads SET status = 'FAILED', error = :error, updatedAt = :now " +
+            "WHERE userId = :userId AND videoId = :videoId",
+    )
+    suspend fun markFailed(userId: Long, videoId: String, error: String, now: Long)
+
+    @Query(
+        "UPDATE downloads SET status = 'QUEUED', bytes = 0, totalBytes = 0, error = NULL, " +
+            "updatedAt = :now WHERE status = 'DOWNLOADING'",
+    )
+    suspend fun resetInterrupted(now: Long)
+
+    @Query(
+        "UPDATE downloads SET status = 'FAILED', error = :reason, updatedAt = :now " +
+            "WHERE userId = :userId AND status IN ('QUEUED', 'DOWNLOADING')",
+    )
+    suspend fun cancelActive(userId: Long, reason: String, now: Long)
+
+    @Query("DELETE FROM downloads WHERE userId = :userId AND videoId = :videoId")
+    suspend fun delete(userId: Long, videoId: String)
+
+    @Query("DELETE FROM downloads WHERE userId = :userId")
+    suspend fun deleteAll(userId: Long)
+
+    @Query("SELECT COUNT(*) FROM downloads WHERE path = :path AND status = 'DONE'")
+    suspend fun referencesToPath(path: String): Int
+
+    @Query("SELECT COALESCE(SUM(bytes), 0) FROM downloads WHERE userId = :userId AND status = 'DONE'")
+    suspend fun usedBytes(userId: Long): Long
+
+    @Query("SELECT COUNT(*) FROM downloads WHERE userId = :userId AND status = 'DONE'")
+    suspend fun doneCount(userId: Long): Int
+
+    @Query(
+        "SELECT COUNT(*) FROM downloads WHERE userId = :userId " +
+            "AND status IN ('QUEUED', 'DOWNLOADING')",
+    )
+    suspend fun activeCount(userId: Long): Int
+}
+
+@Dao
 interface PlayEventDao {
     @Insert
     suspend fun insert(event: PlayEventEntity): Long

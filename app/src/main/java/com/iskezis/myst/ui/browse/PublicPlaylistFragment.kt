@@ -11,8 +11,10 @@ import androidx.navigation.fragment.findNavController
 import com.google.android.material.snackbar.Snackbar
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
+import com.iskezis.myst.ui.common.DownloadActions
 import com.iskezis.myst.ui.playlists.PlaylistsFragment
 import com.iskezis.myst.ui.search.SearchFragment
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 class PublicPlaylistFragment : BaseBrowseDetailFragment() {
@@ -34,6 +36,7 @@ class PublicPlaylistFragment : BaseBrowseDetailFragment() {
             fallbackThumbnail = fallbackThumbnail,
         )
     }
+    private var preparingDownload = false
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -41,6 +44,7 @@ class PublicPlaylistFragment : BaseBrowseDetailFragment() {
             onPlayAll = { playAll(shuffle = false) },
             onShuffle = { playAll(shuffle = true) },
             onCopy = viewModel::copyToMyst,
+            onDownload = { prepareDownloadAll() },
             onRetry = viewModel::retry,
             onLoadMore = viewModel::loadMore,
             onArtist = { track -> openArtist(track.artistId, track.artist) },
@@ -80,6 +84,36 @@ class PublicPlaylistFragment : BaseBrowseDetailFragment() {
             startIndex = 0,
             shuffle = shuffle,
         )
+    }
+
+    private fun prepareDownloadAll() {
+        if (preparingDownload) return
+        preparingDownload = true
+        val progress = Snackbar.make(
+            binding.root,
+            R.string.download_all_loading,
+            Snackbar.LENGTH_INDEFINITE,
+        )
+        progress.show()
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val tracks = viewModel.loadAllTracks()
+                progress.dismiss()
+                DownloadActions.confirmAndDownload(this@PublicPlaylistFragment, tracks)
+            } catch (cancelled: CancellationException) {
+                progress.dismiss()
+                throw cancelled
+            } catch (t: Throwable) {
+                progress.dismiss()
+                Snackbar.make(
+                    binding.root,
+                    R.string.download_all_error,
+                    Snackbar.LENGTH_LONG,
+                ).show()
+            } finally {
+                preparingDownload = false
+            }
+        }
     }
 
     private fun showCopySnackbar(localPlaylistId: Long) {

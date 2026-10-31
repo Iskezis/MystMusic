@@ -57,6 +57,12 @@ class PlaylistsFragment : YouTubeLoginFragment() {
             onOpen = { playlist -> openPlaylist(playlist.id) },
             onOpenYt = { playlist -> openYouTubePlaylist(playlist) },
             onRetryYoutube = { viewModel.retryYouTube() },
+            onOpenDownloads = {
+                runCatching { findNavController().navigate(R.id.downloadsFragment) }
+                    .onFailure {
+                        AppLog.failure(AppLog.TAG_UI, "Falha abrindo Baixadas", it)
+                    }
+            },
         )
         val layoutManager = GridLayoutManager(requireContext(), GRID_COLUMNS)
         layoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
@@ -190,6 +196,7 @@ class PlaylistsFragment : YouTubeLoginFragment() {
         }
         add(PlaylistGridItem.New)
         state.playlists.forEach { add(PlaylistGridItem.Item(it)) }
+        add(PlaylistGridItem.Downloads(state.downloadCount, state.downloadBytes))
 
         add(
             PlaylistGridItem.Header(

@@ -14,6 +14,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import coil.load
+import com.google.android.material.snackbar.Snackbar
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.data.youtube.AlbumSummary
@@ -22,6 +23,7 @@ import com.iskezis.myst.data.youtube.ArtistSummary
 import com.iskezis.myst.data.youtube.PlaylistSummary
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.databinding.FragmentArtistBinding
+import com.iskezis.myst.ui.common.DownloadActions
 import com.iskezis.myst.ui.common.TrackRowAdapter
 import com.iskezis.myst.ui.player.TrackMenuSheet
 import com.iskezis.myst.ui.search.SearchFragment
@@ -29,6 +31,7 @@ import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.applyFadeThrough
 import com.iskezis.myst.util.UiAnimations.pressScale
 import com.iskezis.myst.util.UiAnimations.staggerVisibleChildren
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -58,6 +61,7 @@ class ArtistFragment : Fragment() {
 
     private var currentState = ArtistUiState()
     private var animatedOnce = false
+    private var preparingDownload = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -106,8 +110,10 @@ class ArtistFragment : Fragment() {
         binding.artistSeeAll.setOnClickListener { onSeeAll() }
         binding.artistPlayAll.setOnClickListener { playAll(shuffle = false) }
         binding.artistShuffle.setOnClickListener { playAll(shuffle = true) }
+        binding.artistDownload.setOnClickListener { prepareDownloadAll() }
         binding.artistPlayAll.pressScale()
         binding.artistShuffle.pressScale()
+        binding.artistDownload.pressScale()
         binding.artistState.stateRetry.setOnClickListener { viewModel.retry() }
         binding.artistState.stateRetry.pressScale()
 
@@ -199,6 +205,7 @@ class ArtistFragment : Fragment() {
         }
         binding.artistPlayAll.isEnabled = page.topTracks.isNotEmpty()
         binding.artistShuffle.isEnabled = page.topTracks.isNotEmpty()
+        binding.artistDownload.isEnabled = page.topTracks.isNotEmpty()
 
         binding.artistAlbumsSection.isVisible = page.albums.isNotEmpty()
         binding.artistSinglesSection.isVisible = page.singles.isNotEmpty()
@@ -265,6 +272,36 @@ class ArtistFragment : Fragment() {
             startIndex = 0,
             shuffle = shuffle,
         )
+    }
+
+    private fun prepareDownloadAll() {
+        if (preparingDownload) return
+        preparingDownload = true
+        val progress = Snackbar.make(
+            binding.root,
+            R.string.download_all_loading,
+            Snackbar.LENGTH_INDEFINITE,
+        )
+        progress.show()
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val tracks = viewModel.loadAllSongs()
+                progress.dismiss()
+                DownloadActions.confirmAndDownload(this@ArtistFragment, tracks)
+            } catch (cancelled: CancellationException) {
+                progress.dismiss()
+                throw cancelled
+            } catch (t: Throwable) {
+                progress.dismiss()
+                Snackbar.make(
+                    binding.root,
+                    R.string.download_all_error,
+                    Snackbar.LENGTH_LONG,
+                ).show()
+            } finally {
+                preparingDownload = false
+            }
+        }
     }
 
     private fun openArtist(artistId: String?, artistName: String) {

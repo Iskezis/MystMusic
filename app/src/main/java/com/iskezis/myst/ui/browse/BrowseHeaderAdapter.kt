@@ -17,6 +17,7 @@ data class BrowseHeader(
     val showCopy: Boolean = false,
     val copying: Boolean = false,
     val canPlay: Boolean = false,
+    val showDownload: Boolean = true,
 )
 
 /**
@@ -27,6 +28,7 @@ class BrowseHeaderAdapter(
     private val onPlayAll: () -> Unit,
     private val onShuffle: () -> Unit,
     private val onCopy: () -> Unit,
+    private val onDownload: () -> Unit,
 ) : RecyclerView.Adapter<BrowseHeaderAdapter.Holder>() {
 
     private var header = BrowseHeader()
@@ -59,6 +61,7 @@ class BrowseHeaderAdapter(
             binding.browseHeaderPlayAll.setOnClickListener { onPlayAll() }
             binding.browseHeaderShuffle.setOnClickListener { onShuffle() }
             binding.browseHeaderCopy.setOnClickListener { onCopy() }
+            binding.browseHeaderDownload.setOnClickListener { onDownload() }
         }
 
         fun bind(current: BrowseHeader) {
@@ -90,6 +93,8 @@ class BrowseHeaderAdapter(
 
             binding.browseHeaderPlayAll.isEnabled = current.canPlay
             binding.browseHeaderShuffle.isEnabled = current.canPlay
+            binding.browseHeaderDownload.isVisible = current.showDownload
+            binding.browseHeaderDownload.isEnabled = current.canPlay
             binding.browseHeaderCopy.isVisible = current.showCopy
             binding.browseHeaderCopy.isEnabled = !current.copying && current.canPlay
             binding.browseHeaderCopy.setText(

@@ -24,7 +24,9 @@ import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.databinding.FragmentPlaylistDetailBinding
+import com.iskezis.myst.ui.common.DownloadActions
 import com.iskezis.myst.ui.common.LoadState
+import com.iskezis.myst.ui.player.TrackMenuSheet
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.applyFadeThrough
 import com.iskezis.myst.util.UiAnimations.pressScale
@@ -81,6 +83,10 @@ class PlaylistDetailFragment : Fragment() {
                 (requireActivity().application as MystApp).playerController.play(tracks, index)
             },
             onRemove = { track, _ -> confirmRemove(track) },
+            onMore = { track ->
+                TrackMenuSheet.newInstance(track)
+                    .show(childFragmentManager, TrackMenuSheet.TAG)
+            },
         )
         binding.detailTracks.layoutManager = LinearLayoutManager(requireContext())
         binding.detailTracks.adapter = adapter
@@ -94,8 +100,13 @@ class PlaylistDetailFragment : Fragment() {
         binding.detailCoverEdit.setOnClickListener { launchCoverPicker() }
         binding.detailPlayAll.setOnClickListener { playAll(shuffle = false) }
         binding.detailShuffle.setOnClickListener { playAll(shuffle = true) }
+        binding.detailDownload.setOnClickListener {
+            val tracks = (currentState.tracks as? LoadState.Data)?.value.orEmpty()
+            DownloadActions.confirmAndDownload(this, tracks)
+        }
         binding.detailPlayAll.pressScale()
         binding.detailShuffle.pressScale()
+        binding.detailDownload.pressScale()
         binding.detailBack.pressScale()
         binding.detailMore.pressScale()
         binding.detailState.stateRetry.setOnClickListener {
@@ -230,6 +241,7 @@ class PlaylistDetailFragment : Fragment() {
     private fun setPlayButtons(enabled: Boolean) {
         binding.detailPlayAll.isEnabled = enabled
         binding.detailShuffle.isEnabled = enabled
+        binding.detailDownload.isEnabled = enabled
     }
 
     private fun stopShimmer() {

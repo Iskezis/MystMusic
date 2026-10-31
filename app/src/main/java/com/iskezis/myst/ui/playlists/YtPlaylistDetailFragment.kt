@@ -17,8 +17,10 @@ import com.google.android.material.snackbar.Snackbar
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.databinding.FragmentPlaylistDetailBinding
+import com.iskezis.myst.ui.common.DownloadActions
 import com.iskezis.myst.ui.common.LoadState
 import com.iskezis.myst.ui.common.YouTubeLoginFragment
+import com.iskezis.myst.ui.player.TrackMenuSheet
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.UiAnimations.applyFadeThrough
 import com.iskezis.myst.util.UiAnimations.pressScale
@@ -80,6 +82,10 @@ class YtPlaylistDetailFragment : YouTubeLoginFragment() {
             },
             onRemove = { _, _ -> },
             editable = false,
+            onMore = { track ->
+                TrackMenuSheet.newInstance(track)
+                    .show(childFragmentManager, TrackMenuSheet.TAG)
+            },
         )
         binding.detailTracks.layoutManager = LinearLayoutManager(requireContext())
         binding.detailTracks.adapter = adapter
@@ -92,10 +98,16 @@ class YtPlaylistDetailFragment : YouTubeLoginFragment() {
         binding.detailCoverFrame.isFocusable = false
         binding.detailCopy.isVisible = true
         binding.detailCopy.setOnClickListener { viewModel.copyToMyst() }
+        binding.detailDownload.isVisible = true
+        binding.detailDownload.setOnClickListener {
+            val tracks = (currentState.tracks as? LoadState.Data)?.value.orEmpty()
+            DownloadActions.confirmAndDownload(this, tracks)
+        }
         binding.detailPlayAll.setOnClickListener { playAll(shuffle = false) }
         binding.detailShuffle.setOnClickListener { playAll(shuffle = true) }
         binding.detailPlayAll.pressScale()
         binding.detailShuffle.pressScale()
+        binding.detailDownload.pressScale()
         binding.detailState.stateRetry.setOnClickListener {
             if (currentState.tracks is LoadState.Error) viewModel.retry() else viewModel.retryTracks()
         }
@@ -238,6 +250,7 @@ class YtPlaylistDetailFragment : YouTubeLoginFragment() {
     private fun setPlayButtons(enabled: Boolean) {
         binding.detailPlayAll.isEnabled = enabled
         binding.detailShuffle.isEnabled = enabled
+        binding.detailDownload.isEnabled = enabled
     }
 
     private fun stopShimmer() {

@@ -12,7 +12,9 @@ import coil.load
 import com.iskezis.myst.R
 import com.iskezis.myst.data.db.PlaylistEntity
 import com.iskezis.myst.data.db.YtPlaylistEntity
+import com.iskezis.myst.data.downloads.formatBytes
 import com.iskezis.myst.databinding.ItemPlaylistCardBinding
+import com.iskezis.myst.databinding.ItemPlaylistDownloadsBinding
 import com.iskezis.myst.databinding.ItemPlaylistNewBinding
 import com.iskezis.myst.databinding.ItemPlaylistSectionHeaderBinding
 import com.iskezis.myst.databinding.ItemPlaylistSectionLoadingBinding
@@ -32,6 +34,8 @@ sealed interface PlaylistGridItem {
 
     data class YtItem(val playlist: YtPlaylistEntity) : PlaylistGridItem
 
+    data class Downloads(val count: Int, val bytes: Long) : PlaylistGridItem
+
     data class Status(
         @StringRes val titleRes: Int,
         @StringRes val subtitleRes: Int? = null,
@@ -47,12 +51,14 @@ class PlaylistGridAdapter(
     private val onOpen: (PlaylistEntity) -> Unit,
     private val onOpenYt: (YtPlaylistEntity) -> Unit,
     private val onRetryYoutube: () -> Unit,
+    private val onOpenDownloads: () -> Unit,
 ) : ListAdapter<PlaylistGridItem, RecyclerView.ViewHolder>(Diff) {
 
     fun isFullSpan(position: Int): Boolean = when (currentList.getOrNull(position)) {
         is PlaylistGridItem.Header,
         is PlaylistGridItem.Status,
         is PlaylistGridItem.Loading,
+        is PlaylistGridItem.Downloads,
         -> true
         null -> true
         else -> false
@@ -63,6 +69,7 @@ class PlaylistGridAdapter(
         is PlaylistGridItem.Item -> TYPE_PLAYLIST
         is PlaylistGridItem.Header -> TYPE_HEADER
         is PlaylistGridItem.YtItem -> TYPE_YT_PLAYLIST
+        is PlaylistGridItem.Downloads -> TYPE_DOWNLOADS
         is PlaylistGridItem.Status -> TYPE_STATUS
         is PlaylistGridItem.Loading -> TYPE_LOADING
     }
@@ -83,6 +90,10 @@ class PlaylistGridAdapter(
                 ItemYtPlaylistCardBinding.inflate(inflater, parent, false),
                 onOpenYt,
             )
+            TYPE_DOWNLOADS -> DownloadsHolder(
+                ItemPlaylistDownloadsBinding.inflate(inflater, parent, false),
+                onOpenDownloads,
+            )
             TYPE_STATUS -> StatusHolder(
                 ItemPlaylistSectionStateBinding.inflate(inflater, parent, false),
                 onRetryYoutube,
@@ -99,6 +110,7 @@ class PlaylistGridAdapter(
             is PlaylistGridItem.Item -> (holder as PlaylistHolder).bind(item.playlist)
             is PlaylistGridItem.Header -> (holder as HeaderHolder).bind(item)
             is PlaylistGridItem.YtItem -> (holder as YtPlaylistHolder).bind(item.playlist)
+            is PlaylistGridItem.Downloads -> (holder as DownloadsHolder).bind(item)
             is PlaylistGridItem.Status -> (holder as StatusHolder).bind(item)
             is PlaylistGridItem.Loading -> (holder as LoadingHolder).bind()
         }
@@ -200,6 +212,30 @@ class PlaylistGridAdapter(
         }
     }
 
+    private class DownloadsHolder(
+        private val binding: ItemPlaylistDownloadsBinding,
+        private val onOpen: () -> Unit,
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(item: PlaylistGridItem.Downloads) {
+            val context = binding.root.context
+            binding.downloadsSubtitle.text = if (item.count > 0) {
+                context.getString(
+                    R.string.playlists_downloads_subtitle,
+                    item.count,
+                    formatBytes(item.bytes),
+                )
+            } else {
+                context.getString(R.string.playlists_downloads_empty)
+            }
+            binding.downloadsCard.contentDescription = context.getString(
+                R.string.playlists_downloads_description,
+                item.count,
+            )
+            binding.downloadsCard.setOnClickListener { onOpen() }
+        }
+    }
+
     private class StatusHolder(
         private val binding: ItemPlaylistSectionStateBinding,
         private val onRetryYoutube: () -> Unit,
@@ -238,6 +274,8 @@ class PlaylistGridAdapter(
                     oldItem.titleRes == newItem.titleRes
                 oldItem is PlaylistGridItem.YtItem && newItem is PlaylistGridItem.YtItem ->
                     oldItem.playlist.ytId == newItem.playlist.ytId
+                oldItem is PlaylistGridItem.Downloads && newItem is PlaylistGridItem.Downloads ->
+                    oldItem.count == newItem.count && oldItem.bytes == newItem.bytes
                 oldItem is PlaylistGridItem.Status && newItem is PlaylistGridItem.Status ->
                     oldItem.titleRes == newItem.titleRes
                 oldItem is PlaylistGridItem.Loading && newItem is PlaylistGridItem.Loading -> true
@@ -255,5 +293,6 @@ class PlaylistGridAdapter(
         private const val TYPE_YT_PLAYLIST = 3
         private const val TYPE_STATUS = 4
         private const val TYPE_LOADING = 5
+        private const val TYPE_DOWNLOADS = 6
     }
 }

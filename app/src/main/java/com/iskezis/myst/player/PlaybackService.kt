@@ -10,6 +10,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.ResolvingDataSource
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
@@ -84,6 +85,22 @@ class PlaybackService : MediaSessionService() {
             .setContentTypePredicate { contentType ->
                 contentType == null || !contentType.startsWith("text/", ignoreCase = true)
             }
+        val directDataSourceFactory = DefaultDataSource.Factory(this, httpDataSourceFactory)
+        // O resolver transforma myst:// em file:// (download) ou https://.
+        // O roteador então decide entre arquivo local, cache ou rede. A chave
+        // estável vem do próprio resolver (myst-stream:<videoId>).
+        val cacheFactory = CacheDataSource.Factory()
+            .setCache(app.audioCache.cache())
+            .setUpstreamDataSourceFactory(directDataSourceFactory)
+            .setCacheKeyFactory { dataSpec ->
+                dataSpec.key ?: dataSpec.uri.toString()
+            }
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+        val routingFactory = RoutingDataSourceFactory(
+            cacheFactory = cacheFactory,
+            directFactory = directDataSourceFactory,
+            cacheEnabled = { app.storagePreferences.cacheEnabled },
+        )
         // O padrão do Media3 exige 2,5 s de áudio em buffer antes de começar a
         // tocar. Com uma URL já validada e uma faixa progressiva, 500 ms bastam
         // para evitar underrun e o som começa muito mais rápido.
@@ -109,10 +126,7 @@ class PlaybackService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setMediaSourceFactory(
                 ProgressiveMediaSource.Factory(
-                    ResolvingDataSource.Factory(
-                        DefaultDataSource.Factory(this, httpDataSourceFactory),
-                        resolver,
-                    ),
+                    ResolvingDataSource.Factory(routingFactory, resolver),
                 ),
             )
             .build()
