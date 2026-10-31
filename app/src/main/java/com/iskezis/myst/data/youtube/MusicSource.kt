@@ -14,6 +14,9 @@ data class Track(
     /** Álbum do YouTube Music, quando a resposta informa. */
     val albumId: String? = null,
 ) {
+    /** Álbum identificado automaticamente para estatísticas e menus. */
+    data class AlbumRef(val name: String, val albumId: String? = null)
+
     /** Melhor arte disponível, mesmo para faixas antigas salvas com URL pequena. */
     fun artworkUrl(): String? = Thumbnails.best(thumbnailUrl, videoId)
 }

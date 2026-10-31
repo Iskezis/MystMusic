@@ -1,6 +1,7 @@
 package com.iskezis.myst.data.youtube
 
 import com.iskezis.myst.util.AppLog
+import com.iskezis.myst.util.normalizeText
 
 class YouTubeRepository(private val source: MusicSource) {
 
@@ -9,6 +10,7 @@ class YouTubeRepository(private val source: MusicSource) {
 
     private val cache = HashMap<String, Cached>()
     private val pageCache = HashMap<String, CachedPage<Any>>()
+    private val albumCache = HashMap<String, Track.AlbumRef>()
     private val lock = Any()
 
     suspend fun search(query: String, limit: Int = 30): List<Track> {
@@ -75,6 +77,61 @@ class YouTubeRepository(private val source: MusicSource) {
         return cachedPage(key) { source.searchPage(query, filter, params, null) }
     }
 
+    /**
+     * Identifica o álbum de uma faixa que veio sem esse metadado (histórico,
+     * home ou recomendações). A busca do YouTube Music devolve o álbum no
+     * subtítulo das músicas; procuramos primeiro o mesmo videoId e, se ele não
+     * aparecer, a mesma combinação de título e artista. O resultado fica em
+     * cache durante a sessão.
+     */
+    suspend fun albumFor(track: Track): Track.AlbumRef? {
+        track.album.trim().takeIf { it.isNotBlank() }?.let { name ->
+            return Track.AlbumRef(name, track.albumId)
+        }
+        if (track.videoId.isBlank()) return null
+        synchronized(lock) {
+            albumCache[track.videoId]?.let { return it }
+        }
+        val query = listOf(track.title, track.artist)
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .joinToString(" ")
+        if (query.isBlank()) return null
+
+        var match = findAlbumMatch(query, track, SearchFilter.ALL)
+            ?: findAlbumMatch(query, track, SearchFilter.SONGS)
+        if (match == null) {
+            match = findAlbumMatch(track.title.trim(), track, SearchFilter.SONGS)
+        }
+        val name = match?.album?.trim().orEmpty()
+        if (name.isBlank()) return null
+        val result = Track.AlbumRef(name, match?.albumId)
+        synchronized(lock) { albumCache[track.videoId] = result }
+        AppLog.i(AppLog.TAG_TUBE, "Álbum identificado para ${track.videoId}: $name")
+        return result
+    }
+
+    private suspend fun findAlbumMatch(
+        query: String,
+        track: Track,
+        filter: SearchFilter,
+    ): Track? {
+        if (query.isBlank()) return null
+        val page = runCatching { searchPage(query, filter) }.getOrNull() ?: return null
+        page.tracks.firstOrNull { it.videoId == track.videoId && it.album.isNotBlank() }
+            ?.let { return it }
+        val title = normalizeText(track.title)
+        val artist = normalizeText(track.artist)
+        if (title.isBlank()) return null
+        return page.tracks.firstOrNull { candidate ->
+            candidate.album.isNotBlank() &&
+                normalizeText(candidate.title) == title &&
+                (artist.isBlank() ||
+                    normalizeText(candidate.artist).contains(artist) ||
+                    artist.contains(normalizeText(candidate.artist)))
+        }
+    }
+
     suspend fun artistPage(browseId: String): ArtistPage {
         AppLog.d(AppLog.TAG_TUBE, "Artista solicitado: $browseId")
         return cachedPage("artist:$browseId") { source.artistPage(browseId) }
@@ -125,6 +182,7 @@ class YouTubeRepository(private val source: MusicSource) {
         synchronized(lock) {
             cache.clear()
             pageCache.clear()
+            albumCache.clear()
         }
         AppLog.d(AppLog.TAG_TUBE, "Cache de listas do YouTube limpo")
     }

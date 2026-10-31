@@ -3,6 +3,7 @@ package com.iskezis.myst.data.stats
 import androidx.room.withTransaction
 import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.PlayEventEntity
+import com.iskezis.myst.data.db.PlayEventMissingAlbum
 import com.iskezis.myst.data.youtube.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -136,6 +137,29 @@ class StatsRepository(private val database: AppDatabase) {
             completed = completed,
         )
     }
+
+    /** Faixas antigas que ainda não têm álbum nas estatísticas/histórico. */
+    suspend fun missingAlbums(userId: Long, limit: Int = 12): List<PlayEventMissingAlbum> =
+        withContext(Dispatchers.IO) {
+            if (userId <= 0L) return@withContext emptyList()
+            database.playEventDao().missingAlbums(userId, limit)
+        }
+
+    /**
+     * Propaga um álbum identificado para todos os lugares em que a faixa é
+     * exibida: estatísticas, histórico local e histórico sincronizado.
+     */
+    suspend fun updateAlbum(userId: Long, videoId: String, album: String): Unit =
+        withContext(Dispatchers.IO) {
+            val name = album.trim()
+            if (userId <= 0L || videoId.isBlank() || name.isBlank()) return@withContext
+            database.withTransaction {
+                database.playEventDao().updateAlbum(userId, videoId, name)
+                database.historyDao().updateAlbum(userId, videoId, name)
+                database.youTubeLibraryDao().updateHistoryAlbum(userId, videoId, name)
+            }
+            Unit
+        }
 
     suspend fun load(userId: Long, period: StatsPeriod): StatsData =
         withContext(Dispatchers.IO) {

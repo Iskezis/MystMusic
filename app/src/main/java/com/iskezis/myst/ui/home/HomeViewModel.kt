@@ -22,6 +22,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -32,6 +35,7 @@ data class HomeUiState(
     val accountName: String = "",
     val avatarPath: String? = null,
     val recent: LoadState<List<Track>> = LoadState.Loading,
+    val continueListening: Track? = null,
     val trending: LoadState<List<Track>> = LoadState.Loading,
     val recommended: LoadState<List<Track>> = LoadState.Loading,
     val downloads: LoadState<List<Track>> = LoadState.Loading,
@@ -55,6 +59,7 @@ class HomeViewModel(private val app: MystApp) : ViewModel() {
         AppLog.d(AppLog.TAG_TUBE, "HomeViewModel init")
         refreshAccount()
         observeRecent()
+        observeContinueListening()
         observeConnectivity()
         observeDownloads()
         // Em Alta e Recomendados usam o histórico e a afinidade da conta do
@@ -158,6 +163,36 @@ class HomeViewModel(private val app: MystApp) : ViewModel() {
                         else -> LoadState.Empty
                     }
                     _state.update { it.copy(recent = recent) }
+                }
+        }
+    }
+
+    /**
+     * O destaque "Continuar ouvindo" é o player atual ou a última faixa
+     * realmente reproduzida no MystMusic. Não usa o histórico do YouTube
+     * Music: assim a sincronização da conta não muda o destaque nem parece
+     * alterar a lista de Recentes por conta própria.
+     */
+    private fun observeContinueListening() {
+        val userId = app.session.session?.userId
+        val local = if (userId != null && userId > 0L) {
+            app.recommendations.observeLastLocal(userId)
+        } else {
+            flowOf<Track?>(null)
+        }
+        viewModelScope.launch {
+            combine(
+                app.playerController.state
+                    .map { it.track }
+                    .distinctUntilChanged { old, new -> old?.videoId == new?.videoId },
+                local,
+            ) { playing, lastLocal -> playing ?: lastLocal }
+                .distinctUntilChanged { old, new -> old?.videoId == new?.videoId }
+                .catch { t ->
+                    AppLog.failure(AppLog.TAG_DB, "Falha observando o Continuar ouvindo", t)
+                }
+                .collect { track ->
+                    _state.update { it.copy(continueListening = track) }
                 }
         }
     }

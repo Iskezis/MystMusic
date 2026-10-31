@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0-dev.25 — 31/10/2026
+
+Correções dos sete problemas relatados depois do dev.24.
+
+### Corrigido
+- **Continuar ouvindo não altera mais os Recentes:** o destaque agora usa a faixa atual do player ou a última música realmente reproduzida no MystMusic. A sincronização do histórico do YouTube Music continua atualizando os Recentes, mas não troca sozinha a música do card.
+- **Buscas recentes:** ao abrir a Busca, as últimas consultas executadas aparecem em chips, separadas por conta Myst, com limite de 8, remoção de prefixos repetidos e botão **Limpar**. Tocar em um chip refaz a busca.
+- **Repetir uma:** o "1" saiu do centro e foi para o canto superior direito do infinito, com fonte menor, sombra e destaque quando a repetição de uma música está ativa. O ajuste vale para celular e TV.
+- **Mini player:** o artista fica imediatamente abaixo do título, no topo do bloco de texto, sem ficar atrás da barra de progresso.
+- **Fundo do player realmente desfocado:** a miniatura 64×64 ampliada foi substituída por um desfoque de três passadas em um bitmap de até 256 px, desenhado com filtragem bilinear. O resultado é suave em qualquer API e também na TV.
+- **Fila começa na música atual:** a folha mostra **Tocando agora** com a faixa em reprodução e, abaixo, **A seguir** com a ordem real das próximas. Com repetir tudo, a lista continua do começo; a fila é atualizada ao vivo quando a faixa, a ordem ou o modo de repetição mudam.
+- **Álbuns nas Estatísticas:** faixas antigas gravadas sem álbum são identificadas automaticamente pela busca do YouTube Music e o metadado é gravado em `play_events`, no histórico local e no histórico sincronizado. A identificação também roda em segundo plano durante a reprodução, sem atrasar o áudio.
+
+### Notas
+- O dev.24 teve build verde no run `41169325828`; os APKs dele foram substituídos por este dev.25, que inclui as correções acima.
+
 ## 0.2.0-dev.24 — 31/10/2026
 
 Ajustes visuais pedidos após a revisão da fase 17.

@@ -113,6 +113,16 @@ interface HistoryDao {
     @Query("SELECT * FROM history WHERE userId = :userId ORDER BY playedAt DESC LIMIT :limit")
     suspend fun recent(userId: Long, limit: Int): List<HistoryEntity>
 
+    /**
+     * Completa o álbum identificado automaticamente pelo InnerTube sem
+     * sobrescrever um valor que já veio correto da origem.
+     */
+    @Query(
+        "UPDATE history SET album = :album WHERE userId = :userId " +
+            "AND videoId = :videoId AND TRIM(album) = ''",
+    )
+    suspend fun updateAlbum(userId: Long, videoId: String, album: String): Int
+
     /** Chaves `videoId|playedAt` para importar um backup sem duplicar reproduções. */
     @Query("SELECT videoId || '|' || playedAt FROM history WHERE userId = :userId")
     suspend fun keys(userId: Long): List<String>
@@ -266,6 +276,12 @@ interface YouTubeLibraryDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertHistory(history: List<YtHistoryEntity>)
+
+    @Query(
+        "UPDATE yt_history SET album = :album WHERE userId = :userId " +
+            "AND videoId = :videoId AND TRIM(album) = ''",
+    )
+    suspend fun updateHistoryAlbum(userId: Long, videoId: String, album: String): Int
 
     @Query("DELETE FROM yt_history WHERE userId = :userId")
     suspend fun deleteHistory(userId: Long)
@@ -473,6 +489,28 @@ interface PlayEventDao {
     @Query("SELECT videoId || '|' || startedAt FROM play_events WHERE userId = :userId")
     suspend fun keys(userId: Long): List<String>
 
+    /**
+     * Faixas tocadas antes de o app aprender o álbum. A tela de Estatísticas
+     * usa esta lista para completar os metadados em segundo plano.
+     */
+    @Query(
+        """
+        SELECT videoId, MIN(title) AS title, MIN(artist) AS artist
+        FROM play_events
+        WHERE userId = :userId AND TRIM(album) = '' AND TRIM(videoId) != ''
+        GROUP BY videoId
+        ORDER BY MAX(startedAt) DESC
+        LIMIT :limit
+        """,
+    )
+    suspend fun missingAlbums(userId: Long, limit: Int): List<PlayEventMissingAlbum>
+
+    @Query(
+        "UPDATE play_events SET album = :album WHERE userId = :userId " +
+            "AND videoId = :videoId AND TRIM(album) = ''",
+    )
+    suspend fun updateAlbum(userId: Long, videoId: String, album: String): Int
+
     @Query(
         """
         SELECT COUNT(*) FROM play_events
@@ -633,6 +671,12 @@ data class PlayEventTrackStat(
     @ColumnInfo(name = "thumbnailUrl") val thumbnailUrl: String?,
     @ColumnInfo(name = "plays") val plays: Int,
     @ColumnInfo(name = "playedMs") val playedMs: Long,
+)
+
+data class PlayEventMissingAlbum(
+    @ColumnInfo(name = "videoId") val videoId: String,
+    @ColumnInfo(name = "title") val title: String,
+    @ColumnInfo(name = "artist") val artist: String,
 )
 
 data class PlayEventNameStat(

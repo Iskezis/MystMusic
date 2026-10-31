@@ -172,12 +172,15 @@ class HomeFragment : YouTubeLoginFragment() {
             items += HomeItem.Header(HomeSection.OFFLINE)
             items += HomeItem.Carousel(HomeSection.OFFLINE, state.downloads)
         } else {
-            val recent = state.recent
-            if (recent is LoadState.Data) {
-                val tracks = recent.value
-                if (tracks.isNotEmpty()) {
-                    items += HomeItem.Featured(tracks.first(), tracks)
+            val continueTrack = state.continueListening
+            if (continueTrack != null) {
+                val recentTracks = (state.recent as? LoadState.Data)?.value.orEmpty()
+                val queue = if (recentTracks.any { it.videoId == continueTrack.videoId }) {
+                    recentTracks
+                } else {
+                    listOf(continueTrack) + recentTracks
                 }
+                items += HomeItem.Featured(continueTrack, queue)
             }
             items += HomeItem.Header(HomeSection.RECENT)
             items += HomeItem.Carousel(HomeSection.RECENT, state.recent)

@@ -2,49 +2,75 @@ package com.iskezis.myst.ui.player
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.annotation.StringRes
 import androidx.core.view.isVisible
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.iskezis.myst.R
 import com.iskezis.myst.data.youtube.Track
+import com.iskezis.myst.databinding.ItemQueueHeaderBinding
 import com.iskezis.myst.databinding.ItemQueueTrackBinding
 import com.iskezis.myst.util.formatDuration
 
+/** Cabeçalhos e faixas exibidos na fila, sempre começando pela atual. */
+sealed interface QueueListItem {
+    data class Header(@StringRes val titleRes: Int) : QueueListItem
+    data class Entry(
+        val track: Track,
+        val queueIndex: Int,
+        val isCurrent: Boolean,
+    ) : QueueListItem
+}
+
 class QueueAdapter(
     private val onTrackClick: (Int) -> Unit,
-) : RecyclerView.Adapter<QueueAdapter.ViewHolder>() {
+) : ListAdapter<QueueListItem, RecyclerView.ViewHolder>(Diff) {
 
-    private var items: List<Track> = emptyList()
-    private var currentIndex: Int = -1
-
-    fun submit(tracks: List<Track>, current: Int) {
-        items = tracks
-        currentIndex = current
-        notifyDataSetChanged()
+    override fun getItemViewType(position: Int): Int = when (getItem(position)) {
+        is QueueListItem.Header -> TYPE_HEADER
+        is QueueListItem.Entry -> TYPE_ENTRY
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val binding = ItemQueueTrackBinding.inflate(
-            LayoutInflater.from(parent.context),
-            parent,
-            false,
-        )
-        return ViewHolder(binding)
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        val inflater = LayoutInflater.from(parent.context)
+        return when (viewType) {
+            TYPE_HEADER -> HeaderHolder(
+                ItemQueueHeaderBinding.inflate(inflater, parent, false),
+            )
+            else -> EntryHolder(
+                ItemQueueTrackBinding.inflate(inflater, parent, false),
+                onTrackClick,
+            )
+        }
     }
 
-    override fun getItemCount(): Int = items.size
-
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(items[position], position, position == currentIndex)
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        when (val item = getItem(position)) {
+            is QueueListItem.Header -> (holder as HeaderHolder).bind(item)
+            is QueueListItem.Entry -> (holder as EntryHolder).bind(item)
+        }
     }
 
-    inner class ViewHolder(
-        private val binding: ItemQueueTrackBinding,
+    private class HeaderHolder(
+        private val binding: ItemQueueHeaderBinding,
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(track: Track, position: Int, isCurrent: Boolean) {
+        fun bind(item: QueueListItem.Header) {
+            binding.queueHeaderTitle.setText(item.titleRes)
+        }
+    }
+
+    private class EntryHolder(
+        private val binding: ItemQueueTrackBinding,
+        private val onTrackClick: (Int) -> Unit,
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(item: QueueListItem.Entry) {
             val context = binding.root.context
-            binding.queueRowIndex.text = (position + 1).toString()
+            val track = item.track
+            binding.queueRowIndex.text = (item.queueIndex + 1).toString()
             binding.queueRowTitle.text = track.title.ifBlank {
                 context.getString(R.string.player_unknown_title)
             }
@@ -52,17 +78,36 @@ class QueueAdapter(
                 context.getString(R.string.player_unknown_artist)
             }
             binding.queueRowDuration.text = formatDuration(track.durationMs)
-            binding.queueRowCurrent.isVisible = isCurrent
-            binding.queueRow.isSelected = isCurrent
+            binding.queueRowCurrent.isVisible = item.isCurrent
+            binding.queueRow.isSelected = item.isCurrent
             binding.queueRowCover.load(track.artworkUrl()) {
                 crossfade(true)
                 placeholder(R.drawable.bg_cover_placeholder)
                 error(R.drawable.bg_cover_placeholder)
             }
             binding.queueRow.setOnClickListener {
-                val index = bindingAdapterPosition
-                if (index != RecyclerView.NO_POSITION) onTrackClick(index)
+                onTrackClick(item.queueIndex)
             }
         }
+    }
+
+    private object Diff : DiffUtil.ItemCallback<QueueListItem>() {
+        override fun areItemsTheSame(oldItem: QueueListItem, newItem: QueueListItem): Boolean =
+            when {
+                oldItem is QueueListItem.Header && newItem is QueueListItem.Header ->
+                    oldItem.titleRes == newItem.titleRes
+                oldItem is QueueListItem.Entry && newItem is QueueListItem.Entry ->
+                    oldItem.queueIndex == newItem.queueIndex &&
+                        oldItem.track.videoId == newItem.track.videoId
+                else -> false
+            }
+
+        override fun areContentsTheSame(oldItem: QueueListItem, newItem: QueueListItem): Boolean =
+            oldItem == newItem
+    }
+
+    private companion object {
+        const val TYPE_HEADER = 0
+        const val TYPE_ENTRY = 1
     }
 }

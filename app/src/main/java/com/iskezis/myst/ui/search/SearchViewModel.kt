@@ -15,12 +15,15 @@ import com.iskezis.myst.data.youtube.SearchPage
 import com.iskezis.myst.data.youtube.SessionExpiredException
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.IOException
 
 sealed interface SearchState {
@@ -42,6 +45,8 @@ data class SearchUiState(
     val state: SearchState = SearchState.Idle,
     /** Parâmetros reais devolvidos pelos chips do YouTube, por filtro. */
     val params: Map<SearchFilter, String> = emptyMap(),
+    /** Consultas realmente executadas, da mais recente para a mais antiga. */
+    val recentSearches: List<String> = emptyList(),
 )
 
 class SearchViewModel(private val app: MystApp) : ViewModel() {
@@ -51,6 +56,22 @@ class SearchViewModel(private val app: MystApp) : ViewModel() {
 
     private var searchJob: Job? = null
     private var moreJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            val recent = withContext(Dispatchers.IO) {
+                app.searchHistory.load(userId())
+            }
+            _state.update { it.copy(recentSearches = recent) }
+        }
+    }
+
+    fun clearRecentSearches() {
+        _state.update { it.copy(recentSearches = emptyList()) }
+        viewModelScope.launch(Dispatchers.IO) {
+            app.searchHistory.clear(userId())
+        }
+    }
 
     fun onQueryChanged(raw: String) {
         val query = raw.trim()
@@ -161,6 +182,7 @@ class SearchViewModel(private val app: MystApp) : ViewModel() {
         filter: SearchFilter,
         params: Map<SearchFilter, String>,
     ) {
+        recordSearch(query)
         try {
             AppLog.d(AppLog.TAG_TUBE, "Busca completa: $query filtro=${filter.name}")
             val startedAt = System.currentTimeMillis()
@@ -173,26 +195,39 @@ class SearchViewModel(private val app: MystApp) : ViewModel() {
                     "${page.playlists.size} playlists em " +
                     "${System.currentTimeMillis() - startedAt}ms",
             )
-            _state.value = SearchUiState(
-                query = _state.value.query,
-                filter = filter,
-                state = if (page.isEmpty(filter)) {
-                    SearchState.Empty
-                } else {
-                    SearchState.Results(page)
-                },
-                params = mergedParams,
-            )
+            _state.update {
+                it.copy(
+                    filter = filter,
+                    state = if (page.isEmpty(filter)) {
+                        SearchState.Empty
+                    } else {
+                        SearchState.Results(page)
+                    },
+                    params = mergedParams,
+                )
+            }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (t: Throwable) {
             AppLog.failure(AppLog.TAG_TUBE, "Busca falhou: $query/${filter.name}", t)
-            _state.value = _state.value.copy(
-                filter = filter,
-                state = SearchState.Error(errorRes(t)),
-            )
+            _state.update {
+                it.copy(
+                    filter = filter,
+                    state = SearchState.Error(errorRes(t)),
+                )
+            }
         }
     }
+
+    private suspend fun recordSearch(query: String) {
+        if (query.length < 2) return
+        val recent = withContext(Dispatchers.IO) {
+            app.searchHistory.add(userId(), query)
+        }
+        _state.update { it.copy(recentSearches = recent) }
+    }
+
+    private fun userId(): Long = app.session.session?.userId ?: 0L
 
     private fun errorRes(t: Throwable): Int = when (t) {
         is SessionExpiredException -> R.string.yt_session_expired

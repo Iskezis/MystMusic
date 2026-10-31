@@ -12,6 +12,7 @@ import com.iskezis.myst.util.normalizeText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
@@ -29,6 +30,16 @@ class RecommendationRepository(
         ) { local, youtubeHistory ->
             mergeRecent(local, youtubeHistory, limit)
         }
+
+    /**
+     * Última faixa realmente ouvida no MystMusic. O "Continuar ouvindo" usa
+     * esta fonte (ou o player atual) em vez do histórico sincronizado do
+     * YouTube Music, para que a sincronização da conta não troque o destaque
+     * sozinha.
+     */
+    fun observeLastLocal(userId: Long): Flow<Track?> =
+        database.historyDao().observeRecent(userId, 1)
+            .map { entries -> entries.firstOrNull()?.toTrack() }
 
     /**
      * Home personalizada do YouTube Music. Erros de rede são tratados pela

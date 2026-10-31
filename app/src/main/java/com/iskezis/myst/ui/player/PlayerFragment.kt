@@ -32,6 +32,7 @@ import com.iskezis.myst.player.PlayerState
 import com.iskezis.myst.ui.auth.YouTubeLoginActivity
 import com.iskezis.myst.ui.browse.BrowseNavigation
 import com.iskezis.myst.util.AppLog
+import com.iskezis.myst.util.BlurUtils
 import com.iskezis.myst.util.UiAnimations.animatePlayIcon
 import com.iskezis.myst.util.UiAnimations.focusScale
 import com.iskezis.myst.util.UiAnimations.pressScale
@@ -238,8 +239,14 @@ class PlayerFragment : Fragment() {
                 listener(
                     onSuccess = { _, result ->
                         val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
-                        if (bitmap != null && _binding != null && view != null) {
+                        val current = _binding
+                        if (bitmap != null && current != null && view != null) {
                             applyBackdrop(bitmap)
+                        } else if (current != null) {
+                            backdropJob?.cancel()
+                            current.playerBackdrop.setImageResource(
+                                R.drawable.bg_cover_placeholder,
+                            )
                         }
                     },
                     onError = { _, result ->
@@ -247,6 +254,7 @@ class PlayerFragment : Fragment() {
                             AppLog.TAG_UI,
                             "Falha ao carregar capa do player: ${AppLog.describe(result.throwable)}",
                         )
+                        loadedArtworkFor = null
                         _binding?.let { current ->
                             backdropJob?.cancel()
                             current.playerBackdrop.setImageResource(
@@ -399,9 +407,7 @@ class PlayerFragment : Fragment() {
         backdropJob = viewLifecycleOwner.lifecycleScope.launch {
             val blurred = withContext(Dispatchers.Default) {
                 try {
-                    // Uma miniatura ampliada pelo ImageView vira um desfoque
-                    // suave em qualquer API, sem precisar de RenderEffect.
-                    Bitmap.createScaledBitmap(source, 64, 64, true)
+                    BlurUtils.blur(source)
                 } catch (t: Throwable) {
                     AppLog.w(
                         AppLog.TAG_UI,
@@ -411,7 +417,9 @@ class PlayerFragment : Fragment() {
                 }
             } ?: return@launch
             val current = _binding ?: return@launch
-            current.playerBackdrop.setImageBitmap(blurred)
+            val drawable = BitmapDrawable(resources, blurred)
+            drawable.setFilterBitmap(true)
+            current.playerBackdrop.setImageDrawable(drawable)
         }
     }
 

@@ -12,6 +12,9 @@
     <string name="search_empty_subtitle">Tente outro nome de música, artista, álbum ou playlist.</string>
     <string name="search_initial_title">Busque por músicas, artistas e mais</string>
     <string name="search_initial_subtitle">Digite pelo menos 2 letras para começar.</string>
+    <string name="search_recent_title">Buscas recentes</string>
+    <string name="search_recent_clear">Limpar</string>
+    <string name="search_recent_open">Buscar novamente por %1$s</string>
     <string name="search_clear">Limpar busca</string>
     <string name="search_filter_all">Tudo</string>
     <string name="search_filter_songs">Músicas</string>
@@ -345,6 +348,7 @@
     <string name="player_queue_empty_hint">Toque em uma música para começar.</string>
     <string name="player_queue_error">Não foi possível carregar a fila.</string>
     <string name="player_queue_current">Tocando</string>
+    <string name="player_queue_next">A seguir</string>
     <string name="player_queue_close">Fechar fila</string>
     <string name="player_repeat_one_number">1</string>
     <plurals name="player_queue_count">

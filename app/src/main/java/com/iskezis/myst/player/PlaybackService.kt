@@ -32,6 +32,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
@@ -42,6 +43,7 @@ class PlaybackService : MediaSessionService() {
     private lateinit var resolver: StreamResolver
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var historyJob: Job? = null
+    private var albumJob: Job? = null
 
     private var currentTrack: Track? = null
     private var currentPosition = 0L
@@ -266,6 +268,7 @@ class PlaybackService : MediaSessionService() {
                     }
                 }
                 startEvent(app, track)
+                resolveAlbum(app, track)
             }
         }
     }
@@ -308,6 +311,44 @@ class PlaybackService : MediaSessionService() {
         eventPausedAt = 0L
         eventActive = eventUserId != null
         eventRecordTask = null
+    }
+
+    /**
+     * Muitas faixas chegam do histórico/home sem o álbum. Identificamos em
+     * segundo plano e atualizamos a faixa atual e o evento em andamento; se a
+     * linha das estatísticas já tiver sido inserida sem álbum, o repositório
+     * também a completa. A reprodução nunca espera essa busca.
+     */
+    private fun resolveAlbum(app: MystApp, track: Track) {
+        if (track.album.isNotBlank()) return
+        albumJob?.cancel()
+        albumJob = scope.launch {
+            val album = withContext(Dispatchers.IO) {
+                runCatching { app.youtube.albumFor(track) }.getOrNull()
+            } ?: return@launch
+            if (currentTrack?.videoId == track.videoId) {
+                currentTrack = currentTrack?.copy(
+                    album = album.name,
+                    albumId = album.albumId ?: currentTrack?.albumId,
+                )
+            }
+            if (eventTrack?.videoId == track.videoId) {
+                eventTrack = eventTrack?.copy(
+                    album = album.name,
+                    albumId = album.albumId ?: eventTrack?.albumId,
+                )
+            }
+            val userId = app.session.session?.userId ?: return@launch
+            runCatching {
+                app.stats.updateAlbum(userId, track.videoId, album.name)
+            }.onFailure {
+                AppLog.w(
+                    AppLog.TAG_DB,
+                    "Falha gravando álbum identificado de ${track.videoId}: " +
+                        AppLog.describe(it),
+                )
+            }
+        }
     }
 
     private fun updateEvent(app: MystApp, position: Long) {

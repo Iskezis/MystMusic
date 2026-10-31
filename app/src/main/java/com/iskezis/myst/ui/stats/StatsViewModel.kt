@@ -15,15 +15,21 @@ import com.iskezis.myst.data.stats.StatsPeriod
 import com.iskezis.myst.data.youtube.AlbumSummary
 import com.iskezis.myst.data.youtube.ArtistSummary
 import com.iskezis.myst.data.youtube.SearchFilter
+import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.ui.common.LoadState
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.Normalizer
 import java.util.Locale
 
@@ -50,8 +56,10 @@ class StatsViewModel(private val app: MystApp) : ViewModel() {
 
     private val artistJobs = mutableSetOf<String>()
     private val albumJobs = mutableSetOf<String>()
+    private val albumAttempts = mutableSetOf<String>()
 
     private var job: Job? = null
+    private var albumJob: Job? = null
 
     init {
         load(StatsPeriod.WEEK)
@@ -63,10 +71,12 @@ class StatsViewModel(private val app: MystApp) : ViewModel() {
     }
 
     fun retry() {
+        albumAttempts.clear()
         load(_state.value.period)
     }
 
     fun refresh() {
+        albumAttempts.clear()
         load(_state.value.period)
     }
 
@@ -240,6 +250,7 @@ class StatsViewModel(private val app: MystApp) : ViewModel() {
         job = viewModelScope.launch {
             val result = try {
                 val data = app.stats.load(userId, period)
+                backfillAlbums(userId, data)
                 if (data.isEmpty) LoadState.Empty else LoadState.Data(data)
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -249,6 +260,52 @@ class StatsViewModel(private val app: MystApp) : ViewModel() {
             }
             _state.update { current ->
                 if (current.period == period) current.copy(state = result) else current
+            }
+        }
+    }
+
+    /**
+     * O histórico antigo pode ter sido gravado antes de o app guardar o álbum.
+     * Identificamos até 12 faixas por vez no YouTube Music, atualizamos as
+     * tabelas e recarregamos a tela quando algo muda. A tela abre na hora com
+     * os dados disponíveis; os álbuns aparecem assim que a busca termina.
+     */
+    private fun backfillAlbums(userId: Long, data: StatsData) {
+        if (data.isEmpty || albumJob?.isActive == true) return
+        albumJob = viewModelScope.launch {
+            val missing = withContext(Dispatchers.IO) {
+                runCatching { app.stats.missingAlbums(userId, 12) }
+                    .getOrElse { emptyList() }
+            }.filter { albumAttempts.add(it.videoId) }
+            if (missing.isEmpty()) return@launch
+
+            var changed = false
+            coroutineScope {
+                missing.chunked(3).forEach { chunk ->
+                    val results = chunk.map { item ->
+                        async(Dispatchers.IO) {
+                            val track = Track(
+                                videoId = item.videoId,
+                                title = item.title,
+                                artist = item.artist,
+                            )
+                            val album = runCatching { app.youtube.albumFor(track) }
+                                .getOrNull()
+                            if (album != null) {
+                                runCatching {
+                                    app.stats.updateAlbum(userId, item.videoId, album.name)
+                                }.isSuccess
+                            } else {
+                                false
+                            }
+                        }
+                    }.awaitAll()
+                    if (results.any { it }) changed = true
+                }
+            }
+            if (changed) {
+                AppLog.i(AppLog.TAG_DB, "Álbuns identificados; recarregando estatísticas")
+                load(_state.value.period)
             }
         }
     }

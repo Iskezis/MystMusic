@@ -21,6 +21,7 @@ import com.iskezis.myst.data.downloads.StoragePreferences
 import com.iskezis.myst.data.pairing.PairedSyncManager
 import com.iskezis.myst.data.pairing.PhonePairingSession
 import com.iskezis.myst.data.settings.AppearancePreferences
+import com.iskezis.myst.data.settings.SearchHistoryStore
 import com.iskezis.myst.data.recommendations.RecommendationRepository
 import com.iskezis.myst.data.spotify.SpotifyImporter
 import com.iskezis.myst.data.stats.StatsRepository
@@ -63,6 +64,7 @@ class MystApp : Application(), ImageLoaderFactory {
     val database: AppDatabase by lazy { AppDatabase.get(this) }
     val session: SessionManager by lazy { SessionManager(this) }
     val appearance: AppearancePreferences by lazy { AppearancePreferences(this) }
+    val searchHistory: SearchHistoryStore by lazy { SearchHistoryStore(this) }
     val storagePreferences: StoragePreferences by lazy { StoragePreferences(this) }
     val downloadStorage: DownloadStorage by lazy { DownloadStorage(this) }
     val downloads: DownloadRepository by lazy {

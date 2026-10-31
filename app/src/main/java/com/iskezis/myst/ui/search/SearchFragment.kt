@@ -15,7 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.google.android.material.chip.ChipGroup
+import com.google.android.material.chip.Chip
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.data.youtube.AlbumSummary
@@ -44,6 +44,7 @@ class SearchFragment : Fragment() {
     private lateinit var adapter: SearchAdapter
     private var animatedOnce = false
     private var applyingChip = false
+    private var renderedRecent: List<String> = emptyList()
 
     private val initialQuery: String by lazy {
         requireArguments().getString(ARG_INITIAL_QUERY).orEmpty()
@@ -90,6 +91,8 @@ class SearchFragment : Fragment() {
         binding.searchBack.pressScale()
         binding.searchState.stateRetry.setOnClickListener { viewModel.retry() }
         binding.searchState.stateRetry.pressScale()
+        binding.searchRecentClear.setOnClickListener { viewModel.clearRecentSearches() }
+        binding.searchRecentClear.pressScale()
 
         binding.searchChips.setOnCheckedStateChangeListener { _, checkedIds ->
             if (applyingChip) return@setOnCheckedStateChangeListener
@@ -124,16 +127,29 @@ class SearchFragment : Fragment() {
     private fun render(ui: SearchUiState) {
         AppLog.d(AppLog.TAG_UI, "Search render: estado=${ui.state.javaClass.simpleName}")
         applyChip(ui.filter)
+        val idle = ui.state is SearchState.Idle
+        val showRecent = idle && ui.recentSearches.isNotEmpty()
+        binding.searchRecentBlock.isVisible = showRecent
+        if (showRecent) {
+            renderRecentSearches(ui.recentSearches)
+        } else if (renderedRecent.isNotEmpty()) {
+            binding.searchRecentChips.removeAllViews()
+            renderedRecent = emptyList()
+        }
         when (val state = ui.state) {
             is SearchState.Idle -> {
                 stopShimmer()
                 binding.searchList.isVisible = false
-                showState(
-                    iconRes = R.drawable.ic_search,
-                    title = getString(R.string.search_initial_title),
-                    subtitle = getString(R.string.search_initial_subtitle),
-                    retry = false,
-                )
+                if (showRecent) {
+                    binding.searchState.stateRoot.isVisible = false
+                } else {
+                    showState(
+                        iconRes = R.drawable.ic_search,
+                        title = getString(R.string.search_initial_title),
+                        subtitle = getString(R.string.search_initial_subtitle),
+                        retry = false,
+                    )
+                }
             }
             is SearchState.Loading -> {
                 binding.searchShimmer.isVisible = true
@@ -181,6 +197,27 @@ class SearchFragment : Fragment() {
                     retry = true,
                 )
             }
+        }
+    }
+
+    private fun renderRecentSearches(queries: List<String>) {
+        if (queries == renderedRecent) return
+        renderedRecent = queries
+        binding.searchRecentChips.removeAllViews()
+        queries.forEach { query ->
+            val chip = layoutInflater.inflate(
+                R.layout.item_search_recent,
+                binding.searchRecentChips,
+                false,
+            ) as Chip
+            chip.text = query
+            chip.contentDescription = getString(R.string.search_recent_open, query)
+            chip.setOnClickListener {
+                binding.searchInput.setText(query)
+                binding.searchInput.setSelection(query.length)
+                viewModel.searchNow()
+            }
+            binding.searchRecentChips.addView(chip)
         }
     }
 
@@ -262,6 +299,7 @@ class SearchFragment : Fragment() {
 
     override fun onDestroyView() {
         AppLog.d(AppLog.TAG_UI, "SearchFragment.onDestroyView")
+        renderedRecent = emptyList()
         super.onDestroyView()
         _binding = null
     }
