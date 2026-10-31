@@ -14,7 +14,7 @@ Correções dos sete problemas relatados depois do dev.24.
 - **Álbuns nas Estatísticas:** faixas antigas gravadas sem álbum são identificadas automaticamente pela busca do YouTube Music e o metadado é gravado em `play_events`, no histórico local e no histórico sincronizado. A identificação também roda em segundo plano durante a reprodução, sem atrasar o áudio.
 
 ### Notas
-- O dev.24 teve build verde no run `41169325828`; os APKs dele foram substituídos por este dev.25, que inclui as correções acima.
+- O dev.24 teve build verde no run `41169325828`; os APKs dele foram substituídos por este dev.25, que inclui as correções acima. O dev.25 teve build verde no run `41224555762`, com os APKs atualizados em `apks/app.apk` e `apks/app-tv.apk`.
 
 ## 0.2.0-dev.24 — 31/10/2026
 
