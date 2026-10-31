@@ -10,7 +10,7 @@
     android:focusable="true"
     android:gravity="center_horizontal"
     android:orientation="vertical"
-    android:padding="@dimen/space_xs">
+    android:padding="4dp">
 
     <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/artistCardCover"
@@ -25,9 +25,11 @@
         android:id="@+id/artistCardName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
         android:layout_marginTop="@dimen/space_s"
+        android:layout_marginEnd="4dp"
         android:ellipsize="end"
-        android:fontFamily="sans-serif-medium"
+        android:fontFamily="@font/poppins_medium"
         android:gravity="center"
         android:maxLines="1"
         android:textColor="?attr/mystOnSurface"
@@ -37,8 +39,10 @@
         android:id="@+id/artistCardSubtitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
         android:ellipsize="end"
+        android:fontFamily="@font/poppins_regular"
         android:gravity="center"
         android:maxLines="1"
         android:textColor="?attr/mystOnSurfaceDim"

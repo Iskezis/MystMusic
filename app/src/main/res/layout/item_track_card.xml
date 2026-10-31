@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/cardRoot"
-    android:layout_width="140dp"
+    android:layout_width="@dimen/card_cover"
     android:layout_height="wrap_content"
     android:layout_marginEnd="@dimen/space_m"
     android:background="@drawable/bg_track_row"
@@ -12,8 +12,8 @@
     android:padding="4dp">
 
     <FrameLayout
-        android:layout_width="132dp"
-        android:layout_height="132dp">
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/card_cover">
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/cardCover"
@@ -24,12 +24,18 @@
             android:scaleType="centerCrop"
             app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.Cover" />
 
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/bg_cover_scrim" />
+
         <com.iskezis.myst.ui.common.DownloadBadgeView
             android:id="@+id/cardDownloadBadge"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
             android:layout_gravity="top|start"
-            android:layout_margin="6dp"
+            android:layout_margin="8dp"
             android:visibility="gone" />
 
         <ImageButton
@@ -37,21 +43,36 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:layout_gravity="top|end"
-            android:layout_margin="4dp"
+            android:layout_margin="6dp"
             android:background="@drawable/bg_more_circle"
             android:contentDescription="@string/common_more"
             android:padding="6dp"
             android:src="@drawable/ic_more"
-            app:tint="?attr/mystOnSurface" />
+            app:tint="?attr/mystOnImage" />
+
+        <ImageButton
+            android:id="@+id/cardPlay"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="8dp"
+            android:background="@drawable/bg_play_button"
+            android:contentDescription="@string/player_play"
+            android:elevation="3dp"
+            android:padding="9dp"
+            android:src="@drawable/ic_play"
+            app:tint="?attr/mystOnAccent" />
     </FrameLayout>
 
     <TextView
         android:id="@+id/cardTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/space_xs"
         android:layout_marginTop="@dimen/space_s"
+        android:layout_marginEnd="@dimen/space_xs"
         android:ellipsize="end"
-        android:fontFamily="sans-serif-medium"
+        android:fontFamily="@font/poppins_medium"
         android:maxLines="1"
         android:textColor="?attr/mystOnSurface"
         android:textSize="@dimen/text_body" />
@@ -60,8 +81,11 @@
         android:id="@+id/cardArtist"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
+        android:layout_marginStart="@dimen/space_xs"
+        android:layout_marginTop="1dp"
+        android:layout_marginEnd="@dimen/space_xs"
         android:ellipsize="end"
+        android:fontFamily="@font/poppins_regular"
         android:maxLines="1"
         android:textColor="?attr/mystOnSurfaceDim"
         android:textSize="@dimen/text_small" />

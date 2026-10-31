@@ -41,7 +41,7 @@
                     android:id="@+id/ytBannerTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:fontFamily="sans-serif-medium"
+                    android:fontFamily="@font/poppins_medium"
                     android:text="@string/yt_session_expired"
                     android:textColor="?attr/mystOnSurface"
                     android:textSize="@dimen/text_body" />

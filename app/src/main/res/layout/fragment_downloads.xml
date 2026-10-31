@@ -30,7 +30,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/space_s"
             android:layout_weight="1"
-            android:fontFamily="sans-serif-medium"
+            android:fontFamily="@font/poppins_medium"
             android:text="@string/downloads_title"
             android:textColor="?attr/mystOnSurface"
             android:textSize="28sp" />
@@ -67,7 +67,7 @@
                 android:id="@+id/downloadsSummary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="sans-serif-medium"
+                android:fontFamily="@font/poppins_medium"
                 android:textColor="?attr/mystOnSurface"
                 android:textSize="22sp" />
 

@@ -1,47 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:layout_height="match_parent">
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/homeTvDisconnect"
-        style="@style/Widget.Material3.Button.TextButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="end"
-        android:layout_marginTop="@dimen/space_s"
-        android:layout_marginEnd="@dimen/screen_margin"
-        android:focusable="true"
-        android:text="@string/settings_tv_phone_disconnect"
-        android:textColor="?attr/mystAccentText"
-        android:visibility="gone"
-        app:icon="@drawable/ic_tv"
-        app:iconTint="?attr/mystAccentText" />
-
-    <include
-        android:id="@+id/homeYtBanner"
-        layout="@layout/view_yt_session_banner"
+    <View
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="@dimen/screen_margin"
-        android:layout_marginTop="@dimen/screen_margin"
-        android:layout_marginEnd="@dimen/screen_margin" />
+        android:layout_height="320dp"
+        android:background="@drawable/bg_hero" />
 
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/homeRefresh"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/homeList"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/homeTvDisconnect"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="@dimen/space_s"
+            android:layout_marginEnd="@dimen/screen_margin"
+            android:focusable="true"
+            android:text="@string/settings_tv_phone_disconnect"
+            android:textColor="?attr/mystAccentText"
+            android:visibility="gone"
+            app:icon="@drawable/ic_tv"
+            app:iconTint="?attr/mystAccentText" />
+
+        <include
+            android:id="@+id/homeYtBanner"
+            layout="@layout/view_yt_session_banner"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:overScrollMode="never"
-            android:paddingTop="@dimen/screen_margin"
-            android:paddingBottom="@dimen/content_bottom_padding_playing" />
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-</LinearLayout>
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/screen_margin"
+            android:layout_marginTop="@dimen/screen_margin"
+            android:layout_marginEnd="@dimen/screen_margin" />
+
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/homeRefresh"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/homeList"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:overScrollMode="never"
+                android:paddingTop="@dimen/space_s"
+                android:paddingBottom="@dimen/content_bottom_padding_playing" />
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+    </LinearLayout>
+</FrameLayout>

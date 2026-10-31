@@ -4,63 +4,73 @@
     android:id="@+id/ytPlaylistCard"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="6dp"
+    android:layout_margin="4dp"
     android:clickable="true"
     android:focusable="true"
-    app:cardBackgroundColor="?attr/mystSurface"
-    app:cardCornerRadius="@dimen/corner_medium"
+    app:cardBackgroundColor="@android:color/transparent"
+    app:cardCornerRadius="@dimen/corner_large"
     app:cardElevation="0dp"
-    app:strokeColor="?attr/mystStroke"
-    app:strokeWidth="1dp">
+    app:strokeWidth="0dp">
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="@dimen/space_s">
+        android:padding="4dp">
 
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="140dp">
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/ytPlaylistCover"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@drawable/bg_playlist_placeholder"
+            android:contentDescription="@null"
+            android:scaleType="centerCrop"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.CoverLarge" />
 
-            <com.google.android.material.imageview.ShapeableImageView
-                android:id="@+id/ytPlaylistCover"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@drawable/bg_playlist_placeholder"
-                android:contentDescription="@null"
-                android:scaleType="centerCrop"
-                app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.Cover" />
-
-            <TextView
-                android:id="@+id/ytPlaylistInitial"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:fontFamily="sans-serif-medium"
-                android:textColor="?attr/mystOnImage"
-                android:textSize="40sp" />
-        </FrameLayout>
+        <TextView
+            android:id="@+id/ytPlaylistInitial"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/poppins_semibold"
+            android:textColor="?attr/mystOnImage"
+            android:textSize="40sp"
+            app:layout_constraintBottom_toBottomOf="@id/ytPlaylistCover"
+            app:layout_constraintEnd_toEndOf="@id/ytPlaylistCover"
+            app:layout_constraintStart_toStartOf="@id/ytPlaylistCover"
+            app:layout_constraintTop_toTopOf="@id/ytPlaylistCover" />
 
         <TextView
             android:id="@+id/ytPlaylistName"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
             android:layout_marginTop="@dimen/space_s"
+            android:layout_marginEnd="4dp"
             android:ellipsize="end"
-            android:fontFamily="sans-serif-medium"
+            android:fontFamily="@font/poppins_medium"
             android:maxLines="1"
             android:textColor="?attr/mystOnSurface"
-            android:textSize="@dimen/text_body" />
+            android:textSize="@dimen/text_body"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/ytPlaylistCover" />
 
         <TextView
             android:id="@+id/ytPlaylistCount"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
             android:ellipsize="end"
+            android:fontFamily="@font/poppins_regular"
             android:maxLines="1"
             android:textColor="?attr/mystOnSurfaceDim"
-            android:textSize="@dimen/text_small" />
-    </LinearLayout>
+            android:textSize="@dimen/text_small"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/ytPlaylistName" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>

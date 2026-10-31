@@ -36,7 +36,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="@dimen/space_s"
                 android:layout_weight="1"
-                android:fontFamily="sans-serif-medium"
+                android:fontFamily="@font/poppins_medium"
                 android:text="@string/appearance_title"
                 android:textColor="?attr/mystOnSurface"
                 android:textSize="28sp" />
@@ -113,7 +113,7 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:fontFamily="sans-serif-medium"
+                            android:fontFamily="@font/poppins_medium"
                             android:text="@string/appearance_theme_system"
                             android:textColor="?attr/mystOnSurface"
                             android:textSize="18sp" />
@@ -192,7 +192,7 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:fontFamily="sans-serif-medium"
+                            android:fontFamily="@font/poppins_medium"
                             android:text="@string/appearance_theme_light"
                             android:textColor="?attr/mystOnSurface"
                             android:textSize="18sp" />
@@ -271,7 +271,7 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:fontFamily="sans-serif-medium"
+                            android:fontFamily="@font/poppins_medium"
                             android:text="@string/appearance_theme_dark"
                             android:textColor="?attr/mystOnSurface"
                             android:textSize="18sp" />
@@ -326,7 +326,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-medium"
+                        android:fontFamily="@font/poppins_medium"
                         android:text="@string/appearance_amoled"
                         android:textColor="?attr/mystOnSurface"
                         android:textSize="18sp" />

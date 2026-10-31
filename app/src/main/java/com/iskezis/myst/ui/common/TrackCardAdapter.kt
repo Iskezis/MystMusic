@@ -52,10 +52,12 @@ class TrackCardAdapter(
                 error(R.drawable.bg_cover_placeholder)
             }
             binding.cardDownloadBadge.videoId = track.videoId
-            binding.cardRoot.setOnClickListener {
+            val play = {
                 val index = tracks.indexOfFirst { it.videoId == track.videoId }
                 onPlay(tracks, if (index >= 0) index else 0)
             }
+            binding.cardRoot.setOnClickListener { play() }
+            binding.cardPlay.setOnClickListener { play() }
             binding.cardMore.setOnClickListener { onMore(track) }
             binding.cardRoot.setOnLongClickListener {
                 onMore(track)

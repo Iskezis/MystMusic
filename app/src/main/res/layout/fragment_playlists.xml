@@ -1,133 +1,164 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/playlistsRoot"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:layout_height="match_parent">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="280dp"
+        android:background="@drawable/bg_hero" />
 
     <LinearLayout
-        android:id="@+id/playlistsHeader"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingStart="@dimen/screen_margin"
-        android:paddingTop="@dimen/screen_margin"
-        android:paddingEnd="@dimen/screen_margin">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="sans-serif-medium"
-            android:text="@string/playlists_title"
-            android:textColor="?attr/mystOnSurface"
-            android:textSize="28sp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/spotifyButton"
-            style="@style/Widget.MystMusic.Button.Secondary"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_m"
-            android:text="@string/playlists_spotify"
-            app:icon="@drawable/ic_spotify"
-            app:iconGravity="textStart" />
-    </LinearLayout>
-
-    <include
-        android:id="@+id/playlistsYtBanner"
-        layout="@layout/view_yt_session_banner"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="@dimen/screen_margin"
-        android:layout_marginTop="@dimen/space_m"
-        android:layout_marginEnd="@dimen/screen_margin" />
-
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-            android:id="@+id/playlistsRefresh"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/playlistsList"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:clipToPadding="false"
-                android:overScrollMode="never"
-                android:paddingStart="14dp"
-                android:paddingTop="@dimen/space_s"
-                android:paddingEnd="14dp"
-                android:paddingBottom="@dimen/content_bottom_padding_playing" />
-        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
-        <com.facebook.shimmer.ShimmerFrameLayout
-            android:id="@+id/playlistsShimmer"
+        <LinearLayout
+            android:id="@+id/playlistsHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingStart="14dp"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/screen_margin"
             android:paddingTop="@dimen/space_m"
-            android:paddingEnd="14dp"
-            android:visibility="gone"
-            app:shimmer_auto_start="true"
-            app:shimmer_base_color="?attr/mystSurfaceAlt"
-            app:shimmer_highlight_color="?attr/mystSurface">
+            android:paddingEnd="@dimen/screen_margin">
 
-            <LinearLayout
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/poppins_semibold"
+                android:letterSpacing="0.12"
+                android:text="@string/app_name"
+                android:textAllCaps="true"
+                android:textColor="?attr/mystAccentText"
+                android:textSize="@dimen/text_label" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="@font/poppins_semibold"
+                android:letterSpacing="-0.02"
+                android:text="@string/playlists_title"
+                android:textColor="?attr/mystOnSurface"
+                android:textSize="@dimen/text_display" />
+
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:layout_marginTop="2dp"
+                android:fontFamily="@font/poppins_regular"
+                android:text="@string/playlists_subtitle"
+                android:textColor="?attr/mystOnSurfaceDim"
+                android:textSize="@dimen/text_small" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <include
-                        layout="@layout/item_playlist_skeleton"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
-                    <include
-                        layout="@layout/item_playlist_skeleton"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:layout_weight="1" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:orientation="horizontal">
-
-                    <include
-                        layout="@layout/item_playlist_skeleton"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
-                    <include
-                        layout="@layout/item_playlist_skeleton"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:layout_weight="1" />
-                </LinearLayout>
-            </LinearLayout>
-        </com.facebook.shimmer.ShimmerFrameLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/spotifyButton"
+                style="@style/Widget.MystMusic.Button.Tonal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_m"
+                android:text="@string/playlists_spotify"
+                app:icon="@drawable/ic_spotify"
+                app:iconGravity="textStart" />
+        </LinearLayout>
 
         <include
-            android:id="@+id/playlistsState"
-            layout="@layout/view_state"
+            android:id="@+id/playlistsYtBanner"
+            layout="@layout/view_yt_session_banner"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center" />
-    </FrameLayout>
-</LinearLayout>
+            android:layout_marginStart="@dimen/screen_margin"
+            android:layout_marginTop="@dimen/space_m"
+            android:layout_marginEnd="@dimen/screen_margin" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+                android:id="@+id/playlistsRefresh"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/playlistsList"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:clipToPadding="false"
+                    android:overScrollMode="never"
+                    android:paddingStart="@dimen/screen_margin"
+                    android:paddingTop="@dimen/space_s"
+                    android:paddingEnd="@dimen/screen_margin"
+                    android:paddingBottom="@dimen/content_bottom_padding_playing" />
+            </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+            <com.facebook.shimmer.ShimmerFrameLayout
+                android:id="@+id/playlistsShimmer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="@dimen/screen_margin"
+                android:paddingTop="@dimen/space_m"
+                android:paddingEnd="@dimen/screen_margin"
+                android:visibility="gone"
+                app:shimmer_auto_start="true"
+                app:shimmer_base_color="?attr/mystSurfaceAlt"
+                app:shimmer_highlight_color="?attr/mystSurface">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <include
+                            layout="@layout/item_playlist_skeleton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1" />
+
+                        <include
+                            layout="@layout/item_playlist_skeleton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:layout_weight="1" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="horizontal">
+
+                        <include
+                            layout="@layout/item_playlist_skeleton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1" />
+
+                        <include
+                            layout="@layout/item_playlist_skeleton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:layout_weight="1" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.facebook.shimmer.ShimmerFrameLayout>
+
+            <include
+                android:id="@+id/playlistsState"
+                layout="@layout/view_state"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center" />
+        </FrameLayout>
+    </LinearLayout>
+</FrameLayout>

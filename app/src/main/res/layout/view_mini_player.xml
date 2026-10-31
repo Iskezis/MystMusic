@@ -4,9 +4,9 @@
     android:id="@+id/miniPlayerRoot"
     android:layout_width="match_parent"
     android:layout_height="@dimen/mini_player_height"
-    app:cardBackgroundColor="?attr/mystNavbarBg"
-    app:cardCornerRadius="20dp"
-    app:cardElevation="10dp"
+    app:cardBackgroundColor="?attr/mystGlass"
+    app:cardCornerRadius="22dp"
+    app:cardElevation="12dp"
     app:strokeColor="?attr/mystStroke"
     app:strokeWidth="1dp">
 
@@ -16,7 +16,7 @@
         android:paddingStart="@dimen/space_s"
         android:paddingEnd="@dimen/space_s">
 
-        <ImageView
+        <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/miniCover"
             android:layout_width="@dimen/mini_cover"
             android:layout_height="@dimen/mini_cover"
@@ -25,16 +25,17 @@
             android:scaleType="centerCrop"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.CoverSmall" />
 
         <TextView
             android:id="@+id/miniTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/space_s"
+            android:layout_marginStart="@dimen/space_m"
             android:layout_marginEnd="@dimen/space_s"
             android:ellipsize="end"
-            android:fontFamily="sans-serif-medium"
+            android:fontFamily="@font/poppins_medium"
             android:maxLines="1"
             android:textColor="?attr/mystOnSurface"
             android:textSize="@dimen/text_body"
@@ -48,6 +49,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:ellipsize="end"
+            android:fontFamily="@font/poppins_regular"
             android:maxLines="1"
             android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="@dimen/text_small"
@@ -58,15 +60,16 @@
 
         <ImageButton
             android:id="@+id/miniPlay"
-            android:layout_width="@dimen/touch_target"
-            android:layout_height="@dimen/touch_target"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_play_button"
             android:contentDescription="@string/player_play"
+            android:padding="11dp"
             android:src="@drawable/ic_play"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:tint="?attr/mystAccentText" />
+            app:tint="?attr/mystOnAccent" />
 
         <ProgressBar
             android:id="@+id/miniProgress"
@@ -75,10 +78,10 @@
             android:layout_height="2dp"
             android:layout_marginStart="@dimen/space_s"
             android:layout_marginEnd="@dimen/space_s"
-            android:layout_marginBottom="6dp"
+            android:layout_marginBottom="5dp"
             android:max="1000"
-            android:progressTint="?attr/mystAccentText"
-            android:progressBackgroundTint="?attr/mystStrokeStrong"
+            android:progressBackgroundTint="?attr/mystStroke"
+            android:progressTint="?attr/mystAccent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent" />

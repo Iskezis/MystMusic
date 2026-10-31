@@ -20,7 +20,8 @@
             android:id="@+id/sectionTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fontFamily="sans-serif-medium"
+            android:fontFamily="@font/poppins_semibold"
+            android:letterSpacing="-0.01"
             android:textColor="?attr/mystOnSurface"
             android:textSize="@dimen/text_section" />
 
@@ -29,6 +30,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
+            android:fontFamily="@font/poppins_regular"
             android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="@dimen/text_small"
             android:visibility="gone" />
@@ -36,10 +38,10 @@
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/sectionAction"
-        style="@style/Widget.MystMusic.Button.Secondary"
+        style="@style/Widget.MystMusic.Button.Tonal"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/space_s"
-        android:visibility="gone"
-        android:text="@string/state_retry" />
+        android:text="@string/state_retry"
+        android:visibility="gone" />
 </LinearLayout>

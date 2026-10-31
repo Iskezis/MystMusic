@@ -23,6 +23,9 @@
     <color name="light_accent_text">#0369A1</color>
     <color name="light_error">#DC2626</color>
     <color name="light_success">#15803D</color>
+    <color name="light_hero_start">#DDF2FF</color>
+    <color name="light_hero_end">#F6FAFE</color>
+    <color name="light_glass">#F2FFFFFF</color>
 
     <!-- Tema escuro -->
     <color name="dark_bg">#0B1220</color>
@@ -38,6 +41,9 @@
     <color name="dark_accent_text">#BAE6FD</color>
     <color name="dark_error">#F87171</color>
     <color name="dark_success">#4ADE80</color>
+    <color name="dark_hero_start">#12314A</color>
+    <color name="dark_hero_end">#070D18</color>
+    <color name="dark_glass">#F2101A2B</color>
 
     <!-- Preto AMOLED -->
     <color name="amoled_bg">#000000</color>
@@ -46,6 +52,9 @@
     <color name="amoled_navbar">#EB000000</color>
     <color name="amoled_stroke">#1FFFFFFF</color>
     <color name="amoled_stroke_strong">#33FFFFFF</color>
+    <color name="amoled_hero_start">#0A1F2E</color>
+    <color name="amoled_hero_end">#000000</color>
+    <color name="amoled_glass">#F20A0A0A</color>
 
     <!-- Sobreposições e utilidades -->
     <color name="image_scrim">#80000000</color>

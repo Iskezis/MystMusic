@@ -5,13 +5,21 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <View
+        android:layout_width="0dp"
+        android:layout_height="520dp"
+        android:background="@drawable/bg_hero"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <LinearLayout
         android:id="@+id/detailTopBar"
         android:layout_width="0dp"
         android:layout_height="56dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="@dimen/space_s"
+        android:paddingStart="@dimen/space_xs"
         android:paddingEnd="@dimen/space_s"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -30,13 +38,14 @@
             android:id="@+id/detailBarTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/space_xs"
             android:layout_weight="1"
             android:ellipsize="end"
-            android:fontFamily="sans-serif-medium"
+            android:fontFamily="@font/poppins_medium"
             android:maxLines="1"
             android:text="@string/playlists_title"
             android:textColor="?attr/mystOnSurface"
-            android:textSize="@dimen/text_title" />
+            android:textSize="18sp" />
 
         <ImageButton
             android:id="@+id/detailMore"
@@ -74,10 +83,11 @@
 
             <FrameLayout
                 android:id="@+id/detailCoverFrame"
-                android:layout_width="180dp"
-                android:layout_height="180dp"
+                android:layout_width="@dimen/browse_cover"
+                android:layout_height="@dimen/browse_cover"
                 android:background="@drawable/bg_playlist_placeholder"
                 android:clickable="true"
+                android:elevation="10dp"
                 android:focusable="true">
 
                 <TextView
@@ -85,9 +95,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
-                    android:fontFamily="sans-serif-medium"
+                    android:fontFamily="@font/poppins_semibold"
                     android:textColor="?attr/mystOnImage"
-                    android:textSize="56sp" />
+                    android:textSize="64sp" />
 
                 <com.google.android.material.imageview.ShapeableImageView
                     android:id="@+id/detailCover"
@@ -95,7 +105,7 @@
                     android:layout_height="match_parent"
                     android:contentDescription="@string/playlist_change_cover"
                     android:scaleType="centerCrop"
-                    app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.Cover" />
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.CoverLarge" />
 
                 <ImageButton
                     android:id="@+id/detailCoverEdit"
@@ -107,26 +117,28 @@
                     android:contentDescription="@string/playlist_change_cover"
                     android:padding="8dp"
                     android:src="@drawable/ic_image"
-                    app:tint="?attr/mystOnSurface" />
+                    app:tint="?attr/mystOnImage" />
             </FrameLayout>
 
             <TextView
                 android:id="@+id/detailName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_m"
+                android:layout_marginTop="@dimen/space_l"
                 android:ellipsize="end"
-                android:fontFamily="sans-serif-medium"
+                android:fontFamily="@font/poppins_semibold"
                 android:gravity="center"
+                android:letterSpacing="-0.02"
                 android:maxLines="2"
                 android:textColor="?attr/mystOnSurface"
-                android:textSize="22sp" />
+                android:textSize="28sp" />
 
             <TextView
                 android:id="@+id/detailSubtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
+                android:fontFamily="@font/poppins_regular"
                 android:textColor="?attr/mystOnSurfaceDim"
                 android:textSize="@dimen/text_small" />
 
@@ -144,7 +156,8 @@
                     android:layout_height="wrap_content"
                     android:text="@string/playlist_play_all"
                     app:icon="@drawable/ic_play"
-                    app:iconGravity="textStart" />
+                    app:iconGravity="textStart"
+                    app:iconTint="?attr/mystOnAccent" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/detailShuffle"
@@ -154,29 +167,39 @@
                     android:layout_marginStart="@dimen/space_s"
                     android:text="@string/playlist_shuffle"
                     app:icon="@drawable/ic_shuffle"
-                    app:iconGravity="textStart" />
+                    app:iconGravity="textStart"
+                    app:iconTint="?attr/mystAccentText" />
             </LinearLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/detailDownload"
-                style="@style/Widget.MystMusic.Button.Secondary"
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/space_s"
-                android:text="@string/download_all"
-                app:icon="@drawable/ic_arrow_down"
-                app:iconGravity="textStart" />
+                android:gravity="center"
+                android:orientation="horizontal">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/detailCopy"
-                style="@style/Widget.MystMusic.Button.Secondary"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_s"
-                android:text="@string/yt_copy_to_myst"
-                android:visibility="gone"
-                app:icon="@drawable/ic_add_to_playlist"
-                app:iconGravity="textStart" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/detailDownload"
+                    style="@style/Widget.MystMusic.Button.Tonal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/download_all"
+                    app:icon="@drawable/ic_arrow_down"
+                    app:iconGravity="textStart"
+                    app:iconTint="?attr/mystAccentText" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/detailCopy"
+                    style="@style/Widget.MystMusic.Button.Tonal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/space_s"
+                    android:text="@string/yt_copy_to_myst"
+                    android:visibility="gone"
+                    app:icon="@drawable/ic_add_to_playlist"
+                    app:iconGravity="textStart"
+                    app:iconTint="?attr/mystAccentText" />
+            </LinearLayout>
         </LinearLayout>
 
         <FrameLayout

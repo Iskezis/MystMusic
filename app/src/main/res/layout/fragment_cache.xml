@@ -30,7 +30,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/space_s"
             android:layout_weight="1"
-            android:fontFamily="sans-serif-medium"
+            android:fontFamily="@font/poppins_medium"
             android:text="@string/cache_title"
             android:textColor="?attr/mystOnSurface"
             android:textSize="28sp" />
@@ -72,7 +72,7 @@
                         android:id="@+id/cacheSummary"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-medium"
+                        android:fontFamily="@font/poppins_medium"
                         android:textColor="?attr/mystOnSurface"
                         android:textSize="22sp" />
 
@@ -220,7 +220,7 @@
         android:paddingStart="@dimen/screen_margin"
         android:paddingTop="@dimen/space_m"
         android:paddingEnd="@dimen/screen_margin"
-        android:fontFamily="sans-serif-medium"
+        android:fontFamily="@font/poppins_medium"
         android:text="@string/cache_list_title"
         android:textColor="?attr/mystOnSurface"
         android:textSize="18sp" />

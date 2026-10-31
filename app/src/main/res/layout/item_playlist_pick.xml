@@ -27,7 +27,7 @@
         android:layout_marginStart="@dimen/space_m"
         android:layout_weight="1"
         android:ellipsize="end"
-        android:fontFamily="sans-serif-medium"
+        android:fontFamily="@font/poppins_medium"
         android:maxLines="1"
         android:textColor="?attr/mystOnSurface"
         android:textSize="@dimen/text_body" />

@@ -21,4 +21,7 @@
     <attr name="mystSuccess" format="color" />
     <attr name="mystAccentAlpha16" format="color" />
     <attr name="mystAccentAlpha24" format="color" />
+    <attr name="mystHeroStart" format="color" />
+    <attr name="mystHeroEnd" format="color" />
+    <attr name="mystGlass" format="color" />
 </resources>

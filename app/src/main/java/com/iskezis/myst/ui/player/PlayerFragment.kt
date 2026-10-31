@@ -5,14 +5,26 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.Color
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import androidx.core.view.isVisible
+import androidx.palette.graphics.Palette
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -36,7 +48,10 @@ import com.iskezis.myst.util.UiAnimations.focusScale
 import com.iskezis.myst.util.UiAnimations.pressScale
 import com.iskezis.myst.util.formatDuration
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class PlayerFragment : Fragment() {
 
@@ -47,6 +62,7 @@ class PlayerFragment : Fragment() {
     private var latest: PlayerState = PlayerState()
     private var seeking = false
     private var loadedArtworkFor: String? = null
+    private var paletteJob: Job? = null
     private var lastLoggedTrack: String? = null
     private var lastLoggedPlaying: Boolean? = null
     private var initialFocusApplied = false
@@ -221,6 +237,7 @@ class PlayerFragment : Fragment() {
             loadedArtworkFor = null
             binding.playerCover.setImageResource(R.drawable.bg_cover_placeholder)
             binding.playerBackdrop.setImageResource(R.drawable.bg_cover_placeholder)
+            resetPlayerPalette()
         } else if (loadedArtworkFor != artwork) {
             loadedArtworkFor = artwork
             binding.playerCover.load(artwork) {
@@ -228,11 +245,16 @@ class PlayerFragment : Fragment() {
                 placeholder(R.drawable.bg_cover_placeholder)
                 error(R.drawable.bg_cover_placeholder)
                 listener(
+                    onSuccess = { _, result ->
+                        val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
+                        if (bitmap != null) applyArtworkPalette(bitmap)
+                    },
                     onError = { _, result ->
                         AppLog.w(
                             AppLog.TAG_UI,
                             "Falha ao carregar capa do player: ${AppLog.describe(result.throwable)}",
                         )
+                        resetPlayerPalette()
                     },
                 )
             }
@@ -357,6 +379,80 @@ class PlayerFragment : Fragment() {
             binding.playerYouTubeLogin.isVisible -> R.id.playerYouTubeLogin
             binding.playerCopyLogs.isVisible -> R.id.playerCopyLogs
             else -> View.NO_ID
+        }
+    }
+
+    private fun applyArtworkPalette(bitmap: Bitmap) {
+        val host = context ?: return
+        val accent = themeColor(R.attr.mystAccent, host)
+        val night = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+            Configuration.UI_MODE_NIGHT_YES
+        paletteJob?.cancel()
+        paletteJob = viewLifecycleOwner.lifecycleScope.launch {
+            val palette = withContext(Dispatchers.Default) {
+                try {
+                    Palette.from(bitmap)
+                        .clearFilters()
+                        .maximumColorCount(24)
+                        .generate()
+                } catch (t: Throwable) {
+                    AppLog.w(
+                        AppLog.TAG_UI,
+                        "Falha ao extrair cores da capa: ${AppLog.describe(t)}",
+                    )
+                    null
+                }
+            } ?: return@launch
+            val swatch = palette.vibrantSwatch
+                ?: palette.mutedSwatch
+                ?: palette.dominantSwatch
+            val base = swatch?.rgb ?: accent
+            val tint = if (night) {
+                ColorUtils.blendARGB(base, accent, 0.38f)
+            } else {
+                ColorUtils.blendARGB(base, Color.WHITE, 0.66f)
+            }
+            val start = ColorUtils.setAlphaComponent(tint, if (night) 0x72 else 0x5A)
+            val drawable = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(start, Color.TRANSPARENT),
+            )
+            val current = _binding ?: return@launch
+            current.playerTint.background = drawable
+            applyBackdropBlur(current)
+        }
+    }
+
+    private fun resetPlayerPalette() {
+        paletteJob?.cancel()
+        val current = _binding ?: return
+        current.playerTint.setBackgroundResource(R.drawable.bg_player_tint)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            current.playerBackdrop.setRenderEffect(null)
+        }
+    }
+
+    private fun applyBackdropBlur(current: FragmentPlayerBinding) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || isTv()) return
+        try {
+            current.playerBackdrop.setRenderEffect(
+                RenderEffect.createBlurEffect(42f, 42f, Shader.TileMode.CLAMP),
+            )
+        } catch (t: Throwable) {
+            AppLog.w(AppLog.TAG_UI, "Blur do player indisponível: ${AppLog.describe(t)}")
+        }
+    }
+
+    private fun themeColor(attr: Int, host: Context): Int {
+        val value = TypedValue()
+        return if (host.theme.resolveAttribute(attr, value, true)) {
+            if (value.resourceId != 0) {
+                ContextCompat.getColor(host, value.resourceId)
+            } else {
+                value.data
+            }
+        } else {
+            Color.GRAY
         }
     }
 

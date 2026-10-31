@@ -114,6 +114,7 @@
     <string name="youtube_login_retry">Recarregar login</string>
 
     <string name="playlists_title">Playlists</string>
+    <string name="playlists_subtitle">Crie, organize e sincronize sua biblioteca.</string>
     <string name="playlists_empty">Crie sua primeira playlist ou importe uma do Spotify.</string>
     <string name="playlists_new">Nova playlist</string>
     <string name="playlists_spotify">Integrar do Spotify</string>
@@ -203,6 +204,10 @@
     <string name="common_save">Salvar</string>
 
     <string name="settings_title">Configurações</string>
+    <string name="settings_subtitle">Sua conta, aparência e preferências.</string>
+    <string name="settings_group_preferences">Preferências</string>
+    <string name="settings_group_connections">Conexões</string>
+    <string name="settings_group_support">Suporte</string>
     <string name="settings_account">Conta</string>
     <string name="settings_account_myst">Conta Myst</string>
     <string name="settings_account_youtube">Conta YouTube</string>

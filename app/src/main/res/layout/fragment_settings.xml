@@ -1,90 +1,237 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:clipToPadding="false"
-    android:fillViewport="true">
+    android:layout_height="match_parent">
 
-    <LinearLayout
+    <View
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingStart="@dimen/screen_margin"
-        android:paddingTop="@dimen/screen_margin"
-        android:paddingEnd="@dimen/screen_margin"
-        android:paddingBottom="@dimen/content_bottom_padding">
+        android:layout_height="360dp"
+        android:background="@drawable/bg_hero" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="sans-serif-medium"
-            android:text="@string/settings_title"
-            android:textColor="?attr/mystOnSurface"
-            android:textSize="28sp" />
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:fillViewport="true">
 
-        <com.google.android.material.card.MaterialCardView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_l"
-            app:cardBackgroundColor="?attr/mystSurface"
-            app:cardCornerRadius="@dimen/corner_large"
-            app:cardElevation="0dp"
-            app:strokeColor="?attr/mystStroke"
-            app:strokeWidth="1dp">
+            android:orientation="vertical"
+            android:paddingStart="@dimen/screen_margin"
+            android:paddingTop="@dimen/space_m"
+            android:paddingEnd="@dimen/screen_margin"
+            android:paddingBottom="@dimen/content_bottom_padding">
 
-            <LinearLayout
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/poppins_semibold"
+                android:letterSpacing="0.12"
+                android:text="@string/app_name"
+                android:textAllCaps="true"
+                android:textColor="?attr/mystAccentText"
+                android:textSize="@dimen/text_label" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="@font/poppins_semibold"
+                android:letterSpacing="-0.02"
+                android:text="@string/settings_title"
+                android:textColor="?attr/mystOnSurface"
+                android:textSize="@dimen/text_display" />
+
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/space_l">
+                android:layout_marginTop="2dp"
+                android:fontFamily="@font/poppins_regular"
+                android:text="@string/settings_subtitle"
+                android:textColor="?attr/mystOnSurfaceDim"
+                android:textSize="@dimen/text_small" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_l"
+                app:cardBackgroundColor="?attr/mystGlass"
+                app:cardCornerRadius="@dimen/corner_xlarge"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/mystStroke"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_l">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <FrameLayout
+                            android:id="@+id/settingsAvatarFrame"
+                            android:layout_width="76dp"
+                            android:layout_height="76dp"
+                            android:background="@drawable/bg_avatar"
+                            android:clickable="true"
+                            android:contentDescription="@string/settings_avatar_change"
+                            android:focusable="true">
+
+                            <com.google.android.material.imageview.ShapeableImageView
+                                android:id="@+id/settingsAvatarImage"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:scaleType="centerCrop"
+                                android:visibility="gone"
+                                app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.Circle" />
+
+                            <TextView
+                                android:id="@+id/settingsInitial"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center"
+                                android:fontFamily="@font/poppins_semibold"
+                                android:textColor="?attr/mystAccentText"
+                                android:textSize="28sp" />
+
+                            <FrameLayout
+                                android:layout_width="26dp"
+                                android:layout_height="26dp"
+                                android:layout_gravity="bottom|end"
+                                android:background="@drawable/bg_gradient_circle">
+
+                                <ImageView
+                                    android:layout_width="14dp"
+                                    android:layout_height="14dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="@null"
+                                    android:src="@drawable/ic_edit"
+                                    app:tint="?attr/mystOnAccent" />
+                            </FrameLayout>
+                        </FrameLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_m"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/settingsAccountName"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:ellipsize="end"
+                                android:fontFamily="@font/poppins_semibold"
+                                android:maxLines="1"
+                                android:textColor="?attr/mystOnSurface"
+                                android:textSize="20sp" />
+
+                            <TextView
+                                android:id="@+id/settingsAccountType"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:fontFamily="@font/poppins_regular"
+                                android:textColor="?attr/mystOnSurfaceDim"
+                                android:textSize="@dimen/text_small" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/settingsAccountFileSection"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_m"
+                        android:orientation="vertical">
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/mystStroke" />
+
+                        <TextView
+                            android:id="@+id/settingsAccountFileStatus"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_m"
+                            android:fontFamily="@font/poppins_regular"
+                            android:text="@string/settings_account_file_status_missing"
+                            android:textColor="?attr/mystOnSurfaceDim"
+                            android:textSize="@dimen/text_small" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/settingsAccountFileAction"
+                            style="@style/Widget.MystMusic.Button.Tonal"
+                            android:layout_width="match_parent"
+                            android:layout_height="52dp"
+                            android:layout_marginTop="@dimen/space_s"
+                            android:text="@string/settings_account_file_save"
+                            app:icon="@drawable/ic_share"
+                            app:iconGravity="textStart"
+                            app:iconPadding="@dimen/space_s" />
+
+                        <TextView
+                            android:id="@+id/settingsAccountFileHint"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_s"
+                            android:fontFamily="@font/poppins_regular"
+                            android:text="@string/settings_account_file_hint"
+                            android:textColor="?attr/mystOnSurfaceDim"
+                            android:textSize="@dimen/text_small" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_xs"
+                android:layout_marginTop="@dimen/space_l"
+                android:fontFamily="@font/poppins_semibold"
+                android:letterSpacing="0.12"
+                android:text="@string/settings_group_preferences"
+                android:textAllCaps="true"
+                android:textColor="?attr/mystOnSurfaceDim"
+                android:textSize="@dimen/text_label" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/settingsAppearanceCard"
+                style="@style/Widget.MystMusic.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_s"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:padding="@dimen/space_m">
 
                     <FrameLayout
-                        android:id="@+id/settingsAvatarFrame"
-                        android:layout_width="72dp"
-                        android:layout_height="72dp"
-                        android:background="@drawable/bg_avatar"
-                        android:clickable="true"
-                        android:contentDescription="@string/settings_avatar_change"
-                        android:focusable="true">
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_icon_tile">
 
-                        <com.google.android.material.imageview.ShapeableImageView
-                            android:id="@+id/settingsAvatarImage"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:scaleType="centerCrop"
-                            android:visibility="gone"
-                            app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.Circle" />
-
-                        <TextView
-                            android:id="@+id/settingsInitial"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
                             android:layout_gravity="center"
-                            android:fontFamily="sans-serif-medium"
-                            android:textColor="?attr/mystAccentText"
-                            android:textSize="28sp" />
-
-                        <FrameLayout
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:layout_gravity="bottom|end"
-                            android:background="@drawable/bg_avatar">
-
-                            <ImageView
-                                android:layout_width="13dp"
-                                android:layout_height="13dp"
-                                android:layout_gravity="center"
-                                android:contentDescription="@null"
-                                android:src="@drawable/ic_edit"
-                                app:tint="?attr/mystAccentText" />
-                        </FrameLayout>
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_appearance"
+                            app:tint="?attr/mystAccentText" />
                     </FrameLayout>
 
                     <LinearLayout
@@ -95,234 +242,62 @@
                         android:orientation="vertical">
 
                         <TextView
-                            android:id="@+id/settingsAccountName"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:ellipsize="end"
-                            android:fontFamily="sans-serif-medium"
-                            android:maxLines="1"
+                            android:fontFamily="@font/poppins_medium"
+                            android:text="@string/settings_appearance"
                             android:textColor="?attr/mystOnSurface"
-                            android:textSize="18sp" />
+                            android:textSize="16sp" />
 
                         <TextView
-                            android:id="@+id/settingsAccountType"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
+                            android:layout_marginTop="1dp"
+                            android:fontFamily="@font/poppins_regular"
+                            android:text="@string/settings_appearance_subtitle"
                             android:textColor="?attr/mystOnSurfaceDim"
                             android:textSize="@dimen/text_small" />
                     </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="?attr/mystOnSurfaceDim" />
                 </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-                <LinearLayout
-                    android:id="@+id/settingsAccountFileSection"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_m"
-                    android:orientation="vertical">
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="?attr/mystStroke" />
-
-                    <TextView
-                        android:id="@+id/settingsAccountFileStatus"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_m"
-                        android:text="@string/settings_account_file_status_missing"
-                        android:textColor="?attr/mystOnSurfaceDim"
-                        android:textSize="@dimen/text_small" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/settingsAccountFileAction"
-                        style="@style/Widget.MystMusic.Button.Secondary"
-                        android:layout_width="match_parent"
-                        android:layout_height="52dp"
-                        android:layout_marginTop="@dimen/space_s"
-                        android:text="@string/settings_account_file_save"
-                        app:icon="@drawable/ic_share"
-                        app:iconGravity="textStart"
-                        app:iconPadding="@dimen/space_s" />
-
-                    <TextView
-                        android:id="@+id/settingsAccountFileHint"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_s"
-                        android:text="@string/settings_account_file_hint"
-                        android:textColor="?attr/mystOnSurfaceDim"
-                        android:textSize="@dimen/text_small" />
-                </LinearLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/settingsLogout"
-                    style="@style/Widget.MystMusic.Button.Secondary"
-                    android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="@dimen/space_l"
-                    android:text="@string/settings_logout"
-                    app:icon="@drawable/ic_logout"
-                    app:iconGravity="textStart"
-                    app:iconPadding="@dimen/space_s" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/settingsAppearanceCard"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_m"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            app:cardBackgroundColor="?attr/mystSurface"
-            app:cardCornerRadius="@dimen/corner_large"
-            app:cardElevation="0dp"
-            app:strokeColor="?attr/mystStroke"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/settingsStorageCard"
+                style="@style/Widget.MystMusic.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="@dimen/space_l">
-
-                <ImageView
-                    android:layout_width="@dimen/touch_target"
-                    android:layout_height="@dimen/touch_target"
-                    android:contentDescription="@null"
-                    android:padding="@dimen/space_s"
-                    android:src="@drawable/ic_appearance"
-                    app:tint="?attr/mystAccentText" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/space_m"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-medium"
-                        android:text="@string/settings_appearance"
-                        android:textColor="?attr/mystOnSurface"
-                        android:textSize="18sp" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/settings_appearance_subtitle"
-                        android:textColor="?attr/mystOnSurfaceDim"
-                        android:textSize="@dimen/text_small" />
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_chevron_right"
-                    app:tint="?attr/mystOnSurfaceDim" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/settingsStorageCard"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_m"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            app:cardBackgroundColor="?attr/mystSurface"
-            app:cardCornerRadius="@dimen/corner_large"
-            app:cardElevation="0dp"
-            app:strokeColor="?attr/mystStroke"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="@dimen/space_l">
-
-                <ImageView
-                    android:layout_width="@dimen/touch_target"
-                    android:layout_height="@dimen/touch_target"
-                    android:contentDescription="@null"
-                    android:padding="@dimen/space_s"
-                    android:src="@drawable/ic_storage"
-                    app:tint="?attr/mystAccentText" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/space_m"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-medium"
-                        android:text="@string/settings_storage"
-                        android:textColor="?attr/mystOnSurface"
-                        android:textSize="18sp" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/settings_storage_subtitle"
-                        android:textColor="?attr/mystOnSurfaceDim"
-                        android:textSize="@dimen/text_small" />
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_chevron_right"
-                    app:tint="?attr/mystOnSurfaceDim" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/settingsDiscordCard"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_m"
-            app:cardBackgroundColor="?attr/mystSurface"
-            app:cardCornerRadius="@dimen/corner_large"
-            app:cardElevation="0dp"
-            app:strokeColor="?attr/mystStroke"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/space_l">
+                android:layout_marginTop="@dimen/space_s"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:padding="@dimen/space_m">
 
-                    <ImageView
-                        android:layout_width="@dimen/touch_target"
-                        android:layout_height="@dimen/touch_target"
-                        android:contentDescription="@null"
-                        android:padding="@dimen/space_s"
-                        android:src="@drawable/ic_discord"
-                        app:tint="?attr/mystAccentText" />
+                    <FrameLayout
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_icon_tile">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_storage"
+                            app:tint="?attr/mystAccentText" />
+                    </FrameLayout>
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -334,171 +309,291 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:fontFamily="sans-serif-medium"
-                            android:text="@string/settings_discord"
+                            android:fontFamily="@font/poppins_medium"
+                            android:text="@string/settings_storage"
                             android:textColor="?attr/mystOnSurface"
-                            android:textSize="18sp" />
+                            android:textSize="16sp" />
 
                         <TextView
-                            android:id="@+id/settingsDiscordStatus"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="@string/settings_discord_off"
+                            android:layout_marginTop="1dp"
+                            android:fontFamily="@font/poppins_regular"
+                            android:text="@string/settings_storage_subtitle"
                             android:textColor="?attr/mystOnSurfaceDim"
                             android:textSize="@dimen/text_small" />
                     </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="?attr/mystOnSurfaceDim" />
                 </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/settingsDiscordAction"
-                    style="@style/Widget.MystMusic.Button.Secondary"
-                    android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="@dimen/space_l"
-                    android:text="@string/settings_discord_connect"
-                    app:icon="@drawable/ic_discord"
-                    app:iconGravity="textStart"
-                    app:iconPadding="@dimen/space_s" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_xs"
+                android:layout_marginTop="@dimen/space_l"
+                android:fontFamily="@font/poppins_semibold"
+                android:letterSpacing="0.12"
+                android:text="@string/settings_group_connections"
+                android:textAllCaps="true"
+                android:textColor="?attr/mystOnSurfaceDim"
+                android:textSize="@dimen/text_label" />
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/settingsTvCard"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_m"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            app:cardBackgroundColor="?attr/mystSurface"
-            app:cardCornerRadius="@dimen/corner_large"
-            app:cardElevation="0dp"
-            app:strokeColor="?attr/mystStroke"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/settingsDiscordCard"
+                style="@style/Widget.MystMusic.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="@dimen/space_l">
-
-                <ImageView
-                    android:layout_width="@dimen/touch_target"
-                    android:layout_height="@dimen/touch_target"
-                    android:contentDescription="@null"
-                    android:padding="@dimen/space_s"
-                    android:src="@drawable/ic_tv"
-                    app:tint="?attr/mystAccentText" />
+                android:layout_marginTop="@dimen/space_s">
 
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/space_m"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_m">
 
-                    <TextView
-                        android:id="@+id/settingsTvTitle"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-medium"
-                        android:text="@string/settings_tv"
-                        android:textColor="?attr/mystOnSurface"
-                        android:textSize="18sp" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                    <TextView
-                        android:id="@+id/settingsTvSubtitle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/settings_tv_subtitle"
-                        android:textColor="?attr/mystOnSurfaceDim"
-                        android:textSize="@dimen/text_small" />
+                        <FrameLayout
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:background="@drawable/bg_icon_tile">
 
-                    <TextView
-                        android:id="@+id/settingsTvStatus"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_xs"
-                        android:textColor="?attr/mystAccentText"
-                        android:textSize="@dimen/text_small"
-                        android:visibility="gone" />
+                            <ImageView
+                                android:layout_width="22dp"
+                                android:layout_height="22dp"
+                                android:layout_gravity="center"
+                                android:contentDescription="@null"
+                                android:src="@drawable/ic_discord"
+                                app:tint="?attr/mystAccentText" />
+                        </FrameLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_m"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/poppins_medium"
+                                android:text="@string/settings_discord"
+                                android:textColor="?attr/mystOnSurface"
+                                android:textSize="16sp" />
+
+                            <TextView
+                                android:id="@+id/settingsDiscordStatus"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="1dp"
+                                android:fontFamily="@font/poppins_regular"
+                                android:text="@string/settings_discord_off"
+                                android:textColor="?attr/mystOnSurfaceDim"
+                                android:textSize="@dimen/text_small" />
+                        </LinearLayout>
+                    </LinearLayout>
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/settingsTvDisconnect"
-                        style="@style/Widget.MystMusic.Button.Secondary"
+                        android:id="@+id/settingsDiscordAction"
+                        style="@style/Widget.MystMusic.Button.Tonal"
                         android:layout_width="match_parent"
-                        android:layout_height="48dp"
+                        android:layout_height="52dp"
                         android:layout_marginTop="@dimen/space_m"
-                        android:text="@string/settings_tv_disconnect"
-                        android:visibility="gone" />
+                        android:text="@string/settings_discord_connect"
+                        app:icon="@drawable/ic_discord"
+                        app:iconGravity="textStart"
+                        app:iconPadding="@dimen/space_s" />
                 </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+            </com.google.android.material.card.MaterialCardView>
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/settingsLogsCard"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_m"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            app:cardBackgroundColor="?attr/mystSurface"
-            app:cardCornerRadius="@dimen/corner_large"
-            app:cardElevation="0dp"
-            app:strokeColor="?attr/mystStroke"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/settingsTvCard"
+                style="@style/Widget.MystMusic.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="@dimen/space_l">
-
-                <ImageView
-                    android:layout_width="@dimen/touch_target"
-                    android:layout_height="@dimen/touch_target"
-                    android:contentDescription="@null"
-                    android:padding="@dimen/space_s"
-                    android:src="@drawable/ic_logs"
-                    app:tint="?attr/mystAccentText" />
+                android:layout_marginTop="@dimen/space_s"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground">
 
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/space_m"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/space_m">
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-medium"
-                        android:text="@string/settings_logs"
-                        android:textColor="?attr/mystOnSurface"
-                        android:textSize="18sp" />
+                    <FrameLayout
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_icon_tile">
 
-                    <TextView
-                        android:layout_width="match_parent"
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_tv"
+                            app:tint="?attr/mystAccentText" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/settings_logs_subtitle"
-                        android:textColor="?attr/mystOnSurfaceDim"
-                        android:textSize="@dimen/text_small" />
+                        android:layout_marginStart="@dimen/space_m"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/settingsTvTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/poppins_medium"
+                            android:text="@string/settings_tv"
+                            android:textColor="?attr/mystOnSurface"
+                            android:textSize="16sp" />
+
+                        <TextView
+                            android:id="@+id/settingsTvSubtitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="1dp"
+                            android:fontFamily="@font/poppins_regular"
+                            android:text="@string/settings_tv_subtitle"
+                            android:textColor="?attr/mystOnSurfaceDim"
+                            android:textSize="@dimen/text_small" />
+
+                        <TextView
+                            android:id="@+id/settingsTvStatus"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_xs"
+                            android:fontFamily="@font/poppins_medium"
+                            android:textColor="?attr/mystAccentText"
+                            android:textSize="@dimen/text_small"
+                            android:visibility="gone" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/settingsTvDisconnect"
+                            style="@style/Widget.MystMusic.Button.Secondary"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:layout_marginTop="@dimen/space_m"
+                            android:text="@string/settings_tv_disconnect"
+                            android:visibility="gone" />
+                    </LinearLayout>
                 </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+            </com.google.android.material.card.MaterialCardView>
 
-        <TextView
-            android:id="@+id/settingsVersion"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_l"
-            android:textColor="?attr/mystOnSurfaceDim"
-            android:textSize="@dimen/text_body" />
-    </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_xs"
+                android:layout_marginTop="@dimen/space_l"
+                android:fontFamily="@font/poppins_semibold"
+                android:letterSpacing="0.12"
+                android:text="@string/settings_group_support"
+                android:textAllCaps="true"
+                android:textColor="?attr/mystOnSurfaceDim"
+                android:textSize="@dimen/text_label" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/settingsLogsCard"
+                style="@style/Widget.MystMusic.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_s"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/space_m">
+
+                    <FrameLayout
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_icon_tile">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_logs"
+                            app:tint="?attr/mystAccentText" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_m"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/poppins_medium"
+                            android:text="@string/settings_logs"
+                            android:textColor="?attr/mystOnSurface"
+                            android:textSize="16sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="1dp"
+                            android:fontFamily="@font/poppins_regular"
+                            android:text="@string/settings_logs_subtitle"
+                            android:textColor="?attr/mystOnSurfaceDim"
+                            android:textSize="@dimen/text_small" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="?attr/mystOnSurfaceDim" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/settingsLogout"
+                style="@style/Widget.MystMusic.Button.Danger"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="@dimen/space_l"
+                android:text="@string/settings_logout"
+                app:icon="@drawable/ic_logout"
+                app:iconGravity="textStart"
+                app:iconPadding="@dimen/space_s" />
+
+            <TextView
+                android:id="@+id/settingsVersion"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="@dimen/space_l"
+                android:fontFamily="@font/poppins_regular"
+                android:textColor="?attr/mystOnSurfaceDim"
+                android:textSize="@dimen/text_small" />
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</FrameLayout>

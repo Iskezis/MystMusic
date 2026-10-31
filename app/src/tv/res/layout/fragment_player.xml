@@ -15,6 +15,12 @@
         android:src="@drawable/bg_cover_placeholder" />
 
     <View
+        android:id="@+id/playerTint"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_player_tint" />
+
+    <View
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@drawable/bg_player_scrim" />
@@ -91,7 +97,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/space_m"
                 android:ellipsize="end"
-                android:fontFamily="sans-serif-medium"
+                android:fontFamily="@font/poppins_medium"
                 android:maxLines="2"
                 android:textColor="?attr/mystOnSurface"
                 android:textSize="34sp" />

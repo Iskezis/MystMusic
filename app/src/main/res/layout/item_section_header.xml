@@ -12,7 +12,8 @@
         android:id="@+id/sectionTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:fontFamily="sans-serif-medium"
+        android:fontFamily="@font/poppins_semibold"
+        android:letterSpacing="-0.01"
         android:textColor="?attr/mystOnSurface"
         android:textSize="@dimen/text_section" />
 
@@ -21,6 +22,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
+        android:fontFamily="@font/poppins_regular"
         android:textColor="?attr/mystOnSurfaceDim"
         android:textSize="@dimen/text_small"
         android:visibility="gone" />

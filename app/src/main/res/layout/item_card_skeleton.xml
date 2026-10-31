@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="140dp"
+    android:layout_width="@dimen/card_cover"
     android:layout_height="wrap_content"
     android:orientation="vertical">
 
     <View
-        android:layout_width="140dp"
-        android:layout_height="140dp"
+        android:layout_width="@dimen/card_cover"
+        android:layout_height="@dimen/card_cover"
         android:background="@drawable/bg_skeleton" />
 
     <View
-        android:layout_width="104dp"
+        android:layout_width="120dp"
         android:layout_height="12dp"
         android:layout_marginTop="@dimen/space_s"
         android:background="@drawable/bg_skeleton" />
 
     <View
-        android:layout_width="72dp"
+        android:layout_width="84dp"
         android:layout_height="10dp"
         android:layout_marginTop="6dp"
         android:background="@drawable/bg_skeleton" />

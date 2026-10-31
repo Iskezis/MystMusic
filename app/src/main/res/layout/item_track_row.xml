@@ -5,13 +5,17 @@
     android:layout_height="wrap_content"
     android:layout_marginStart="@dimen/space_s"
     android:layout_marginEnd="@dimen/space_s"
+    android:layout_marginBottom="2dp"
     android:background="@drawable/bg_track_row"
     android:clickable="true"
     android:focusable="true"
     android:gravity="center_vertical"
     android:minHeight="@dimen/track_row_height"
     android:orientation="horizontal"
-    android:padding="@dimen/space_s">
+    android:paddingStart="@dimen/space_s"
+    android:paddingTop="6dp"
+    android:paddingEnd="@dimen/space_xs"
+    android:paddingBottom="6dp">
 
     <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/rowCover"
@@ -20,7 +24,7 @@
         android:background="@drawable/bg_cover_placeholder"
         android:contentDescription="@null"
         android:scaleType="centerCrop"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.Cover" />
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.CoverSmall" />
 
     <LinearLayout
         android:layout_width="0dp"
@@ -34,7 +38,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ellipsize="end"
-            android:fontFamily="sans-serif-medium"
+            android:fontFamily="@font/poppins_medium"
             android:maxLines="1"
             android:textColor="?attr/mystOnSurface"
             android:textSize="@dimen/text_body" />
@@ -43,8 +47,9 @@
             android:id="@+id/rowArtist"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="1dp"
             android:ellipsize="end"
+            android:fontFamily="@font/poppins_regular"
             android:maxLines="1"
             android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="@dimen/text_small" />
@@ -55,6 +60,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/space_s"
+        android:fontFamily="@font/poppins_regular"
         android:textColor="?attr/mystOnSurfaceDim"
         android:textSize="@dimen/text_small" />
 

@@ -3,14 +3,15 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/homeSearchCard"
     android:layout_width="match_parent"
-    android:layout_height="56dp"
+    android:layout_height="58dp"
     android:layout_marginStart="@dimen/screen_margin"
+    android:layout_marginTop="@dimen/space_xs"
     android:layout_marginEnd="@dimen/screen_margin"
     android:clickable="true"
     android:contentDescription="@string/search_hint"
     android:focusable="true"
-    app:cardBackgroundColor="?attr/mystSurfaceAlt"
-    app:cardCornerRadius="28dp"
+    app:cardBackgroundColor="?attr/mystGlass"
+    app:cardCornerRadius="@dimen/corner_pill"
     app:cardElevation="0dp"
     app:strokeColor="?attr/mystStroke"
     app:strokeWidth="1dp">
@@ -20,24 +21,39 @@
         android:layout_height="match_parent"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="@dimen/space_m"
+        android:paddingStart="@dimen/space_s"
         android:paddingEnd="@dimen/space_m">
 
-        <ImageView
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:contentDescription="@null"
-            android:src="@drawable/ic_search"
-            app:tint="?attr/mystOnSurfaceDim" />
+        <FrameLayout
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_icon_tile">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_search"
+                app:tint="?attr/mystAccentText" />
+        </FrameLayout>
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/space_m"
             android:layout_weight="1"
+            android:fontFamily="@font/poppins_regular"
             android:text="@string/search_hint"
             android:textColor="?attr/mystOnSurfaceDim"
             android:textSize="@dimen/text_body" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/poppins_medium"
+            android:text="@string/search_title"
+            android:textColor="?attr/mystAccentText"
+            android:textSize="@dimen/text_small" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

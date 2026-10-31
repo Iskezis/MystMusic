@@ -41,7 +41,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/space_s"
             android:layout_weight="1"
-            android:fontFamily="sans-serif-medium"
+            android:fontFamily="@font/poppins_medium"
             android:text="@string/avatar_crop_title"
             android:textColor="?attr/mystOnImage"
             android:textSize="20sp" />

@@ -5,6 +5,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <View
+        android:layout_width="0dp"
+        android:layout_height="420dp"
+        android:background="@drawable/bg_hero"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <LinearLayout
         android:id="@+id/browseTopBar"
         android:layout_width="0dp"
@@ -33,10 +41,10 @@
             android:layout_marginStart="@dimen/space_xs"
             android:layout_weight="1"
             android:ellipsize="end"
-            android:fontFamily="sans-serif-medium"
+            android:fontFamily="@font/poppins_medium"
             android:maxLines="1"
             android:textColor="?attr/mystOnSurface"
-            android:textSize="@dimen/text_title" />
+            android:textSize="18sp" />
     </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
@@ -93,23 +101,23 @@
             <include
                 layout="@layout/item_track_row_skeleton"
                 android:layout_width="match_parent"
-                android:layout_height="72dp"
+                android:layout_height="@dimen/track_row_height"
                 android:layout_marginTop="@dimen/space_l" />
 
             <include
                 layout="@layout/item_track_row_skeleton"
                 android:layout_width="match_parent"
-                android:layout_height="72dp" />
+                android:layout_height="@dimen/track_row_height" />
 
             <include
                 layout="@layout/item_track_row_skeleton"
                 android:layout_width="match_parent"
-                android:layout_height="72dp" />
+                android:layout_height="@dimen/track_row_height" />
 
             <include
                 layout="@layout/item_track_row_skeleton"
                 android:layout_width="match_parent"
-                android:layout_height="72dp" />
+                android:layout_height="@dimen/track_row_height" />
         </LinearLayout>
     </com.facebook.shimmer.ShimmerFrameLayout>
 

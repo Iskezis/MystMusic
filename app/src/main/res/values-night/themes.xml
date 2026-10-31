@@ -45,6 +45,9 @@
         <item name="mystSuccess">@color/dark_success</item>
         <item name="mystAccentAlpha16">@color/accent_alpha_16</item>
         <item name="mystAccentAlpha24">@color/accent_alpha_24</item>
+        <item name="mystHeroStart">@color/dark_hero_start</item>
+        <item name="mystHeroEnd">@color/dark_hero_end</item>
+        <item name="mystGlass">@color/dark_glass</item>
     </style>
 
     <!--
@@ -74,6 +77,9 @@
         <item name="mystSuccess">@color/dark_success</item>
         <item name="mystAccentAlpha16">@color/accent_alpha_16</item>
         <item name="mystAccentAlpha24">@color/accent_alpha_24</item>
+        <item name="mystHeroStart">@color/amoled_hero_start</item>
+        <item name="mystHeroEnd">@color/amoled_hero_end</item>
+        <item name="mystGlass">@color/amoled_glass</item>
 
         <item name="android:colorBackground">@color/amoled_bg</item>
         <item name="colorSurface">@color/amoled_surface</item>

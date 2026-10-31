@@ -9,10 +9,16 @@
         android:id="@+id/playerBackdrop"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:alpha="0.18"
+        android:alpha="0.42"
         android:contentDescription="@null"
         android:scaleType="centerCrop"
         android:src="@drawable/bg_cover_placeholder" />
+
+    <View
+        android:id="@+id/playerTint"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_player_tint" />
 
     <View
         android:layout_width="match_parent"
@@ -36,48 +42,68 @@
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
+                android:layout_height="64dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
                 <ImageButton
                     android:id="@+id/playerBack"
-                    android:layout_width="@dimen/touch_target"
-                    android:layout_height="@dimen/touch_target"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/bg_icon_tile"
                     android:contentDescription="@string/auth_back"
+                    android:padding="10dp"
                     android:src="@drawable/ic_arrow_down"
                     app:tint="?attr/mystOnSurface" />
 
-                <TextView
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:text="@string/player_now_playing"
-                    android:textColor="?attr/mystOnSurfaceDim"
-                    android:textSize="@dimen/text_small" />
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_semibold"
+                        android:letterSpacing="0.12"
+                        android:text="@string/player_now_playing"
+                        android:textAllCaps="true"
+                        android:textColor="?attr/mystAccentText"
+                        android:textSize="@dimen/text_label" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_medium"
+                        android:text="@string/app_name"
+                        android:textColor="?attr/mystOnSurfaceDim"
+                        android:textSize="@dimen/text_small" />
+                </LinearLayout>
 
                 <ImageButton
                     android:id="@+id/playerMore"
-                    android:layout_width="@dimen/touch_target"
-                    android:layout_height="@dimen/touch_target"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/bg_icon_tile"
                     android:contentDescription="@string/player_add_playlist"
+                    android:padding="10dp"
                     android:src="@drawable/ic_add_to_playlist"
                     app:tint="?attr/mystOnSurface" />
             </LinearLayout>
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/playerCover"
-                android:layout_width="280dp"
-                android:layout_height="280dp"
+                android:layout_width="@dimen/player_cover"
+                android:layout_height="@dimen/player_cover"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="@dimen/space_m"
                 android:background="@drawable/bg_cover_placeholder"
                 android:contentDescription="@null"
+                android:elevation="16dp"
                 android:scaleType="centerCrop"
-                app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.Cover" />
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.MystMusic.CoverLarge" />
 
             <TextView
                 android:id="@+id/playerTitle"
@@ -85,11 +111,12 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/space_l"
                 android:ellipsize="end"
-                android:fontFamily="sans-serif-medium"
+                android:fontFamily="@font/poppins_semibold"
                 android:gravity="center"
+                android:letterSpacing="-0.02"
                 android:maxLines="2"
                 android:textColor="?attr/mystOnSurface"
-                android:textSize="22sp" />
+                android:textSize="26sp" />
 
             <TextView
                 android:id="@+id/playerArtist"
@@ -98,25 +125,27 @@
                 android:layout_marginTop="@dimen/space_xs"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:ellipsize="end"
+                android:fontFamily="@font/poppins_medium"
                 android:gravity="center"
                 android:maxLines="1"
                 android:paddingStart="@dimen/space_s"
                 android:paddingEnd="@dimen/space_s"
-                android:textColor="?attr/mystOnSurfaceDim"
+                android:textColor="?attr/mystAccentText"
                 android:textSize="@dimen/text_body" />
 
             <TextView
                 android:id="@+id/playerAlbum"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:ellipsize="end"
+                android:fontFamily="@font/poppins_regular"
                 android:gravity="center"
                 android:maxLines="1"
                 android:paddingStart="@dimen/space_s"
                 android:paddingEnd="@dimen/space_s"
-                android:textColor="?attr/mystAccentText"
+                android:textColor="?attr/mystOnSurfaceDim"
                 android:textSize="@dimen/text_small"
                 android:visibility="gone" />
 
@@ -124,12 +153,15 @@
                 android:id="@+id/playerSeek"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_l"
+                android:layout_marginStart="@dimen/space_xs"
+                android:layout_marginTop="@dimen/space_m"
+                android:layout_marginEnd="@dimen/space_xs"
                 android:max="1000"
                 android:minHeight="32dp"
                 android:progressBackgroundTint="?attr/mystStrokeStrong"
-                android:progressTint="?attr/mystAccentText"
-                android:thumbTint="?attr/mystAccentText" />
+                android:progressTint="?attr/mystAccent"
+                android:splitTrack="false"
+                android:thumbTint="?attr/mystAccent" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -141,6 +173,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:fontFamily="@font/poppins_regular"
                     android:textColor="?attr/mystOnSurfaceDim"
                     android:textSize="@dimen/text_small" />
 
@@ -148,6 +181,7 @@
                     android:id="@+id/playerDuration"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:fontFamily="@font/poppins_regular"
                     android:textColor="?attr/mystOnSurfaceDim"
                     android:textSize="@dimen/text_small" />
             </LinearLayout>
@@ -165,6 +199,7 @@
                     android:layout_height="@dimen/touch_target"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/player_shuffle"
+                    android:padding="12dp"
                     android:src="@drawable/ic_shuffle"
                     app:tint="@color/selector_player_tint" />
 
@@ -175,18 +210,20 @@
                     android:layout_marginStart="@dimen/space_s"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/player_previous"
+                    android:padding="10dp"
                     android:src="@drawable/ic_previous"
                     app:tint="?attr/mystOnSurface" />
 
                 <ImageButton
                     android:id="@+id/playerPlay"
-                    android:layout_width="72dp"
-                    android:layout_height="72dp"
-                    android:layout_marginStart="@dimen/space_s"
-                    android:layout_marginEnd="@dimen/space_s"
+                    android:layout_width="76dp"
+                    android:layout_height="76dp"
+                    android:layout_marginStart="@dimen/space_m"
+                    android:layout_marginEnd="@dimen/space_m"
                     android:background="@drawable/bg_gradient_circle"
                     android:contentDescription="@string/player_play"
-                    android:padding="22dp"
+                    android:elevation="10dp"
+                    android:padding="24dp"
                     android:src="@drawable/ic_play"
                     app:tint="?attr/mystOnAccent" />
 
@@ -196,6 +233,7 @@
                     android:layout_height="56dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/player_next"
+                    android:padding="10dp"
                     android:src="@drawable/ic_next"
                     app:tint="?attr/mystOnSurface" />
 
@@ -206,6 +244,7 @@
                     android:layout_marginStart="@dimen/space_s"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/player_repeat"
+                    android:padding="12dp"
                     android:src="@drawable/ic_repeat"
                     app:tint="@color/selector_player_tint" />
             </LinearLayout>
@@ -215,6 +254,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/space_m"
+                android:fontFamily="@font/poppins_regular"
                 android:gravity="center"
                 android:text="@string/player_error_stream"
                 android:textColor="?attr/mystError"

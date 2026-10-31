@@ -6,6 +6,8 @@
       values-night/themes.xml; o overlay AMOLED é aplicado antes de super.onCreate.
     -->
     <style name="Theme.MystMusic.Base" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="fontFamily">@font/poppins_regular</item>
+        <item name="android:fontFamily">@font/poppins_regular</item>
         <item name="android:windowBackground">@drawable/bg_app</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
@@ -61,6 +63,9 @@
         <item name="mystSuccess">@color/light_success</item>
         <item name="mystAccentAlpha16">@color/accent_alpha_16</item>
         <item name="mystAccentAlpha24">@color/accent_alpha_24</item>
+        <item name="mystHeroStart">@color/light_hero_start</item>
+        <item name="mystHeroEnd">@color/light_hero_end</item>
+        <item name="mystGlass">@color/light_glass</item>
     </style>
 
     <!--
@@ -90,6 +95,9 @@
         <item name="mystSuccess">@color/dark_success</item>
         <item name="mystAccentAlpha16">@color/accent_alpha_16</item>
         <item name="mystAccentAlpha24">@color/accent_alpha_24</item>
+        <item name="mystHeroStart">@color/amoled_hero_start</item>
+        <item name="mystHeroEnd">@color/amoled_hero_end</item>
+        <item name="mystGlass">@color/amoled_glass</item>
 
         <item name="android:colorBackground">@color/amoled_bg</item>
         <item name="colorSurface">@color/amoled_surface</item>
@@ -154,64 +162,135 @@
         <item name="android:windowBackground">@drawable/bg_app</item>
     </style>
 
+    <style name="TextAppearance.MystMusic.Display" parent="TextAppearance.Material3.HeadlineLarge">
+        <item name="android:textColor">?attr/mystOnSurface</item>
+        <item name="android:textSize">@dimen/text_display</item>
+        <item name="android:fontFamily">@font/poppins_semibold</item>
+        <item name="android:letterSpacing">-0.02</item>
+        <item name="android:lineSpacingMultiplier">0.98</item>
+    </style>
+
     <style name="TextAppearance.MystMusic.Title" parent="TextAppearance.Material3.HeadlineSmall">
         <item name="android:textColor">?attr/mystOnSurface</item>
         <item name="android:textSize">24sp</item>
-        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">@font/poppins_semibold</item>
+        <item name="android:letterSpacing">-0.01</item>
     </style>
 
     <style name="TextAppearance.MystMusic.Section" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:textColor">?attr/mystOnSurface</item>
         <item name="android:textSize">@dimen/text_section</item>
-        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">@font/poppins_semibold</item>
+        <item name="android:letterSpacing">-0.01</item>
     </style>
 
     <style name="TextAppearance.MystMusic.Body" parent="TextAppearance.Material3.BodyMedium">
         <item name="android:textColor">?attr/mystOnSurface</item>
         <item name="android:textSize">@dimen/text_body</item>
+        <item name="android:fontFamily">@font/poppins_regular</item>
+    </style>
+
+    <style name="TextAppearance.MystMusic.BodyMedium" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">?attr/mystOnSurface</item>
+        <item name="android:textSize">@dimen/text_body</item>
+        <item name="android:fontFamily">@font/poppins_medium</item>
     </style>
 
     <style name="TextAppearance.MystMusic.Dim" parent="TextAppearance.Material3.BodySmall">
         <item name="android:textColor">?attr/mystOnSurfaceDim</item>
         <item name="android:textSize">@dimen/text_small</item>
+        <item name="android:fontFamily">@font/poppins_regular</item>
+    </style>
+
+    <style name="TextAppearance.MystMusic.Label" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:textColor">?attr/mystOnSurfaceDim</item>
+        <item name="android:textSize">@dimen/text_label</item>
+        <item name="android:fontFamily">@font/poppins_medium</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <style name="TextAppearance.MystMusic.Overline" parent="TextAppearance.Material3.LabelSmall">
+        <item name="android:textColor">?attr/mystAccentText</item>
+        <item name="android:textSize">@dimen/text_label</item>
+        <item name="android:fontFamily">@font/poppins_semibold</item>
+        <item name="android:letterSpacing">0.12</item>
+        <item name="android:textAllCaps">true</item>
     </style>
 
     <style name="Widget.MystMusic.Button.Primary" parent="Widget.Material3.Button">
         <item name="backgroundTint">?attr/mystAccent</item>
         <item name="android:textColor">?attr/mystOnAccent</item>
-        <item name="cornerRadius">24dp</item>
+        <item name="cornerRadius">@dimen/corner_pill</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:textSize">@dimen/text_button</item>
-        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">@font/poppins_semibold</item>
         <item name="android:minHeight">@dimen/touch_target</item>
         <item name="iconTint">?attr/mystOnAccent</item>
+        <item name="rippleColor">?attr/mystOnAccent</item>
     </style>
 
     <style name="Widget.MystMusic.Button.Secondary" parent="Widget.Material3.Button.OutlinedButton">
         <item name="android:textColor">?attr/mystAccentText</item>
         <item name="strokeColor">?attr/mystStrokeStrong</item>
-        <item name="cornerRadius">24dp</item>
+        <item name="cornerRadius">@dimen/corner_pill</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:textSize">@dimen/text_button</item>
+        <item name="android:fontFamily">@font/poppins_medium</item>
         <item name="android:minHeight">@dimen/touch_target</item>
         <item name="iconTint">?attr/mystAccentText</item>
     </style>
 
+    <style name="Widget.MystMusic.Button.Danger" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:textColor">?attr/mystError</item>
+        <item name="strokeColor">?attr/mystError</item>
+        <item name="cornerRadius">@dimen/corner_pill</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">@dimen/text_button</item>
+        <item name="android:fontFamily">@font/poppins_medium</item>
+        <item name="android:minHeight">@dimen/touch_target</item>
+        <item name="iconTint">?attr/mystError</item>
+    </style>
+
+    <style name="Widget.MystMusic.Button.Tonal" parent="Widget.Material3.Button.TonalButton">
+        <item name="backgroundTint">?attr/mystAccentAlpha16</item>
+        <item name="android:textColor">?attr/mystAccentText</item>
+        <item name="cornerRadius">@dimen/corner_pill</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">@dimen/text_button</item>
+        <item name="android:fontFamily">@font/poppins_medium</item>
+        <item name="android:minHeight">@dimen/touch_target</item>
+        <item name="iconTint">?attr/mystAccentText</item>
+    </style>
+
+    <style name="Widget.MystMusic.Button.Icon" parent="Widget.Material3.Button.IconButton">
+        <item name="iconTint">?attr/mystOnSurface</item>
+        <item name="android:minWidth">@dimen/touch_target</item>
+        <item name="android:minHeight">@dimen/touch_target</item>
+    </style>
+
     <style name="Widget.MystMusic.Card" parent="Widget.Material3.CardView.Filled">
         <item name="cardBackgroundColor">?attr/mystSurface</item>
-        <item name="cardCornerRadius">@dimen/corner_medium</item>
+        <item name="cardCornerRadius">@dimen/corner_large</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeColor">?attr/mystStroke</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+
+    <style name="Widget.MystMusic.Card.Glass" parent="Widget.Material3.CardView.Filled">
+        <item name="cardBackgroundColor">?attr/mystGlass</item>
+        <item name="cardCornerRadius">@dimen/corner_xlarge</item>
         <item name="cardElevation">0dp</item>
         <item name="strokeColor">?attr/mystStroke</item>
         <item name="strokeWidth">1dp</item>
     </style>
 
     <style name="Widget.MystMusic.Chip" parent="Widget.Material3.Chip.Filter">
-        <item name="android:textColor">?attr/mystOnSurface</item>
-        <item name="chipBackgroundColor">?attr/mystSurfaceAlt</item>
-        <item name="chipStrokeColor">?attr/mystStrokeStrong</item>
+        <item name="android:textColor">@color/chip_text</item>
+        <item name="chipBackgroundColor">@color/chip_background</item>
+        <item name="chipStrokeColor">@color/chip_stroke</item>
         <item name="chipStrokeWidth">1dp</item>
         <item name="checkedIconVisible">false</item>
-        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">@font/poppins_medium</item>
         <item name="android:textSize">@dimen/text_small</item>
         <item name="ensureMinTouchTargetSize">true</item>
         <item name="chipMinHeight">@dimen/touch_target</item>
@@ -220,17 +299,29 @@
 
     <style name="Widget.MystMusic.TextInput" parent="Widget.Material3.TextInputLayout.OutlinedBox">
         <item name="boxStrokeColor">@color/selector_text_input_stroke</item>
-        <item name="boxCornerRadiusTopStart">@dimen/corner_medium</item>
-        <item name="boxCornerRadiusTopEnd">@dimen/corner_medium</item>
-        <item name="boxCornerRadiusBottomStart">@dimen/corner_medium</item>
-        <item name="boxCornerRadiusBottomEnd">@dimen/corner_medium</item>
+        <item name="boxBackgroundColor">?attr/mystGlass</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxCornerRadiusTopStart">@dimen/corner_pill</item>
+        <item name="boxCornerRadiusTopEnd">@dimen/corner_pill</item>
+        <item name="boxCornerRadiusBottomStart">@dimen/corner_pill</item>
+        <item name="boxCornerRadiusBottomEnd">@dimen/corner_pill</item>
         <item name="hintTextColor">?attr/mystAccentText</item>
         <item name="android:textColorHint">?attr/mystOnSurfaceDim</item>
     </style>
 
     <style name="ShapeAppearance.MystMusic.Cover" parent="">
         <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">@dimen/corner_medium</item>
+        <item name="cornerSize">@dimen/corner_large</item>
+    </style>
+
+    <style name="ShapeAppearance.MystMusic.CoverSmall" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">14dp</item>
+    </style>
+
+    <style name="ShapeAppearance.MystMusic.CoverLarge" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">@dimen/corner_xlarge</item>
     </style>
 
     <style name="ShapeAppearance.MystMusic.Circle" parent="">
