@@ -633,6 +633,33 @@
     <string name="storage_cache_size_value">%1$s</string>
     <string name="storage_cache_age_value">%1$s</string>
     <string name="storage_downloads_count">%1$d músicas</string>
+    <string name="storage_summary_total">%1$s usados no total</string>
+    <string name="storage_summary_free">%1$s livres no aparelho</string>
+    <string name="storage_downloads_summary">%1$s · %2$d músicas</string>
+    <string name="storage_cache_summary">%1$s de %2$s</string>
+    <string name="storage_cache_count">%1$d músicas em cache</string>
+    <string name="storage_path_label">Pasta dos downloads: %1$s</string>
+    <string name="storage_permission_ok">Pasta pública ativa</string>
+    <string name="storage_open_downloads">Abrir músicas baixadas</string>
+    <string name="storage_open_cache">Abrir cache</string>
+    <string name="cache_title">Cache</string>
+    <string name="cache_subtitle">Músicas temporárias para ouvir sem rede.</string>
+    <string name="cache_used_of">%1$s de %2$s</string>
+    <string name="cache_list_title">Músicas no cache</string>
+    <string name="cache_empty_title">Nenhuma música em cache</string>
+    <string name="cache_empty_subtitle">As músicas que você ouvir ficam aqui por um tempo, conforme o limite e a retenção escolhidos.</string>
+    <string name="cache_error">Não foi possível ler o cache.</string>
+    <string name="cache_remove">Remover do cache</string>
+    <string name="cache_item_removed">Música removida do cache</string>
+    <string name="cache_play_description">Reproduzir %1$s do cache</string>
+    <string name="cache_enabled">Usar cache de streaming</string>
+    <string name="cache_enabled_hint">Quando desligado, nada é guardado para ouvir sem rede.</string>
+    <string name="cache_age_days">%1$d dias</string>
+    <string name="cache_age_one_day">1 dia</string>
+    <string name="cache_age_forever">Para sempre</string>
+    <string name="cache_size_option">%1$s</string>
+    <string name="cache_unknown_title">Música em cache</string>
+    <string name="cache_unknown_artist">Artista desconhecido</string>
 
     <!-- Transferência de downloads da TV para o celular -->
     <string name="download_transfer_title">Enviando arquivos de download</string>

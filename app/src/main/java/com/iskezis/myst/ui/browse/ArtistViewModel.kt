@@ -99,53 +99,17 @@ class ArtistViewModel(
     }
 
     /**
-     * Lista completa de músicas para "Baixar todas as músicas". Combina a
-     * prateleira do artista com a playlist "Músicas em alta" (quando existe) e
-     * segue as continuações, sem alterar a lista visível.
+     * Catálogo completo para "Baixar todas as músicas". A playlist automática
+     * do YouTube é limitada (~150 faixas), então o repositório combina a
+     * prateleira principal com todos os álbuns e singles/EPs da discografia.
+     * A lista visível da tela não é alterada.
      */
     suspend fun loadAllSongs(): List<Track> {
         val page = _state.value.page ?: app.youtube.artistPage(artistId)
-        var tracks = page.topTracks
-        var token = page.songsContinuation
-        var pages = 0
-        while (token != null && tracks.size < MAX_DOWNLOAD_TRACKS && pages < MAX_DOWNLOAD_PAGES) {
-            val next = app.youtube.browseContinuation(token)
-            tracks = (tracks + next.tracks).distinctBy { it.videoId }
-            token = next.continuation?.takeIf { it != token }
-            pages++
-        }
-        val topSongsId = page.topSongsBrowseId
-        if (!topSongsId.isNullOrBlank() && tracks.size < MAX_DOWNLOAD_TRACKS) {
-            runCatching {
-                val playlist = app.youtube.publicPlaylistPage(topSongsId)
-                tracks = (tracks + playlist.tracks).distinctBy { it.videoId }
-                var playlistToken = playlist.continuation
-                var playlistPages = 0
-                while (
-                    playlistToken != null &&
-                    tracks.size < MAX_DOWNLOAD_TRACKS &&
-                    playlistPages < MAX_DOWNLOAD_PAGES
-                ) {
-                    val next = app.youtube.browseContinuation(playlistToken)
-                    tracks = (tracks + next.tracks).distinctBy { it.videoId }
-                    playlistToken = next.continuation?.takeIf { it != playlistToken }
-                    playlistPages++
-                }
-            }.onFailure {
-                AppLog.w(
-                    AppLog.TAG_TUBE,
-                    "Playlist de músicas do artista $artistId indisponível: " +
-                        AppLog.describe(it),
-                )
-            }
-        }
-        return tracks
+        return app.youtube.artistSongs(page)
     }
 
     companion object {
-        private const val MAX_DOWNLOAD_TRACKS = 500
-        private const val MAX_DOWNLOAD_PAGES = 12
-
         fun factory(
             app: Application,
             artistId: String,

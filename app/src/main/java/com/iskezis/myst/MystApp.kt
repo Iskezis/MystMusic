@@ -13,6 +13,7 @@ import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.PlaylistRepository
 import com.iskezis.myst.data.discord.DiscordPresenceManager
 import com.iskezis.myst.data.downloads.AudioCache
+import com.iskezis.myst.data.downloads.CacheCatalog
 import com.iskezis.myst.data.downloads.DownloadIndex
 import com.iskezis.myst.data.downloads.DownloadRepository
 import com.iskezis.myst.data.downloads.DownloadStorage
@@ -69,6 +70,7 @@ class MystApp : Application(), ImageLoaderFactory {
     }
     val downloadIndex: DownloadIndex by lazy { DownloadIndex(this) }
     val audioCache: AudioCache by lazy { AudioCache(this, storagePreferences) }
+    val cacheCatalog: CacheCatalog by lazy { CacheCatalog(this) }
     val networkMonitor: NetworkMonitor by lazy { NetworkMonitor(this) }
     val innerTube: InnerTubeClient by lazy { InnerTubeClient(this, session) }
     val youtube: YouTubeRepository by lazy { YouTubeRepository(innerTube) }

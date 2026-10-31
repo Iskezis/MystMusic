@@ -144,6 +144,13 @@ class SettingsFragment : Fragment() {
                 }
         }
         binding.settingsAppearanceCard.pressScale()
+        binding.settingsStorageCard.setOnClickListener {
+            runCatching { findNavController().navigate(R.id.storageFragment) }
+                .onFailure {
+                    AppLog.failure(AppLog.TAG_UI, "Falha abrindo Armazenamento", it)
+                }
+        }
+        binding.settingsStorageCard.pressScale()
         val isTv = BuildConfig.FLAVOR == "tv"
         binding.settingsTvCard.isVisible = true
         binding.settingsTvCard.setOnClickListener {

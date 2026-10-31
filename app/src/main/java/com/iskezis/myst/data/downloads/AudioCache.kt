@@ -40,6 +40,28 @@ class AudioCache(
 
     fun existing(): Cache? = simpleCache
 
+    /** `videoId`s com algum trecho de áudio realmente gravado no cache. */
+    fun cachedVideoIds(): Set<String> {
+        val cache = cache()
+        return runCatching {
+            cache.keys.toList()
+                .mapNotNull { key ->
+                    key.removePrefix(STREAM_PREFIX)
+                        .takeIf { key.startsWith(STREAM_PREFIX) && it.isNotBlank() }
+                }
+                .toSet()
+        }.getOrDefault(emptySet())
+    }
+
+    /** Bytes ocupados por uma faixa no cache (0 quando não há trecho gravado). */
+    fun entryBytes(videoId: String): Long {
+        val cache = cache()
+        return runCatching {
+            cache.getCachedSpans(streamKey(videoId))
+                .sumOf { span -> if (span.isCached) span.length else 0L }
+        }.getOrDefault(0L)
+    }
+
     fun usedBytes(): Long {
         val cache = simpleCache
         if (cache != null) {
@@ -80,7 +102,7 @@ class AudioCache(
                 val expired = cutoff > 0L && span.lastTouchTimestamp in 1 until cutoff
                 val tooBig = total > max
                 if (!expired && !tooBig) break
-                if (span.key == keepKey) continue
+                if (keepKey != null && span.key == streamKey(keepKey)) continue
                 runCatching { cache.removeSpan(span) }.onSuccess {
                     total -= span.length
                     removed += span.length
@@ -122,7 +144,7 @@ class AudioCache(
     @Synchronized
     fun removeStream(videoId: String) {
         val cache = simpleCache ?: return
-        runCatching { cache.removeResource("myst-stream:$videoId") }
+        runCatching { cache.removeResource(streamKey(videoId)) }
             .onFailure {
                 AppLog.failure(
                     AppLog.TAG_PLAYER,
@@ -132,6 +154,8 @@ class AudioCache(
             }
     }
 
+    private fun streamKey(videoId: String): String = "$STREAM_PREFIX$videoId"
+
     private fun directorySize(directory: File): Long {
         if (!directory.exists()) return 0L
         return runCatching {
@@ -139,5 +163,9 @@ class AudioCache(
                 .filter { it.isFile }
                 .sumOf { it.length() }
         }.getOrDefault(0L)
+    }
+
+    companion object {
+        const val STREAM_PREFIX = "myst-stream:"
     }
 }

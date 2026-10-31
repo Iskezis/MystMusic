@@ -7,6 +7,11 @@ import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.Thumbnails
 import com.iskezis.myst.util.sha1Hex
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -91,6 +96,175 @@ class InnerTubeClient(
         val id = browseId.trim()
         if (id.isBlank()) throw MusicException("Artista sem identificador")
         parseArtistPage(id, browse(id))
+    }
+
+    /**
+     * O YouTube limita a playlist automática "Músicas em alta" a cerca de 150
+     * faixas, então ela sozinha não representa o catálogo inteiro de artistas
+     * com muitos álbuns. Para "Baixar todas as músicas" combinamos essa lista
+     * com as faixas de todos os álbuns e singles/EPs da discografia.
+     */
+    override suspend fun artistSongs(page: ArtistPage): List<Track> =
+        withContext(Dispatchers.IO) {
+            val found = LinkedHashMap<String, Track>()
+            fun add(tracks: List<Track>) {
+                tracks.forEach { track ->
+                    if (track.videoId.isNotBlank()) found.putIfAbsent(track.videoId, track)
+                }
+            }
+
+            add(page.topTracks)
+
+            val topSongsId = page.topSongsBrowseId
+            if (!topSongsId.isNullOrBlank()) {
+                runCatching { playlistTracks(topSongsId) }
+                    .onSuccess(::add)
+                    .onFailure {
+                        AppLog.w(
+                            AppLog.TAG_TUBE,
+                            "Playlist de músicas do artista ${page.browseId} indisponível: " +
+                                AppLog.describe(it),
+                        )
+                    }
+            }
+
+            val releases = LinkedHashMap<String, AlbumSummary>()
+            fun addReleases(items: List<AlbumSummary>) {
+                items.forEach { release ->
+                    if (release.browseId.isNotBlank()) {
+                        releases.putIfAbsent(release.browseId, release)
+                    }
+                }
+            }
+            page.albumsBrowse?.let { target ->
+                runCatching { discography(target) }
+                    .onSuccess(::addReleases)
+                    .onFailure {
+                        AppLog.w(
+                            AppLog.TAG_TUBE,
+                            "Discografia de álbuns de ${page.browseId} indisponível: " +
+                                AppLog.describe(it),
+                        )
+                    }
+            }
+            page.singlesBrowse?.let { target ->
+                runCatching { discography(target) }
+                    .onSuccess(::addReleases)
+                    .onFailure {
+                        AppLog.w(
+                            AppLog.TAG_TUBE,
+                            "Discografia de singles de ${page.browseId} indisponível: " +
+                                AppLog.describe(it),
+                        )
+                    }
+            }
+            // Se a prateleira "Ver todas" não veio, os dez itens visíveis ainda
+            // ajudam a completar o catálogo.
+            addReleases(page.albums)
+            addReleases(page.singles)
+
+            val queue = releases.values.toList()
+            if (queue.isNotEmpty()) {
+                AppLog.i(
+                    AppLog.TAG_TUBE,
+                    "Baixar artista ${page.browseId}: ${queue.size} lançamento(s) para ler",
+                )
+                val semaphore = Semaphore(ARTIST_DOWNLOAD_PARALLELISM)
+                coroutineScope {
+                    queue.map { release ->
+                        async {
+                            semaphore.withPermit {
+                                runCatching { albumTracks(release.browseId) }
+                                    .onFailure {
+                                        AppLog.w(
+                                            AppLog.TAG_TUBE,
+                                            "Faixas do lançamento ${release.browseId} " +
+                                                "indisponíveis: ${AppLog.describe(it)}",
+                                        )
+                                    }
+                                    .getOrDefault(emptyList())
+                            }
+                        }
+                    }.awaitAll().forEach(::add)
+                }
+            }
+
+            AppLog.i(
+                AppLog.TAG_TUBE,
+                "Catálogo do artista ${page.browseId}: ${found.size} música(s)",
+            )
+            found.values.toList()
+        }
+
+    private suspend fun playlistTracks(browseId: String): List<Track> {
+        val found = LinkedHashMap<String, Track>()
+        var page = parsePlaylistPage(browseId, browse(browseId))
+        var token = page.continuation
+        var pages = 0
+        while (true) {
+            page.tracks.forEach { track ->
+                if (track.videoId.isNotBlank()) found.putIfAbsent(track.videoId, track)
+            }
+            if (token == null || pages >= MAX_PLAYLIST_PAGES) break
+            val next = browseContinuation(token)
+            next.tracks.forEach { track ->
+                if (track.videoId.isNotBlank()) found.putIfAbsent(track.videoId, track)
+            }
+            token = next.continuation?.takeIf { it != token }
+            pages++
+        }
+        return found.values.toList()
+    }
+
+    private suspend fun albumTracks(browseId: String): List<Track> {
+        val found = LinkedHashMap<String, Track>()
+        val page = parseAlbumPage(browseId, browse(browseId))
+        page.tracks.forEach { track ->
+            if (track.videoId.isNotBlank()) found.putIfAbsent(track.videoId, track)
+        }
+        var token = page.continuation
+        var pages = 0
+        while (token != null && pages < MAX_ALBUM_PAGES) {
+            val next = browseContinuation(token)
+            next.tracks.forEach { track ->
+                if (track.videoId.isNotBlank()) found.putIfAbsent(track.videoId, track)
+            }
+            token = next.continuation?.takeIf { it != token }
+            pages++
+        }
+        return found.values.toList()
+    }
+
+    /**
+     * Lê a página "Ver todas" da discografia. Ela traz os lançamentos em
+     * prateleiras/grades e pode paginar; os tokens repetidos são descartados.
+     */
+    private fun discography(target: BrowseTarget): List<AlbumSummary> {
+        val found = LinkedHashMap<String, AlbumSummary>()
+        var token: String? = null
+        var pages = 0
+        do {
+            val response = browse(
+                browseId = target.browseId,
+                continuation = token,
+                params = if (token == null) target.params else null,
+            )
+            walkObjects(response) { item ->
+                val renderer = (item["musicTwoRowItemRenderer"] as? JsonObject)
+                    ?: (item["musicResponsiveListItemRenderer"] as? JsonObject)
+                    ?: return@walkObjects
+                parseAlbumSummary(renderer)?.let { album ->
+                    found.putIfAbsent(album.browseId, album)
+                }
+            }
+            token = continuationToken(response)?.takeIf { it != token }
+            pages++
+        } while (
+            token != null &&
+            pages < MAX_DISCOGRAPHY_PAGES &&
+            found.size < MAX_ARTIST_RELEASES
+        )
+        return found.values.toList()
     }
 
     override suspend fun albumPage(browseId: String): AlbumPage = withContext(Dispatchers.IO) {
@@ -830,11 +1004,16 @@ class InnerTubeClient(
         }
     }
 
-    private fun browse(browseId: String, continuation: String? = null): JsonObject {
+    private fun browse(
+        browseId: String,
+        continuation: String? = null,
+        params: String? = null,
+    ): JsonObject {
         val body = buildJsonObject {
             put("context", clientContext(WEB_REMIX))
             if (continuation.isNullOrBlank()) {
                 put("browseId", browseId)
+                params?.takeIf { it.isNotBlank() }?.let { put("params", it) }
             } else {
                 put("continuation", continuation)
             }
@@ -1066,6 +1245,8 @@ class InnerTubeClient(
         val singles = mutableListOf<AlbumSummary>()
         val playlists = mutableListOf<PlaylistSummary>()
         val related = mutableListOf<ArtistSummary>()
+        var albumsBrowse: BrowseTarget? = null
+        var singlesBrowse: BrowseTarget? = null
         walkObjects(root) { item ->
             val carousel = item["musicCarouselShelfRenderer"] as? JsonObject ?: return@walkObjects
             val title = runsText(
@@ -1075,16 +1256,20 @@ class InnerTubeClient(
                     ?.get("title") as? JsonObject,
             ).lowercase()
             val contents = carousel["contents"] as? JsonArray ?: return@walkObjects
+            val isAlbums = title.contains("álbum") || title.contains("album")
+            val isSingles = title.contains("single") || title.contains("ep")
+            if (isAlbums) albumsBrowse = albumsBrowse ?: carouselBrowseTarget(carousel)
+            if (isSingles) singlesBrowse = singlesBrowse ?: carouselBrowseTarget(carousel)
             contents.forEach { element ->
                 val obj = element as? JsonObject ?: return@forEach
                 val renderer = (obj["musicTwoRowItemRenderer"] as? JsonObject)
                     ?: (obj["musicResponsiveListItemRenderer"] as? JsonObject)
                     ?: return@forEach
                 when {
-                    title.contains("álbum") || title.contains("album") -> {
+                    isAlbums -> {
                         parseAlbumSummary(renderer)?.let { albums.add(it) }
                     }
-                    title.contains("single") || title.contains("ep") -> {
+                    isSingles -> {
                         parseAlbumSummary(renderer)?.let { singles.add(it) }
                     }
                     title.contains("playlist") -> {
@@ -1112,6 +1297,8 @@ class InnerTubeClient(
             topTracks = topTracks,
             songsContinuation = topShelf?.let(::shelfContinuation),
             topSongsBrowseId = topShelf?.let(::shelfBrowseId),
+            albumsBrowse = albumsBrowse,
+            singlesBrowse = singlesBrowse,
             albums = albums.distinctBy { it.browseId },
             singles = singles.distinctBy { it.browseId },
             playlists = playlists.distinctBy { it.browseId },
@@ -1569,6 +1756,27 @@ class InnerTubeClient(
             ?.takeIf { it.startsWith("VL") }
     }
 
+    /**
+     * O botão "Mais" dos carrosséis de álbuns/singles aponta para a página
+     * completa da discografia (`MPAD...`) com um `params` que escolhe a aba.
+     */
+    private fun carouselBrowseTarget(carousel: JsonObject): BrowseTarget? {
+        val header = (carousel["header"] as? JsonObject)
+            ?.get("musicCarouselShelfBasicHeaderRenderer") as? JsonObject
+            ?: return null
+        val button = (header["moreContentButton"] as? JsonObject)
+            ?.get("buttonRenderer") as? JsonObject
+            ?: return null
+        val browse = (button["navigationEndpoint"] as? JsonObject)
+            ?.get("browseEndpoint") as? JsonObject
+            ?: return null
+        val browseId = (browse["browseId"] as? JsonPrimitive)?.contentOrNull
+            ?.takeIf { it.startsWith("MPAD") }
+            ?: return null
+        val params = (browse["params"] as? JsonPrimitive)?.contentOrNull
+        return BrowseTarget(browseId = browseId, params = params)
+    }
+
     private fun parseSearchChips(root: JsonObject): List<SearchChip> {
         val found = LinkedHashMap<SearchFilter, SearchChip>()
         walkObjects(root) { item ->
@@ -2014,6 +2222,10 @@ class InnerTubeClient(
         private const val MAX_HISTORY_PAGES = 4
         private const val MAX_HOME_PAGES = 3
         private const val MAX_PLAYLIST_PAGES = 12
+        private const val MAX_ALBUM_PAGES = 8
+        private const val MAX_DISCOGRAPHY_PAGES = 12
+        private const val MAX_ARTIST_RELEASES = 400
+        private const val ARTIST_DOWNLOAD_PARALLELISM = 3
         private val VISITOR_DATA_REGEX =
             Regex("\"(?:VISITOR_DATA|visitorData)\"\\s*:\\s*\"([^\"]+)\"")
         private val CLIENTS_WITH_COOKIES = listOf(

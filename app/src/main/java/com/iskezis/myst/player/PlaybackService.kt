@@ -255,7 +255,18 @@ class PlaybackService : MediaSessionService() {
             eventTrack = null
             eventUserId = null
         } else {
-            currentTrack?.let { track -> startEvent(app, track) }
+            currentTrack?.let { track ->
+                // O cache do Media3 guarda só o áudio; estes metadados são o
+                // que a tela Configurações → Armazenamento → Cache exibe.
+                val userId = app.session.mystUserId
+                if (userId > 0L && app.storagePreferences.cacheEnabled) {
+                    // Metadados do cache em disco, fora da thread principal.
+                    scope.launch(Dispatchers.IO) {
+                        app.cacheCatalog.record(track, userId)
+                    }
+                }
+                startEvent(app, track)
+            }
         }
     }
 

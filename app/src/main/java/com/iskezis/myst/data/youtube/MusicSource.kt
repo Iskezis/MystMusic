@@ -69,6 +69,12 @@ data class SearchPage(
     val continuation: String? = null,
 )
 
+/** Endereço de uma prateleira "Ver todas" do YouTube Music. */
+data class BrowseTarget(
+    val browseId: String,
+    val params: String? = null,
+)
+
 data class ArtistPage(
     val browseId: String,
     val name: String,
@@ -79,6 +85,9 @@ data class ArtistPage(
     val songsContinuation: String? = null,
     /** Playlist "Músicas em alta" que o YouTube abre pelo botão "Ver todas". */
     val topSongsBrowseId: String? = null,
+    /** Discografia completa (além dos 10 itens do carrossel da página). */
+    val albumsBrowse: BrowseTarget? = null,
+    val singlesBrowse: BrowseTarget? = null,
     val albums: List<AlbumSummary> = emptyList(),
     val singles: List<AlbumSummary> = emptyList(),
     val playlists: List<PlaylistSummary> = emptyList(),
@@ -198,6 +207,13 @@ interface MusicSource {
     ): SearchPage
 
     suspend fun artistPage(browseId: String): ArtistPage
+
+    /**
+     * Catálogo completo de músicas do artista: prateleira principal,
+     * "Músicas em alta" (com continuação) e todas as faixas dos álbuns e
+     * singles/EPs da discografia. Evita duplicatas por `videoId`.
+     */
+    suspend fun artistSongs(page: ArtistPage): List<Track>
 
     suspend fun albumPage(browseId: String): AlbumPage
 

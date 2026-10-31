@@ -80,6 +80,15 @@ class YouTubeRepository(private val source: MusicSource) {
         return cachedPage("artist:$browseId") { source.artistPage(browseId) }
     }
 
+    /**
+     * Catálogo completo do artista para o download em lote. Não usa o cache de
+     * página porque precisa da discografia inteira, não só dos carrosséis.
+     */
+    suspend fun artistSongs(page: ArtistPage): List<Track> {
+        AppLog.d(AppLog.TAG_TUBE, "Catálogo completo do artista ${page.browseId} solicitado")
+        return source.artistSongs(page)
+    }
+
     suspend fun albumPage(browseId: String): AlbumPage {
         AppLog.d(AppLog.TAG_TUBE, "Álbum solicitado: $browseId")
         return cachedPage("album:$browseId") { source.albumPage(browseId) }
