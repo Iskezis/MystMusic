@@ -1,9 +1,9 @@
 versionCode: 45
-## MystMusic 0.1.9 Dev 1 — canal de atualização
+## MystMusic 0.2.5 Beta 1 — canal de atualização
 
 Nova tela **Configurações → Atualizações** para escolher quais versões o app deve avisar e conferir a atualização na hora.
 
-### Novidades desta build
+### Novidades desta beta
 - **Canal de atualização:** **Somente estáveis** (padrão em instalação nova) ou **Estáveis e betas**. A preferência fica no aparelho, vale na hora e não depende da conta Myst.
 - **Migração sem susto:** quem já está em uma build `alpha`, `beta`, `rc` ou `dev` começa no canal **Estáveis e betas** na primeira leitura, para não parar de receber atualizações sem querer.
 - **Classificação correta:** uma release conta como beta quando o GitHub a marca como pré-release **ou** quando a tag tem `-alpha`, `-beta`, `-rc` ou `-dev`. As Betas 1–5 continuam sendo betas mesmo tendo sido publicadas como Release normal.
