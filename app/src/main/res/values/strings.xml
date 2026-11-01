@@ -611,6 +611,8 @@
     <!-- Armazenamento -->
     <string name="settings_storage">Armazenamento</string>
     <string name="settings_storage_subtitle">Downloads, cache e espaço livre</string>
+    <string name="settings_updates">Atualizações</string>
+    <string name="settings_updates_subtitle">Canal estável ou betas e verificação manual</string>
     <string name="storage_title">Armazenamento</string>
     <string name="storage_subtitle">Controle o que fica salvo no aparelho.</string>
     <string name="storage_downloads_title">Músicas baixadas</string>
@@ -749,4 +751,21 @@
     <string name="update_channel_description">Avisos de download e instalação de novas versões do MystMusic.</string>
     <string name="update_download_cancelled">Download cancelado.</string>
     <string name="update_install_started">Abrindo o instalador…</string>
+    <string name="update_beta_badge">Beta</string>
+    <string name="update_settings_title">Atualizações</string>
+    <string name="update_settings_subtitle">Escolha quais versões o MystMusic deve avisar e confira agora.</string>
+    <string name="update_settings_installed">Versão instalada</string>
+    <string name="update_settings_installed_value">%1$s (build %2$d)</string>
+    <string name="update_settings_channel_title">Canal de atualização</string>
+    <string name="update_settings_stable">Somente estáveis</string>
+    <string name="update_settings_stable_desc">Avisar apenas sobre versões finalizadas.</string>
+    <string name="update_settings_beta">Estáveis e betas</string>
+    <string name="update_settings_beta_desc">Também avisar sobre versões beta (podem ter erros).</string>
+    <string name="update_settings_channel_note">A troca vale na hora. O app nunca oferece uma versão mais antiga que a instalada.</string>
+    <string name="update_settings_check_now">Verificar agora</string>
+    <string name="update_settings_checking">Verificando atualizações…</string>
+    <string name="update_settings_checking_desc">Isso leva só alguns segundos.</string>
+    <string name="update_settings_up_to_date_title">Tudo em dia</string>
+    <string name="update_settings_up_to_date_desc">Você está na versão mais recente deste canal.</string>
+    <string name="update_settings_error_title">Não foi possível verificar</string>
 </resources>

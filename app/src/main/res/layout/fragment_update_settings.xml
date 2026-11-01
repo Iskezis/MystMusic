@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:id="@+id/updateSettingsContent"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/screen_margin"
+        android:paddingTop="@dimen/screen_margin"
+        android:paddingEnd="@dimen/screen_margin"
+        android:paddingBottom="@dimen/content_bottom_padding">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/updateSettingsBack"
+                android:layout_width="@dimen/touch_target"
+                android:layout_height="@dimen/touch_target"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/common_back"
+                android:focusable="true"
+                android:padding="12dp"
+                android:src="@drawable/ic_back"
+                app:tint="?attr/mystOnSurface" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_s"
+                android:layout_weight="1"
+                android:fontFamily="@font/poppins_medium"
+                android:text="@string/update_settings_title"
+                android:textColor="?attr/mystOnSurface"
+                android:textSize="28sp" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_m"
+            android:text="@string/update_settings_subtitle"
+            android:textColor="?attr/mystOnSurfaceDim"
+            android:textSize="@dimen/text_body" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_l"
+            app:cardBackgroundColor="?attr/mystSurfaceAlt"
+            app:cardCornerRadius="@dimen/corner_large"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/space_l">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/poppins_semibold"
+                    android:letterSpacing="0.12"
+                    android:text="@string/update_settings_installed"
+                    android:textAllCaps="true"
+                    android:textColor="?attr/mystOnSurfaceDim"
+                    android:textSize="@dimen/text_label" />
+
+                <TextView
+                    android:id="@+id/updateInstalledVersion"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_xs"
+                    android:fontFamily="@font/poppins_medium"
+                    android:textColor="?attr/mystOnSurface"
+                    android:textSize="20sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/space_xs"
+            android:layout_marginTop="@dimen/space_l"
+            android:fontFamily="@font/poppins_semibold"
+            android:letterSpacing="0.12"
+            android:text="@string/update_settings_channel_title"
+            android:textAllCaps="true"
+            android:textColor="?attr/mystOnSurfaceDim"
+            android:textSize="@dimen/text_label" />
+
+        <RadioGroup
+            android:id="@+id/updateChannelGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_s"
+            android:orientation="vertical">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/updateChannelStableCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="@color/appearance_card_bg"
+                app:cardCornerRadius="@dimen/corner_large"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/appearance_card_stroke"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="88dp"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/space_m">
+
+                    <FrameLayout
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_icon_tile">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_check"
+                            app:tint="?attr/mystAccentText" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_m"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/poppins_medium"
+                            android:text="@string/update_settings_stable"
+                            android:textColor="?attr/mystOnSurface"
+                            android:textSize="18sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/update_settings_stable_desc"
+                            android:textColor="?attr/mystOnSurfaceDim"
+                            android:textSize="@dimen/text_small" />
+                    </LinearLayout>
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/updateChannelStableRadio"
+                        android:layout_width="wrap_content"
+                        android:layout_height="@dimen/touch_target"
+                        android:buttonTint="?attr/mystAccentText"
+                        android:clickable="false"
+                        android:focusable="false"
+                        android:importantForAccessibility="no" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/updateChannelBetaCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_s"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="@color/appearance_card_bg"
+                app:cardCornerRadius="@dimen/corner_large"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/appearance_card_stroke"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="88dp"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/space_m">
+
+                    <FrameLayout
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_icon_tile">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_github"
+                            app:tint="?attr/mystAccentText" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_m"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/poppins_medium"
+                            android:text="@string/update_settings_beta"
+                            android:textColor="?attr/mystOnSurface"
+                            android:textSize="18sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/update_settings_beta_desc"
+                            android:textColor="?attr/mystOnSurfaceDim"
+                            android:textSize="@dimen/text_small" />
+                    </LinearLayout>
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/updateChannelBetaRadio"
+                        android:layout_width="wrap_content"
+                        android:layout_height="@dimen/touch_target"
+                        android:buttonTint="?attr/mystAccentText"
+                        android:clickable="false"
+                        android:focusable="false"
+                        android:importantForAccessibility="no" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </RadioGroup>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_m"
+            android:text="@string/update_settings_channel_note"
+            android:textColor="?attr/mystOnSurfaceDim"
+            android:textSize="@dimen/text_small" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/updateCheckNow"
+            style="@style/Widget.MystMusic.Button.Primary"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="@dimen/space_l"
+            android:text="@string/update_settings_check_now"
+            app:icon="@drawable/ic_sync"
+            app:iconGravity="textStart"
+            app:iconPadding="@dimen/space_s" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/updateStatusCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_m"
+            android:visibility="gone"
+            app:cardBackgroundColor="?attr/mystSurfaceAlt"
+            app:cardCornerRadius="@dimen/corner_medium"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="@dimen/space_m">
+
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:id="@+id/updateStatusProgress"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:indeterminate="true"
+                    android:visibility="gone"
+                    app:indicatorColor="?attr/mystAccent"
+                    app:indicatorSize="28dp"
+                    app:trackThickness="3dp" />
+
+                <ImageView
+                    android:id="@+id/updateStatusIcon"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:contentDescription="@null"
+                    android:visibility="gone"
+                    app:tint="?attr/mystAccentText" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/space_m"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/updateStatusTitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_medium"
+                        android:textColor="?attr/mystOnSurface"
+                        android:textSize="@dimen/text_body" />
+
+                    <TextView
+                        android:id="@+id/updateStatusMessage"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="?attr/mystOnSurfaceDim"
+                        android:textSize="@dimen/text_small" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/updateStatusRetry"
+                    style="@style/Widget.MystMusic.Button.Secondary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="@dimen/space_s"
+                    android:text="@string/update_retry"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

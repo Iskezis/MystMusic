@@ -54,8 +54,8 @@ android {
         applicationId = "com.iskezis.myst"
         minSdk = 21
         targetSdk = 34
-        versionCode = 44
-        versionName = "0.1.8 Beta 5"
+        versionCode = 45
+        versionName = "0.1.9-dev.1"
         multiDexEnabled = true
         vectorDrawables.useSupportLibrary = true
 
@@ -171,4 +171,5 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.shimmer)
     "tvImplementation"(libs.androidx.leanback)
+    testImplementation(libs.junit)
 }

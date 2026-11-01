@@ -27,6 +27,24 @@
         android:textSize="@dimen/text_body" />
 
     <TextView
+        android:id="@+id/updateBetaBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_s"
+        android:background="@drawable/bg_chip"
+        android:fontFamily="@font/poppins_semibold"
+        android:letterSpacing="0.08"
+        android:paddingStart="@dimen/space_s"
+        android:paddingTop="2dp"
+        android:paddingEnd="@dimen/space_s"
+        android:paddingBottom="2dp"
+        android:text="@string/update_beta_badge"
+        android:textAllCaps="true"
+        android:textColor="?attr/mystAccentText"
+        android:textSize="@dimen/text_label"
+        android:visibility="gone" />
+
+    <TextView
         android:id="@+id/updateSize"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

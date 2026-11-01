@@ -66,19 +66,32 @@ jobs:
           sha256sum app.apk app-tv.apk > SHA256SUMS.txt
           echo "Assets:"
           ls -lh app.apk app-tv.apk SHA256SUMS.txt
+      - name: Classificar canal da release
+        run: |
+          if printf '%s' "$RELEASE_TAG" | grep -Eqi '[-.](alpha|beta|rc|dev)([-.]?[0-9]+)?'; then
+            echo "RELEASE_BETA=true" >> "$GITHUB_ENV"
+            echo "Tag $RELEASE_TAG classificada como beta."
+          else
+            echo "RELEASE_BETA=false" >> "$GITHUB_ENV"
+            echo "Tag $RELEASE_TAG classificada como estável."
+          fi
       - name: Publicar release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TITLE="MystMusic ${RELEASE_TAG}"
+          if [ "$RELEASE_BETA" = "true" ]; then
+            CHANNEL_FLAGS=(--prerelease=true --latest=false)
+          else
+            CHANNEL_FLAGS=(--prerelease=false --latest)
+          fi
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" app.apk app-tv.apk SHA256SUMS.txt --clobber
-            # Beta 5 e seguintes são Releases completas, não pré-releases.
             gh release edit "$RELEASE_TAG" --title "$TITLE" --notes-file RELEASE_NOTES.md \
-              --prerelease=false --latest
+              "${CHANNEL_FLAGS[@]}"
           else
             gh release create "$RELEASE_TAG" app.apk app-tv.apk SHA256SUMS.txt \
-              --title "$TITLE" --notes-file RELEASE_NOTES.md --latest
+              --title "$TITLE" --notes-file RELEASE_NOTES.md "${CHANNEL_FLAGS[@]}"
           fi
       - name: Conferir assets publicados
         env:
@@ -86,7 +99,7 @@ jobs:
         run: |
           gh release view "$RELEASE_TAG" --json tagName,isPrerelease,assets
           PRE=$(gh release view "$RELEASE_TAG" --json isPrerelease --jq .isPrerelease)
-          if [ "$PRE" = "true" ]; then
-            echo "::error::A release $RELEASE_TAG foi publicada como pré-release."
+          if [ "$PRE" != "$RELEASE_BETA" ]; then
+            echo "::error::A release $RELEASE_TAG foi publicada com isPrerelease=$PRE; esperado $RELEASE_BETA para esta tag."
             exit 1
           fi

@@ -78,6 +78,40 @@ The complete history is in [CHANGELOG.md](CHANGELOG.md).
 - Settings → Logs e diagnóstico shows the recent log, allows copying, clearing and sharing through a non-exported `FileProvider`.
 - A previous crash stack is saved and included in the next diagnostic report. No cookies or tokens are written to the log.
 
+## Roadmap: phases 19 to 26
+
+Delivered in order, one phase at a time, each with a green GitHub build, updated APKs in `apks/` and `PROGRESS.md` ticked. The skill named in parentheses must be loaded before starting the phase. Every phase applies to the **phone and the TV** (the TV gets the matching adaptation, or the option is hidden when the hardware cannot support it).
+
+> Numbering note: the old "phase 19" (final review of 0.1.8 Beta) is closed and kept in `PROGRESS.md` as "Fechamento 0.1.8 Beta". The new phase 19 is the update-channel setting below. The final review of this roadmap is phase 26.
+
+### Phase 19: Automatic update customisation (`update-channel-settings`)
+- New **Settings → Atualizações** screen where the user chooses the update channel: **Somente estáveis** (finished releases only) or **Estáveis e betas** (also pre-release/beta builds).
+- The update pop-up (Atualizar / Agora não) only appears for releases that belong to the chosen channel. Default: Stable for new installs; users already on a beta build keep receiving betas until they change it.
+- Release workflow marks betas as pre-releases and finished versions as normal releases, so the app can tell them apart.
+
+### Phase 20: Language selection: Portuguese, English, Spanish (`app-localization-i18n`)
+- New **Settings → Idioma**: Sistema, Português (Brasil), English, Español. Applied instantly, without restarting the app.
+- Every screen, dialog, notification, error and plural is translated into **English and Spanish** (Portuguese stays the default). From this phase on, every new string must be added in all three languages.
+- YouTube Music requests follow the chosen language, without breaking the parsers.
+
+### Phase 21: Player button colours (`player-adaptive-colors`)
+- Buttons, icons, texts and the seek bar of the full-screen player become **black when the background behind them is light** and **white when it is dark**, measured on the real blurred cover backdrop (not on the app theme), with smooth colour transitions between tracks.
+
+### Phase 22: Full-screen queue with blurred cover (`fullscreen-queue-blur`)
+- The playback list (queue) stops being a bottom sheet: it **occupies the whole screen** and uses the **blurred cover** of the current track as its background, with the same adaptive colours as the player.
+
+### Phase 23: Animated covers (`animated-covers`)
+- The full-screen player can show **animated (looping, muted) covers** when one is available for the track, falling back to the normal static cover. Provider-based, silent on failure, switchable in Appearance, off on low-end TVs.
+
+### Phase 24: Audio customisation: spatial audio and crossfade (`audio-spatial-crossfade`)
+- New **Settings → Áudio** screen with **Áudio espacial** (on/off + intensity) and **Fade cruzado / Crossfade** (off or 2–12 s, real overlap between tracks).
+
+### Phase 25: Accent colour customisation (`accent-color-theming`)
+- Appearance → **Cor de destaque**: Azul celeste (default), Vermelho, Verde, Amarelo, Roxo, Rosa and **Branco/Preto** (white on dark/AMOLED themes, black on the light theme). Works with System/Light/Dark/AMOLED and is applied everywhere (buttons, gradients, navbar, sliders, switches, charts, TV focus rings).
+
+### Phase 26: Final review of the roadmap
+- Full acceptance checklist in `AGENTS.md`, final APKs, CHANGELOG and release.
+
 ## Installation
 
 1. Download `apks/app.apk` for a phone/tablet or `apks/app-tv.apk` for Android TV.

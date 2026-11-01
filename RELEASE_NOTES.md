@@ -1,30 +1,26 @@
-versionCode: 44
-## MystMusic 0.1.8 Beta 5
+versionCode: 45
+## MystMusic 0.1.9 Dev 1 — canal de atualização
 
-Correção das estatísticas da TV no celular. A música ouvida na TV agora tem um canal próprio para as Estatísticas, sem depender do envio de playlists, histórico ou cache do YouTube.
+Nova tela **Configurações → Atualizações** para escolher quais versões o app deve avisar e conferir a atualização na hora.
 
-### Correções desta build
-- **Canal exclusivo de estatísticas:** a TV envia os eventos de reprodução para o novo endpoint `/stats` do celular, separado do retrato completo. Se o merge de playlists/cache falhar ou demorar, a reprodução da TV ainda entra nas Estatísticas.
-- **Outbox próprio:** os eventos ficam em `filesDir/pairing/tv_pending_stats.json` antes da rede e só são apagados depois do `ack` do celular. Se o celular estiver dormindo, fora da rede ou com o app fechado, a TV tenta de novo com espera crescente e também restaura o outbox na próxima abertura/pareamento.
-- **Entrega imediata:** o `PlaybackService` da TV avisa o sincronizador assim que o evento dos 10 s é gravado e quando o tempo final é atualizado. O retry do canal de estatísticas roda antes do retrato completo.
-- **Celular puxa ao abrir as Estatísticas:** a tela pede uma sincronização imediata ao abrir e ao atualizar, além de continuar recarregando ao vivo pelo observer de `play_events`.
-- **Sem perda por limpeza indevida:** o retrato completo só apaga o outbox de estatísticas quando todos os eventos pendentes estão incluídos no envio. Uma reprodução criada durante a requisição continua guardada.
-- **Release completa:** a Beta 5 é publicada como Release normal no GitHub, não como pré-release.
+### Novidades desta build
+- **Canal de atualização:** **Somente estáveis** (padrão em instalação nova) ou **Estáveis e betas**. A preferência fica no aparelho, vale na hora e não depende da conta Myst.
+- **Migração sem susto:** quem já está em uma build `alpha`, `beta`, `rc` ou `dev` começa no canal **Estáveis e betas** na primeira leitura, para não parar de receber atualizações sem querer.
+- **Classificação correta:** uma release conta como beta quando o GitHub a marca como pré-release **ou** quando a tag tem `-alpha`, `-beta`, `-rc` ou `-dev`. As Betas 1–5 continuam sendo betas mesmo tendo sido publicadas como Release normal.
+- **Sem downgrade:** o pop-up só aparece quando o `versionCode` remoto é maior que o instalado. Voltar de beta para estável não rebaixa o app.
+- **Tela com três estados:** verificando (indicador), tudo em dia e erro com **Tentar novamente**. O pop-up de nova versão e o download continuam funcionando, agora com um selo **Beta** quando for o caso.
+- **Verificar agora:** botão manual na tela; trocar de canal limpa o cache ETag e dispara a verificação imediatamente.
+- **TV:** a mesma tela, com os cards focáveis por D-pad e foco inicial no canal selecionado.
+- **Workflow de release:** tags beta são publicadas como pré-release e tags estáveis como Release normal; o workflow falha se a classificação não bater com a tag.
 
 ### Compatibilidade
-- Atualiza por cima da Beta 4 (`versionCode 43`) e anteriores com a mesma assinatura, mantendo conta Myst, playlists, histórico e estatísticas.
-- Atualize **celular e TV** para a Beta 5: o canal `/stats` é novo nos dois lados.
-- Nenhuma migração do Room foi necessária nesta build.
-- A TV continua usando o APK `app-tv.apk` (`armeabi-v7a`, 32 bits).
-
-### Build e assinatura
-- `versionCode: 44`, `versionName "0.1.8 Beta 5"`, compilado pelos workflows do GitHub Actions com a keystore estável dos Secrets.
-- Assets desta release: `app.apk` (celular), `app-tv.apk` (Android TV) e `SHA256SUMS.txt`.
-- O app lê o `versionCode` da primeira linha deste arquivo para o pop-up de atualização.
+- Atualiza por cima da Beta 5 (`versionCode 44`) e anteriores com a mesma assinatura, mantendo conta Myst, playlists, histórico, downloads e estatísticas.
+- Nenhuma migração do Room nesta build.
+- A TV continua usando `app-tv.apk` (`armeabi-v7a`, 32 bits).
 
 ### Como testar
-1. Instale a Beta 5 no celular e na TV e confirme que o pareamento continua ativo.
-2. Na TV, toque uma música e deixe passar dos primeiros 10 segundos.
-3. Abra **Estatísticas** no celular e confira o tempo/reproduções da faixa. A tela puxa a TV ao abrir e recarrega sozinha quando o evento chega.
-4. Repita com o celular bloqueado ou com o app em segundo plano; ao abrir as Estatísticas, o evento pendente deve aparecer.
-5. Se o celular estiver desligado durante a reprodução, ligue-o depois, abra o MystMusic e confira que a TV reenvia o outbox sem duplicar a reprodução.
+1. Abra **Configurações → Atualizações** e confirme a versão instalada.
+2. Alterne entre **Somente estáveis** e **Estáveis e betas** e use **Verificar agora**.
+3. No canal estável, as releases com tag beta não devem aparecer; no canal beta, a maior versão válida deve aparecer com o selo **Beta**.
+4. Feche e abra o app: a escolha deve continuar salva.
+5. Repita na TV usando o controle remoto.

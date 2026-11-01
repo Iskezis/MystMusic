@@ -151,6 +151,13 @@ class SettingsFragment : Fragment() {
                 }
         }
         binding.settingsStorageCard.pressScale()
+        binding.settingsUpdatesCard.setOnClickListener {
+            runCatching { findNavController().navigate(R.id.updateSettingsFragment) }
+                .onFailure {
+                    AppLog.failure(AppLog.TAG_UI, "Falha abrindo Atualizações", it)
+                }
+        }
+        binding.settingsUpdatesCard.pressScale()
         val isTv = BuildConfig.FLAVOR == "tv"
         binding.settingsTvCard.isVisible = true
         binding.settingsTvCard.setOnClickListener {

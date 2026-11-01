@@ -35,6 +35,11 @@
         android:label="@string/storage_title" />
 
     <fragment
+        android:id="@+id/updateSettingsFragment"
+        android:name="com.iskezis.myst.ui.settings.UpdateSettingsFragment"
+        android:label="@string/update_settings_title" />
+
+    <fragment
         android:id="@+id/downloadsFragment"
         android:name="com.iskezis.myst.ui.downloads.DownloadsFragment"
         android:label="@string/downloads_title" />

@@ -1,0 +1,96 @@
+[
+  {
+    "tag_name": "v0.2.0",
+    "name": "MystMusic 0.2.0",
+    "body": "versionCode: 50\n## MystMusic 0.2.0\nVersão estável.",
+    "draft": false,
+    "prerelease": false,
+    "assets": [
+      {
+        "name": "app.apk",
+        "browser_download_url": "https://github.com/Iskezis/MystMusic/releases/download/v0.2.0/app.apk",
+        "size": 12345678
+      },
+      {
+        "name": "app-tv.apk",
+        "browser_download_url": "https://github.com/Iskezis/MystMusic/releases/download/v0.2.0/app-tv.apk",
+        "size": 1234567
+      },
+      {
+        "name": "SHA256SUMS.txt",
+        "browser_download_url": "https://github.com/Iskezis/MystMusic/releases/download/v0.2.0/SHA256SUMS.txt",
+        "size": 140
+      }
+    ]
+  },
+  {
+    "tag_name": "v0.2.1-beta.1",
+    "name": "MystMusic 0.2.1 Beta 1",
+    "body": "versionCode: 51\n## MystMusic 0.2.1 Beta 1\nBeta pela tag, release normal no GitHub.",
+    "draft": false,
+    "prerelease": false,
+    "assets": [
+      {
+        "name": "app.apk",
+        "browser_download_url": "https://github.com/Iskezis/MystMusic/releases/download/v0.2.1-beta.1/app.apk",
+        "size": 12345679
+      }
+    ]
+  },
+  {
+    "tag_name": "v0.3.0",
+    "name": "MystMusic 0.3.0 (rascunho)",
+    "body": "versionCode: 60\nRascunho não publicado.",
+    "draft": true,
+    "prerelease": false,
+    "assets": [
+      {
+        "name": "app.apk",
+        "browser_download_url": "https://github.com/Iskezis/MystMusic/releases/download/v0.3.0/app.apk",
+        "size": 12345680
+      }
+    ]
+  },
+  {
+    "tag_name": "v0.2.2",
+    "name": "MystMusic 0.2.2",
+    "body": "versionCode: 52\nSomente APK de TV.",
+    "draft": false,
+    "prerelease": false,
+    "assets": [
+      {
+        "name": "app-tv.apk",
+        "browser_download_url": "https://github.com/Iskezis/MystMusic/releases/download/v0.2.2/app-tv.apk",
+        "size": 1234567
+      }
+    ]
+  },
+  {
+    "tag_name": "v0.2.5",
+    "name": "MystMusic 0.2.5",
+    "body": "versionCode: 53\nPré-release do GitHub.",
+    "draft": false,
+    "prerelease": true,
+    "assets": [
+      {
+        "name": "app.apk",
+        "browser_download_url": "https://github.com/Iskezis/MystMusic/releases/download/v0.2.5/app.apk",
+        "size": 12345681
+      }
+    ]
+  },
+  {
+    "tag_name": "v0.1.8-beta.5",
+    "name": "MystMusic 0.1.8 Beta 5",
+    "body": "versionCode: 44\nVersão instalada nos testes.",
+    "draft": false,
+    "prerelease": false,
+    "assets": [
+      {
+        "name": "app.apk",
+        "browser_download_url": "https://github.com/Iskezis/MystMusic/releases/download/v0.1.8-beta.5/app.apk",
+        "size": 12345678
+      }
+    ]
+  }
+]

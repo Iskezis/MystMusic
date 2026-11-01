@@ -38,10 +38,10 @@ jobs:
         run: |
           if [ -f release.keystore ] && [ -n "$MYST_KEYSTORE_PASSWORD" ]; then
             echo "APK_VARIANT=release" >> "$GITHUB_ENV"
-            ./gradlew assembleMobileRelease assembleTvRelease --stacktrace --no-daemon
+            ./gradlew assembleMobileRelease assembleTvRelease testMobileDebugUnitTest --stacktrace --no-daemon
           else
             echo "APK_VARIANT=debug" >> "$GITHUB_ENV"
-            ./gradlew assembleMobileDebug assembleTvDebug --stacktrace --no-daemon
+            ./gradlew assembleMobileDebug assembleTvDebug testMobileDebugUnitTest --stacktrace --no-daemon
           fi
       - name: Verificar assinatura dos APKs
         if: env.APK_VARIANT == 'release'

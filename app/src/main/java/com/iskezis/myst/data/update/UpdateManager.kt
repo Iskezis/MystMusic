@@ -47,6 +47,7 @@ sealed interface UpdateDownloadState {
 class UpdateManager(context: Context) {
 
     private val repository = GitHubUpdateRepository(context.applicationContext)
+    private val channelPreferences = UpdateChannelPreferences(context.applicationContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _checkState = MutableStateFlow<UpdateCheckState>(UpdateCheckState.Idle)
@@ -85,6 +86,26 @@ class UpdateManager(context: Context) {
     private var downloadJob: Job? = null
     private var lastAutomaticCheck = 0L
 
+    val channel: UpdateChannel
+        get() = channelPreferences.channel
+
+    /**
+     * Troca o canal e invalida o cache/intervalo. A próxima verificação
+     * automática (feita ao sair da tela) já usa a nova preferência.
+     */
+    fun setChannel(channel: UpdateChannel): Boolean {
+        if (channelPreferences.channel == channel) return false
+        channelPreferences.channel = channel
+        repository.clearCache()
+        checkJob?.cancel()
+        _checkState.value = UpdateCheckState.Idle
+        lastAutomaticCheck = 0L
+        popupShownVersionCode = -1
+        dismissedVersionCode = -1
+        AppLog.i(AppLog.TAG_UPDATE, "Canal de atualização: ${channel.storageValue}")
+        return true
+    }
+
     fun check(manual: Boolean) {
         val now = SystemClock.elapsedRealtime()
         if (!manual) {
@@ -106,7 +127,7 @@ class UpdateManager(context: Context) {
         _checkState.value = UpdateCheckState.Checking
         checkJob = scope.launch {
             val state = try {
-                when (val result = repository.check()) {
+                when (val result = repository.check(channel)) {
                     is UpdateCheckResult.UpToDate -> UpdateCheckState.UpToDate
                     is UpdateCheckResult.Available -> UpdateCheckState.Available(result.release)
                     is UpdateCheckResult.Failure -> UpdateCheckState.Failed(result.messageRes)

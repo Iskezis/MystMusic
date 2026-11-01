@@ -42,6 +42,11 @@ class UpdateUi(
     private val fragment: Fragment,
     private val root: View,
     private val manager: UpdateManager,
+    /**
+     * A tela de Atualizações mostra o resultado inline e por isso desliga os
+     * avisos flutuantes; o pop-up de nova versão e o download continuam aqui.
+     */
+    private val showSnackbars: Boolean = true,
 ) {
 
     private var availableDialog: AlertDialog? = null
@@ -93,13 +98,13 @@ class UpdateUi(
         when (state) {
             UpdateCheckState.Idle -> hideChecking()
             UpdateCheckState.Checking -> {
-                if (manualCheckPending) showChecking()
+                if (manualCheckPending && showSnackbars) showChecking()
             }
             UpdateCheckState.UpToDate -> {
                 hideChecking()
                 val manual = manualCheckPending
                 manualCheckPending = false
-                if (manual) snack(R.string.update_up_to_date)
+                if (manual && showSnackbars) snack(R.string.update_up_to_date)
             }
             is UpdateCheckState.Available -> {
                 hideChecking()
@@ -117,7 +122,7 @@ class UpdateUi(
                 hideChecking()
                 val manual = manualCheckPending
                 manualCheckPending = false
-                if (manual) {
+                if (manual && showSnackbars) {
                     Snackbar.make(
                         root,
                         state.messageRes,
@@ -172,6 +177,7 @@ class UpdateUi(
             BuildConfig.VERSION_NAME,
             release.versionName,
         )
+        binding.updateBetaBadge.isVisible = release.isBeta
         if (release.assetSize > 0) {
             binding.updateSize.isVisible = true
             binding.updateSize.text = context.getString(

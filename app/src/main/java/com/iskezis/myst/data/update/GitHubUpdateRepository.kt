@@ -13,10 +13,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import okhttp3.Call
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
@@ -35,6 +31,7 @@ data class AppRelease(
     val assetUrl: String,
     val assetSize: Long,
     val checksumUrl: String?,
+    val isBeta: Boolean = false,
 )
 
 sealed interface UpdateCheckResult {
@@ -60,7 +57,6 @@ class GitHubUpdateRepository(context: Context) {
 
     private val appContext = context.applicationContext
     private val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    private val json = Json { ignoreUnknownKeys = true }
 
     private val apiClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -80,14 +76,14 @@ class GitHubUpdateRepository(context: Context) {
     @Volatile
     private var activeDownload: Call? = null
 
-    suspend fun check(): UpdateCheckResult = withContext(Dispatchers.IO) {
+    suspend fun check(channel: UpdateChannel): UpdateCheckResult = withContext(Dispatchers.IO) {
         val repo = BuildConfig.GITHUB_REPO.trim().trim('/')
         if (!REPO_PATTERN.matches(repo)) {
             AppLog.w(AppLog.TAG_UPDATE, "GITHUB_REPO inválido: '$repo'")
             return@withContext UpdateCheckResult.Failure(R.string.update_unavailable)
         }
         val requestBuilder = Request.Builder()
-            .url("https://api.github.com/repos/$repo/releases?per_page=10")
+            .url("https://api.github.com/repos/$repo/releases?per_page=30")
             .header("Accept", "application/vnd.github+json")
             .header("User-Agent", userAgent())
         prefs.getString(KEY_ETAG, null)?.takeIf { it.isNotBlank() }?.let {
@@ -103,7 +99,7 @@ class GitHubUpdateRepository(context: Context) {
                             AppLog.w(AppLog.TAG_UPDATE, "GitHub respondeu 304 sem cache local")
                             UpdateCheckResult.Failure(R.string.update_error_network)
                         } else {
-                            parseReleases(cached, repo)
+                            parseReleases(cached, channel)
                         }
                     }
 
@@ -129,7 +125,7 @@ class GitHubUpdateRepository(context: Context) {
                                 .putString(KEY_ETAG, response.header("ETag"))
                                 .putString(KEY_BODY, body)
                                 .apply()
-                            parseReleases(body, repo)
+                            parseReleases(body, channel)
                         }
                     }
                 }
@@ -251,80 +247,43 @@ class GitHubUpdateRepository(context: Context) {
         activeDownload?.cancel()
     }
 
-    private fun parseReleases(body: String, repo: String): UpdateCheckResult {
+    private fun parseReleases(body: String, channel: UpdateChannel): UpdateCheckResult {
         val releases = try {
-            json.decodeFromString<List<GitHubRelease>>(body)
+            UpdateReleaseParser.parse(body)
         } catch (t: Throwable) {
             AppLog.failure(AppLog.TAG_UPDATE, "JSON de releases inválido", t)
             return UpdateCheckResult.Failure(R.string.update_error_parse)
         }
-        val candidates = releases.asSequence()
-            .filterNot { it.draft }
-            .mapNotNull { release ->
-                val code = versionCodeOf(release) ?: return@mapNotNull null
-                if (code > BuildConfig.VERSION_CODE) release to code else null
-            }
-            .toList()
-        val chosen = candidates.maxByOrNull { it.second }
-            ?: return UpdateCheckResult.UpToDate
-        val (release, remoteCode) = chosen
-
         val assetName = if (BuildConfig.FLAVOR == "tv") "app-tv.apk" else "app.apk"
-        val asset = release.assets.firstOrNull { it.name == assetName }
-            ?: run {
-                AppLog.w(
-                    AppLog.TAG_UPDATE,
-                    "Release ${release.tagName} não tem o asset $assetName",
-                )
-                return UpdateCheckResult.Failure(R.string.update_error_asset)
-            }
-        if (!isAllowedAssetUrl(asset.downloadUrl)) {
-            AppLog.w(AppLog.TAG_UPDATE, "URL de asset recusada: ${asset.downloadUrl}")
-            return UpdateCheckResult.Failure(R.string.update_error_asset)
-        }
-        val checksum = release.assets.firstOrNull { it.name == CHECKSUM_ASSET }
-            ?.downloadUrl
-            ?.takeIf { isAllowedAssetUrl(it) }
+        val picked = UpdatePicker.pick(
+            channel = channel,
+            installedCode = BuildConfig.VERSION_CODE,
+            installedVersionName = BuildConfig.VERSION_NAME,
+            releases = releases,
+            assetName = assetName,
+            isAllowedAssetUrl = ::isAllowedAssetUrl,
+        ) ?: return UpdateCheckResult.UpToDate
 
-        val versionName = release.tagName
-            .trim()
-            .removePrefix("v")
-            .ifBlank {
-                release.name.trim().removePrefix("v").ifBlank { remoteCode.toString() }
-            }
-            .replace(Regex("(?i)-beta$"), " Beta")
-            .replace(Regex("(?i)-alpha$"), " Alpha")
         return UpdateCheckResult.Available(
             AppRelease(
-                versionName = versionName,
-                versionCode = remoteCode,
-                notes = cleanNotes(release.body),
-                assetUrl = asset.downloadUrl,
-                assetSize = asset.size.coerceAtLeast(0L),
-                checksumUrl = checksum,
+                versionName = UpdatePicker.displayVersion(
+                    tagName = picked.release.tagName,
+                    releaseName = picked.release.name,
+                    versionCode = picked.versionCode,
+                ),
+                versionCode = picked.versionCode,
+                notes = cleanNotes(picked.release.body),
+                assetUrl = picked.asset.downloadUrl,
+                assetSize = picked.asset.size.coerceAtLeast(0L),
+                checksumUrl = picked.checksumUrl,
+                isBeta = picked.isBeta,
             ),
         )
     }
 
-    private fun versionCodeOf(release: GitHubRelease): Int? {
-        val declared = VERSION_CODE_PATTERN.find(release.body)
-            ?.groupValues
-            ?.getOrNull(1)
-            ?.toIntOrNull()
-        if (declared != null && declared > 0) return declared
-
-        // Releases antigas podem não ter a linha versionCode. Nesse caso só é
-        // seguro atualizar quando o núcleo SemVer remoto é maior que o local.
-        val remote = SEMVER_PATTERN.find(release.tagName) ?: return null
-        val local = SEMVER_PATTERN.find(BuildConfig.VERSION_NAME) ?: return null
-        val remoteParts = remote.groupValues.drop(1).mapNotNull { it.toIntOrNull() }
-        val localParts = local.groupValues.drop(1).mapNotNull { it.toIntOrNull() }
-        if (remoteParts.size != 3 || localParts.size != 3) return null
-        for (index in 0..2) {
-            if (remoteParts[index] > localParts[index]) return BuildConfig.VERSION_CODE + 1
-            if (remoteParts[index] < localParts[index]) return null
-        }
-        return null
+    /** Limpa o cache condicional para uma troca de canal valer na hora. */
+    fun clearCache() {
+        prefs.edit().remove(KEY_ETAG).remove(KEY_BODY).apply()
     }
 
     private suspend fun verifyChecksum(file: File, checksumUrl: String, assetName: String) {
@@ -451,38 +410,17 @@ class GitHubUpdateRepository(context: Context) {
         return isAllowedDownloadHost(parsed.host)
     }
 
-    @Serializable
-    private data class GitHubRelease(
-        @SerialName("tag_name") val tagName: String = "",
-        val name: String = "",
-        val body: String = "",
-        val draft: Boolean = false,
-        val assets: List<GitHubAsset> = emptyList(),
-    )
-
-    @Serializable
-    private data class GitHubAsset(
-        val name: String = "",
-        @SerialName("browser_download_url") val downloadUrl: String = "",
-        val size: Long = 0L,
-    )
-
     companion object {
         private const val PREFS = "myst_update_cache"
         private const val KEY_ETAG = "etag"
         private const val KEY_BODY = "body"
         private const val UPDATE_DIR = "updates"
-        private const val CHECKSUM_ASSET = "SHA256SUMS.txt"
         private const val DOWNLOAD_BUFFER = 64 * 1024
         private const val PROGRESS_INTERVAL_MS = 150L
         private const val MAX_NOTES_CHARS = 8_000
         private const val CACHE_MAX_AGE_MS = 7L * 24 * 60 * 60 * 1000
         private val ZIP_MAGIC = byteArrayOf(0x50, 0x4b, 0x03, 0x04)
         private val REPO_PATTERN = Regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
-        private val VERSION_CODE_PATTERN = Regex(
-            pattern = "(?im)^\\s*versionCode\\s*:\\s*(\\d+)\\s*$",
-        )
         private val VERSION_CODE_LINE = Regex("^(?i)versionCode\\s*:")
-        private val SEMVER_PATTERN = Regex("^v?(\\d+)\\.(\\d+)\\.(\\d+)")
     }
 }

@@ -47,7 +47,7 @@ Você está construindo o **MystMusic**. Leia o README.md, depois PROGRESS.md. C
 9. Flavor TV + pareamento por código (skills `android-tv-adaptation`, `tv-pairing-code`).
 10. Revisão final com a checklist abaixo, build final, APKs em `apks/`.
 
-## Fases da 0.2.0 (11 a 19)
+## Fases da 0.2.0 (11 a 18) e fechamento 0.1.8 Beta
 Detalhes de cada fase e subitens no PROGRESS.md. Uma fase por vez, na ordem:
 11. Tema do sistema + Aparência (`theme-system-amoled`)
 12. Login obrigatório duplo (YouTube + Myst) + foto de perfil (`dual-login-profile-photo`)
@@ -57,14 +57,32 @@ Detalhes de cada fase e subitens no PROGRESS.md. Uma fase por vez, na ordem:
 16. Downloads offline (`offline-downloads`)
 17. Novo visual completo (`ui-redesign-references`)
 18. Atualização pelo GitHub (`github-self-update`, `release-signing-versioning`)
-19. Revisão final, APKs, CHANGELOG, tag.
+Fechamento 0.1.8 Beta (concluído; era a antiga fase 19).
 
 Regras novas da 0.2.0:
-- Configurações deixa de ser "só Deslogar": agora tem Perfil Myst, **Aparência**, Conectar à TV, Discord, Logs e Deslogar. Não adicione mais nada sem pedido.
+- Configurações deixa de ser "só Deslogar": tem Perfil Myst, **Aparência**, Armazenamento, Conectar à TV, Discord, Logs e Deslogar (e, a partir das fases 19–24, **Atualizações**, **Idioma** e **Áudio**). Não adicione mais nada sem pedido.
 - **Nunca** use `fallbackToDestructiveMigration`. Toda mudança de schema do Room tem `Migration` escrita e testada (dados do usuário não podem sumir numa atualização).
 - Perfil exibido = conta Myst. Login = as duas contas, sempre.
 - Fases 11–16 mudam telas que a fase 17 vai redesenhar: construa a funcionalidade com o visual atual e deixe o redesign para a fase 17, mas já usando tokens de tema.
 - Cada fase termina com: build verde, APK em `apks/`, PROGRESS.md marcado, versão `0.2.0-dev.N` com `versionCode` maior.
+
+## Fases 19 a 26 (roadmap atual)
+Detalhes no README.md (Roadmap) e subitens no PROGRESS.md. Uma fase por vez, na ordem; carregue a skill antes:
+19. Personalização da atualização do GitHub: estáveis × betas (`update-channel-settings`, base: `github-self-update`, `release-signing-versioning`)
+20. Seleção de idioma + Inglês e Espanhol (`app-localization-i18n`)
+21. Cor dos botões do player: preto no fundo claro, branco no fundo escuro (`player-adaptive-colors`)
+22. Lista de reprodução em tela cheia com fundo da capa borrado (`fullscreen-queue-blur`)
+23. Capas animadas (`animated-covers`)
+24. Personalização de áudio: espacial + fade cruzado (`audio-spatial-crossfade`)
+25. Cor de destaque personalizável (`accent-color-theming`)
+26. Revisão final, APKs, CHANGELOG, tag.
+
+Regras novas:
+- **Strings:** desde a fase 20, todo texto novo entra em `values/` (pt-BR), `values-en/` e `values-es/` no mesmo commit. Nunca texto fixo em Kotlin/XML. Parsers nunca dependem de texto traduzido.
+- **Cores:** desde a fase 25, a cor de destaque vem só de `?attr/mystAccent*`; cores sobre fundo variável (player/fila) vêm de `AdaptiveContentColors` (fase 21), não do tema.
+- **Aparelhos fracos:** recursos pesados (blur, vídeo de capa, fade cruzado, áudio espacial) têm fallback e ficam desligados/ocultos na TV 32 bits quando não houver folga.
+- **Não regredir:** toda fase mantém tudo o que já funciona (pareamento, estatísticas, downloads, Discord, atualização). Teste a regressão antes de marcar.
+- Cada fase termina com build verde, APKs em `apks/`, PROGRESS.md marcado e `versionCode` maior (45+).
 
 ## Checklist de aceitação final
 - [ ] Nome "MystMusic" e pacote `com.iskezis.myst` em ambos os flavors
@@ -85,6 +103,13 @@ Regras novas da 0.2.0:
 - [ ] 0.2.0: downloads (música, álbum/playlist, artista) e reprodução offline
 - [ ] 0.2.0: visual novo coerente em todas as telas e na TV
 - [ ] 0.2.0: pop-up de atualização via GitHub Release
+- [ ] Fases 19–25: canal de atualização (estável/beta) funcionando
+- [ ] Fases 19–25: idioma pt-BR/EN/ES completo e aplicado ao vivo
+- [ ] Fases 19–25: botões do player pretos/brancos conforme o fundo
+- [ ] Fases 19–25: fila em tela cheia com fundo da capa borrado
+- [ ] Fases 19–25: capas animadas com fallback estático
+- [ ] Fases 19–25: áudio espacial e fade cruzado
+- [ ] Fases 19–25: 7 cores de destaque nos 4 temas
 - [ ] PROGRESS.md completo
 
 ## Notas de risco (registre, não ignore)
