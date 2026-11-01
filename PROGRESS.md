@@ -108,7 +108,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
   - [x] Assinatura estável (keystore em GitHub Secrets)
   - [x] Pop-up de atualização ao entrar, com "Atualizar" e "Agora não"
   - [x] Download com progresso + instalação (permissão de fontes desconhecidas tratada)
-- [x] 19. Revisão final da 0.1.8 Beta (checklist do AGENTS.md, APKs finais, CHANGELOG, tag `v0.1.8-beta`)
+- [x] Fechamento 0.1.8 Beta (antiga "fase 19"; renumerada em favor das novas fases 19–26): checklist do AGENTS.md, APKs finais, CHANGELOG, tag `v0.1.8-beta`
 - [x] Correções pós-release (0.1.8 Beta 2, versionCode 41)
   - [x] Estatísticas da TV com outbox em disco e reenvio após reinício/novo pareamento
   - [x] Tela de Estatísticas do celular recarrega ao vivo quando chega um retrato da TV
@@ -136,7 +136,59 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
   - [x] Celular mescla apenas `play_events` ao receber `/stats` e pede sync ao abrir/atualizar Estatísticas
   - [x] Retrato completo não apaga eventos novos que não estavam no snapshot enviado
   - [x] Workflow de release publica a Beta 5 como Release normal e falha se `isPrerelease` for verdadeiro
-  - [ ] Build verde, APKs em `apks/` e release `v0.1.8-beta.5` publicada
+  - [x] Build verde, APKs em `apks/` e release `v0.1.8-beta.5` publicada como Release normal
+
+## Fases 19 a 26 (próximas versões)
+Marque cada subitem só com build verde + verificação em aparelho. `versionCode` continua crescendo a partir de **45**; `versionName` durante as fases: `0.1.9-dev.N` (o nome final de cada release é definido pelo usuário; registre aqui). Cada fase termina com APKs em `apks/` e registro em Builds/Release.
+
+- [ ] 19. Personalização da atualização automática do GitHub
+  - [ ] Configurações → Atualizações: escolha **Somente estáveis** / **Estáveis e betas**, persistida no aparelho
+  - [ ] Classificação de release: beta = `prerelease` do GitHub **ou** tag com `-alpha|-beta|-rc|-dev`; estável = o resto
+  - [ ] Pop-up só para versões do canal escolhido; nunca oferece versão com `versionCode` menor/igual
+  - [ ] Padrão: Estáveis em instalação nova; quem já está em build beta migra com "Estáveis e betas"
+  - [ ] `release.yml` publica beta como pré-release e estável como Release normal (remover a trava "falha se isPrerelease")
+  - [ ] Mesma tela/escolha na TV (D-pad); testes com JSON de releases de exemplo
+- [ ] 20. Seleção de idioma + Inglês e Espanhol
+  - [ ] Configurações → Idioma: Sistema / Português (Brasil) / English / Español, aplicado ao vivo
+  - [ ] `values-en` e `values-es` completos (strings, plurals, arrays, notificações, diálogos, erros, TV)
+  - [ ] Zero texto fixo em Kotlin/XML (auditoria) e script de conferência de chaves no CI
+  - [ ] Datas, números, durações e ordenação conforme o idioma; Discord/notificação também traduzidos
+  - [ ] InnerTube com `hl/gl` do idioma sem quebrar parsers (nenhum parser depende de texto traduzido)
+  - [ ] TV adota o idioma do celular enquanto pareada
+  - [ ] A partir daqui toda string nova nasce nos 3 idiomas
+- [ ] 21. Cor dos botões do player (preto/branco conforme o fundo)
+  - [ ] Ícones, botões, textos, tempo e barra de progresso do player escolhem preto/branco pela luminância do fundo real (capa borrada)
+  - [ ] Medição por zona (topo, título, controles) com histerese e transição de cor de 250 ms entre faixas
+  - [ ] Helper reutilizável (`AdaptiveContentColors`) para a fase 22
+  - [ ] Verificado com capas claras, escuras, brancas, pretas e coloridas, nos 3 temas
+- [ ] 22. Lista de reprodução em tela cheia com fundo da capa borrado
+  - [ ] Fila deixa de ser bottom sheet e ocupa a tela inteira
+  - [ ] Fundo = capa da faixa atual borrada (mesmo helper do player), troca com crossfade
+  - [ ] Cores adaptativas (fase 21), começa na faixa atual, mantém todas as ações atuais da fila
+  - [ ] Transição de entrada/saída e botão voltar; TV com D-pad e blur leve
+- [ ] 23. Capas animadas
+  - [ ] Interface `AnimatedCoverProvider` com ao menos 1 provedor funcional + fallback estático
+  - [ ] Reprodução em loop, sem som, recortada na capa do player, sincronizada com play/pause
+  - [ ] Cache (vídeo + resultado positivo/negativo) e uso de dados controlado
+  - [ ] Interruptor em Aparência; desligado/oculto em TV fraca e com economia de dados/bateria
+- [ ] 24. Personalização de áudio: espacial + fade cruzado
+  - [ ] Configurações → Áudio
+  - [ ] Áudio espacial: liga/desliga + intensidade, sem clipping, desligado para mono
+  - [ ] Fade cruzado: Desligado / 2–12 s com sobreposição real das faixas; seek/pular manual usa fade curto
+  - [ ] MediaSession, notificação, estatísticas, Discord e downloads continuam corretos durante o fade
+  - [ ] TV: só habilita se o aparelho aguentar; senão opção oculta
+- [ ] 25. Cor de destaque (secundária) personalizável
+  - [ ] Aparência → Cor de destaque: Azul celeste, Vermelho, Verde, Amarelo, Roxo, Rosa, Branco/Preto (conforme o tema)
+  - [ ] Tokens `mystAccent*` derivados; nenhuma cor de destaque fixa restante em XML/Kotlin
+  - [ ] Funciona em claro/escuro/AMOLED, contraste ≥ 4.5:1 do texto sobre o destaque
+  - [ ] Aplicada em botões, gradientes, navbar, sliders, switches, chips, gráficos, notificação e foco da TV; TV adota a do celular
+- [ ] 26. Revisão final do roadmap (checklist do AGENTS.md, APKs finais, CHANGELOG, tag)
+
+### Observações das fases 19 a 26
+- Hoje todas as Releases (0.1.8 Beta 1–5) foram publicadas como Release normal, mas são betas pela tag. Com o canal "Somente estáveis" quem usa só estáveis não verá atualização até existir uma versão sem sufixo beta.
+- Fase 20 muda os textos retornados pelo YouTube (`hl`): qualquer parser que compare texto em português quebrará. Revisar `data/youtube`.
+- Fases 23 e 24 aumentam consumo de decodificadores/dados; testar em aparelho real e na TV 32 bits.
+- Provedores de capa animada são não oficiais e podem parar de funcionar; o app nunca pode depender deles.
 
 ## Riscos conhecidos da 0.2.0
 - Atualização por cima só instala se a assinatura for a mesma. As APKs até a 0.2.0-dev.3 usam a chave de debug do runner; a keystore fixa entrou no 0.2.0-dev.4. Quem tem uma APK anterior ao dev.4 precisa **desinstalar e reinstalar uma vez**; isso apaga os dados locais, então salve um `Mystaccount.json` antes. Do dev.4 em diante as atualizações instalam por cima.
@@ -144,7 +196,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - API de atualização do GitHub só funciona sem token se o repositório for público.
 
 ## Release
-- **0.1.8 Beta 5** (`versionCode 44`, `versionName "0.1.8 Beta 5"`): canal dedicado das estatísticas da TV. A TV passou a enviar só os eventos de reprodução para o novo endpoint `/stats` do celular, em vez de depender do retrato completo de playlists/histórico/cache do YouTube; o payload usa o mesmo envelope autenticado do pareamento. O `TvStatsOutbox` grava os eventos antes da rede, tenta de novo com espera crescente e só remove do arquivo o que o celular confirmou, mantendo eventos criados/atualizados durante a requisição. O envio dedicado usa a janela recente (200 eventos) para não reenviar 5.000 eventos a cada play; o outbox preserva o restante até o `ack`. O retrato completo também confirma só os eventos que levou. A tela de Estatísticas pede sincronização ao abrir/atualizar e continua recarregando ao vivo pelo observer de `play_events`. O workflow de release deixa de criar pré-release, marca a release como `latest` e falha se `isPrerelease` for verdadeiro. Build `41351748966` verde nos dois flavors; APKs em `apks/app.apk` (SHA-256 `b7818643203c9a2d06e28644234a0a82e9a4be26f5b93da3e10750014c0b643e`) e `apks/app-tv.apk` (`3455333431e612f7c57a7435d93bb4c5c3f510e7e00d8e162c8435e7797d5e71`).
+- **0.1.8 Beta 5** (`versionCode 44`, `versionName "0.1.8 Beta 5"`): canal dedicado das estatísticas da TV. A TV passou a enviar só os eventos de reprodução para o novo endpoint `/stats` do celular, em vez de depender do retrato completo de playlists/histórico/cache do YouTube; o payload usa o mesmo envelope autenticado do pareamento. O `TvStatsOutbox` grava os eventos antes da rede, tenta de novo com espera crescente e só remove do arquivo o que o celular confirmou, mantendo eventos criados/atualizados durante a requisição. O envio dedicado usa a janela recente (200 eventos) para não reenviar 5.000 eventos a cada play; o outbox preserva o restante até o `ack`. O retrato completo também confirma só os eventos que levou. A tela de Estatísticas pede sincronização ao abrir/atualizar e continua recarregando ao vivo pelo observer de `play_events`. O workflow de release deixa de criar pré-release, marca a release como `latest` e falha se `isPrerelease` for verdadeiro. Build `41351748966` verde nos dois flavors. Release `v0.1.8-beta.5` publicada pelo run `41352122713` como **Release normal** (`isPrerelease=false`, `isDraft=false`), com `app.apk`, `app-tv.apk` e `SHA256SUMS.txt`; os checksums dos assets foram conferidos e os mesmos APKs estão em `apks/app.apk` (SHA-256 `ce4ce016a2073bd86ee7cc8c529503c46f1954237502804bd4fc3c118d92aa1a`) e `apks/app-tv.apk` (`6be1ff8c13a8a390750aeedfe165c9b80af60036af85b3acfb71d459f38f3bb1`).
 - **0.1.8 Beta 4** (`versionCode 43`, `versionName "0.1.8 Beta 4"`): correção do despareamento celular ↔ TV e do envio dos dados temporários da TV. No celular, o pedido de desconexão agora usa credenciais explícitas, para a TV parar antes de montar o retrato final, e espera o `/disconnect_ack` só depois de o celular mesclar o snapshot; se a TV não responder, o pareamento some da interface, mas as credenciais ficam guardadas por 30 min para novas tentativas com espera crescente. Na TV, o `PlayerController` é liberado e o `PlaybackService` recebe uma ação direta de parada (com fallback para `stopService`), gravando o último histórico/estatística antes de encerrar. O outbox `filesDir/pairing/tv_pending_snapshot.json` passou a guardar o retrato completo (playlists, faixas, histórico, afinidades, lápides, eventos e buscas recentes), é restaurado no próximo pareamento com a mesma conta Myst e só é apagado depois do `ack`. Buscas recentes entram no snapshot; o `PlaybackService` avisa o sync após histórico, álbum, evento e pulo; e as buscas em `SharedPreferences` são limpas ao encerrar a sessão temporária da TV. Build `41243625098` verde nos dois flavors; APKs em `apks/app.apk` (SHA-256 `7416bd1de9a2adbebccbcb0b06b12d065983d0f52b9ca79306248f15f4c407d3`) e `apks/app-tv.apk` (`04178c228ff757922ef64c72ee010c7065b4669dc56a637b056ab8b355216306`). Release `v0.1.8-beta.4` publicada logo após o build.
 - **0.1.8 Beta 3** (`versionCode 42`, `versionName "0.1.8 Beta 3"`): correção do “erro ao analisar o pacote” na atualização pelo próprio app. O APK baixado deixa de ser entregue por uma URI temporária do `FileProvider` em `cacheDir` e passa a ser gravado em uma sessão do `PackageInstaller`, que é o caminho suportado pelo instalador do sistema e não depende do suporte do fabricante a `content://`. Antes de abrir a sessão, o download confere o tamanho informado pela API do GitHub, o SHA-256 quando `SHA256SUMS.txt` existe, a assinatura ZIP, o pacote `com.iskezis.myst` e um `versionCode` maior que o instalado. O `UpdateInstallReceiver` trata `STATUS_PENDING_USER_ACTION` e publica uma notificação com o motivo quando a sessão falha (bloqueio de fontes desconhecidas, assinatura, APK inválido, incompatibilidade ou armazenamento). O `FileProvider` `.updates` e `update_file_paths.xml` foram removidos. Build `41238003714` verde nos dois flavors. Release `v0.1.8-beta.3` publicada pelo run `41238409259` (pré-release), com `app.apk` (SHA-256 `ed5213c29df6bf5b37e552a57e9cb4dec4115f236c6a1652d45d7172a5d03158`), `app-tv.apk` (`33cc96c10de606e5bcd200feb3f22be40566b30d3d72a3798743ac684221d6e9`) e `SHA256SUMS.txt`; o checksum dos dois assets foi conferido e os mesmos APKs estão em `apks/app.apk` e `apks/app-tv.apk`.
 - **0.1.8 Beta 2** (`versionCode 41`, `versionName "0.1.8 Beta 2"`): correção das estatísticas reproduzidas na TV. A TV grava os eventos em `filesDir/pairing/tv_pending_stats.json` antes de cada `/push`, tenta de novo com espera crescente, reenvia o que ficou pendente na próxima abertura/pareamento com a mesma conta Myst e só apaga o arquivo depois do `ack` do celular; um outbox de outra conta é descartado. A tela de Estatísticas do celular observa `play_events` e recarrega com debounce de 350 ms, sem piscar, e o `PlaybackService` da TV avisa o sincronizador após inserir/atualizar o evento. Build `41236153071` verde nos dois flavors. Release `v0.1.8-beta.2` publicada pelo run `41236529939` (pré-release), com `app.apk`, `app-tv.apk` e `SHA256SUMS.txt`; o checksum dos dois assets foi conferido e os mesmos APKs estão em `apks/app.apk` e `apks/app-tv.apk`.
@@ -251,6 +303,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 | 41242645215 | aa30f44 | verde | Beta 4: despareamento com parada da TV, `/disconnect_ack`, outbox completo e buscas recentes no snapshot | — (substituído pelo build final) |
 | 41243625098 | 52dc32d | verde | Beta 4 final: fallback de `stopService` e limpeza das buscas da TV ao desparear; APKs baixados do run | `apks/app.apk`, `apks/app-tv.apk` |
 | 41351748966 | 42c6dd1 | verde | Beta 5: endpoint `/stats`, outbox dedicado com `ack` parcial, janela recente, retry antes do retrato completo e release não-pré-release | `apks/app.apk`, `apks/app-tv.apk` |
+| 41352122713 | v0.1.8-beta.5 | verde | Release Beta 5 completa: `assembleMobileRelease` + `assembleTvRelease`, assinatura conferida, `SHA256SUMS.txt` publicado, `isPrerelease=false` verificado | `apks/app.apk`, `apks/app-tv.apk` (assets da release) |
 
 ## Decisões
 - YouTube Music (fase 13): a biblioteca da conta é **somente leitura**. O cache fica em tabelas próprias do Room (`yt_playlists`, `yt_playlist_tracks`, `yt_history`, `yt_sync_state`), com validade de 15 minutos e estratégia *stale-while-revalidate*: a tela mostra o cache na hora e atualiza em segundo plano. O botão/gesto de atualizar força a rede. Nenhuma escrita é enviada ao YouTube.
@@ -365,6 +418,7 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
 - Estatísticas ao vivo (0.1.8 Beta 2): `StatsViewModel` registra um `InvalidationTracker.Observer` em `play_events` e, ao receber um merge da TV, recarrega com debounce de 350 ms usando `showLoading=false`, preservando os números atuais para a tela não piscar. `PlaybackService` também chama `PairedSyncManager.requestTvStatsSync()` depois de inserir o evento dos 10 s e de atualizar o tempo final, porque uma invalidação pode chegar durante a janela de supressão de um merge. O observer é removido em `onCleared`.
 
 ## Problemas em aberto
+- Estatísticas da TV (0.1.8 Beta 5): o canal dedicado `/stats`, o outbox com `ack` parcial e o retry foram compilados e publicados como Release normal (`v0.1.8-beta.5`, run `41352122713`, `isPrerelease=false`), mas o teste físico de tocar na TV, bloquear/fechar o celular, reabrir as Estatísticas e conferir o evento ainda depende do usuário; o ambiente do agente não tem ADB, celular nem TV. Atualize **celular e TV** para a Beta 5, porque o endpoint é novo nos dois lados.
 - Correção das estatísticas da TV (0.1.8 Beta 2): a lógica de outbox/retry/reload foi revisada e compilada no CI, mas o teste físico de tocar na TV, desligá-la antes do sync, reabrir e conferir os eventos no celular ainda depende do usuário; o ambiente do agente não tem ADB nem TV.
 - Instalação da atualização (0.1.8 Beta 3): o build/release foram verdes e os APKs da release foram conferidos (ZIP, manifesto `versionCode 42`, DEX e assinatura estável). O teste físico de instalar a 42 por cima da 41/40 em celular e TV ainda depende do usuário; o ambiente do agente não tem ADB/aparelho. O caminho novo usa `PackageInstaller` e não depende mais da URI temporária do `FileProvider`.
 - Fase 14: falta a confirmação em aparelho de que instalar o dev.10 por cima do dev.9, relogar e encontrar playlists/histórico/estatísticas intactos. A migração 4→5 e o schema exportado foram conferidos no CI e o build `40987101834` está verde; o ambiente do agente não tem ADB/aparelho para executar o teste de atualização.
