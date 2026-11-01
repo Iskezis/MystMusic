@@ -214,6 +214,31 @@ object PairingSync {
         }
 
     /**
+     * Só os eventos de reprodução da TV. É o payload do canal dedicado de
+     * estatísticas, que não depende do merge de playlists/histórico e por isso
+     * consegue entregar um play mesmo quando o retrato completo tem algum
+     * problema (por exemplo, uma playlist grande ou um dado antigo inválido).
+     */
+    suspend fun exportTvPlayEvents(app: MystApp, userId: Long): List<PairPlayEvent> =
+        withContext(Dispatchers.IO) {
+            if (userId <= 0L) return@withContext emptyList()
+            app.database.playEventDao().recent(userId, MAX_PLAY_EVENTS).map { item ->
+                PairPlayEvent(
+                    videoId = item.videoId,
+                    title = item.title,
+                    artist = item.artist,
+                    album = item.album,
+                    thumbnailUrl = item.thumbnailUrl?.take(MAX_URL_LENGTH),
+                    startedAt = item.startedAt,
+                    playedMs = item.playedMs,
+                    durationMs = item.durationMs,
+                    completed = item.completed,
+                    source = item.source.take(MAX_SOURCE_LENGTH),
+                )
+            }
+        }
+
+    /**
      * Retrato TV → celular. A TV não altera a biblioteca do YouTube (ela é
      * somente leitura) nem as capas locais, então o envio leva apenas o que
      * pode ter mudado: playlists, histórico, afinidades, estatísticas e

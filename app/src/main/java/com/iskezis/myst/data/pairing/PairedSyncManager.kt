@@ -44,6 +44,7 @@ class PairedSyncManager(private val app: MystApp) {
     private val syncMutex = Mutex()
     private val phoneNotifyMutex = Mutex()
     private val phonePushMutex = Mutex()
+    private val phoneStatsPushMutex = Mutex()
     private val handler = Handler(Looper.getMainLooper())
 
     @Volatile
@@ -595,6 +596,40 @@ class PairedSyncManager(private val app: MystApp) {
     }
 
     /**
+     * Recebe só as estatísticas da TV pelo canal dedicado. O merge não toca em
+     * playlists nem no cache do YouTube, então uma música ouvida na TV entra
+     * nas Estatísticas mesmo que o retrato completo esteja pendente ou tenha
+     * falhado por causa de outro dado.
+     */
+    suspend fun acceptTvStats(snapshot: PairSnapshot): Boolean = syncMutex.withLock {
+        if (isTv) return@withLock false
+        val userId = app.session.mystUserId
+        if (userId <= 0L) return@withLock false
+        if (!app.session.hasTvPairing && app.session.pendingUnpair == null) {
+            return@withLock false
+        }
+        if (snapshot.playEvents.isEmpty()) return@withLock true
+        suppressLocalChanges()
+        return@withLock try {
+            PairingSync.mergeSnapshot(
+                app = app,
+                userId = userId,
+                snapshot = PairSnapshot(playEvents = snapshot.playEvents),
+            )
+            suppressLocalChanges()
+            app.accountFiles.requestSync()
+            AppLog.i(
+                AppLog.TAG_PAIRING,
+                "Estatísticas da TV recebidas: ${snapshot.playEvents.size} evento(s)",
+            )
+            true
+        } catch (t: Throwable) {
+            AppLog.failure(AppLog.TAG_PAIRING, "Falha aplicando as estatísticas da TV", t)
+            false
+        }
+    }
+
+    /**
      * Mesmo merge de [acceptTvSnapshot], mas aceito quando o celular já removeu
      * a sessão local e está apenas concluindo um despareamento pendente. A
      * conta Myst continua logada; o retrato final ainda pertence a ela.
@@ -718,6 +753,68 @@ class PairedSyncManager(private val app: MystApp) {
         pairingEpoch == epoch && !app.session.hasTvPairing
 
     /**
+     * TV → celular: envia só os eventos de reprodução pelo endpoint `/stats`.
+     *
+     * Este caminho existe separado do retrato completo porque uma falha ao
+     * mesclar playlists ou o cache do YouTube não pode impedir que uma música
+     * ouvida na TV entre nas Estatísticas do celular. O outbox é gravado antes
+     * da rede e só é apagado depois do `ack`; se o celular estiver fora do ar,
+     * o retry do retrato completo e o próximo sync continuam como reserva.
+     */
+    suspend fun pushTvStatsToPhone(): Boolean = phoneStatsPushMutex.withLock {
+        if (!isTv || !app.session.hasTvPairing) return@withLock false
+        val session = app.session
+        val pairId = session.tvPairId ?: return@withLock false
+        val secret = session.tvPairSecret ?: return@withLock false
+        val userId = session.mystUserId
+        if (userId <= 0L) return@withLock false
+        // O envio dedicado carrega só a janela recente. Eventos mais antigos
+        // que ainda não foram confirmados continuam no outbox e são mesclados
+        // por `store`, mas não é preciso reenviar 5.000 eventos a cada play.
+        val current = PairingSync.exportTvPlayEvents(app, userId)
+            .take(MAX_RECENT_STATS)
+        withContext(Dispatchers.IO) { TvStatsOutbox.store(app, userId, current) }
+        val pending = withContext(Dispatchers.IO) {
+            TvStatsOutbox.load(app)
+                ?.takeIf { it.userId == userId }
+                ?.events
+                .orEmpty()
+        }
+        if (pending.isEmpty()) return@withLock true
+        val target = findPhoneTarget(pairId) ?: return@withLock false
+        val snapshot = PairSnapshot(
+            generatedAt = System.currentTimeMillis(),
+            playEvents = pending,
+        )
+        val envelope = PairSecureEnvelope(
+            pairId = pairId,
+            payload = PairingCrypto.encryptSecret(
+                secret,
+                PairingSync.json.encodeToString(PairSnapshot.serializer(), snapshot),
+            ),
+        )
+        val responseText = PairingHttp.postJson(
+            url = PairingHttp.url(target.host, target.port, "/stats"),
+            body = PairingSync.json.encodeToString(PairSecureEnvelope.serializer(), envelope),
+            connectTimeoutMs = 4_000,
+            readTimeoutMs = 20_000,
+        )
+        val ack = runCatching {
+            PairingSync.json.decodeFromString(PairAck.serializer(), responseText)
+        }.getOrNull()
+        if (ack?.ok != true) throw IOException("Celular recusou as estatísticas da TV")
+        withContext(Dispatchers.IO) { TvStatsOutbox.ack(app, userId, pending) }
+        session.phoneHost = target.host
+        session.phonePort = target.port
+        AppLog.d(
+            AppLog.TAG_PAIRING,
+            "Estatísticas da TV entregues: ${pending.size} evento(s) em " +
+                "${target.host}:${target.port}",
+        )
+        true
+    }
+
+    /**
      * TV → celular: envia o retrato reduzido (histórico, estatísticas,
      * playlists) diretamente ao endpoint `/push` do celular. O celular grava e
      * responde antes de a TV apagar qualquer dado. Se o push falhar, o aviso
@@ -764,7 +861,13 @@ class PairedSyncManager(private val app: MystApp) {
             PairingSync.json.decodeFromString(PairAck.serializer(), responseText)
         }.getOrNull()
         if (ack?.ok != true) throw IOException("Celular recusou o retrato da TV")
-        withContext(Dispatchers.IO) { TvSnapshotOutbox.clear(app) }
+        withContext(Dispatchers.IO) {
+            TvSnapshotOutbox.clear(app)
+            // O retrato completo também leva os eventos. O ack remove só os
+            // que estavam neste envio; uma estatística criada durante a
+            // requisição continua guardada.
+            TvStatsOutbox.ack(app, userId, snapshot.playEvents)
+        }
         session.phoneHost = target.host
         session.phonePort = target.port
         AppLog.d(
@@ -799,17 +902,23 @@ class PairedSyncManager(private val app: MystApp) {
             }.getOrDefault("")
             val pending = withContext(Dispatchers.IO) {
                 TvSnapshotOutbox.loadFor(app, userId, accountUsername)
-            } ?: return@launch
-            val belongsToAccount = pending.userId == userId ||
-                (accountUsername.isNotBlank() &&
-                    pending.accountUsername.equals(accountUsername, ignoreCase = true))
-            if (!belongsToAccount) {
+            }
+            val statsPending = withContext(Dispatchers.IO) { TvStatsOutbox.load(app) }
+            val fullBelongsToAccount = pending != null && (
+                pending.userId == userId ||
+                    (accountUsername.isNotBlank() &&
+                        pending.accountUsername.equals(accountUsername, ignoreCase = true))
+                )
+            val statsBelongToAccount = statsPending != null && statsPending.userId == userId
+            if (!fullBelongsToAccount && !statsBelongToAccount) {
                 // O outbox é de outra conta Myst e não pode ser misturado.
                 // Não apaga: o próximo pareamento dessa conta ainda pode usá-lo.
-                AppLog.w(
-                    AppLog.TAG_PAIRING,
-                    "Retrato pendente da TV pertence a outra conta; mantendo em disco",
-                )
+                if (pending != null || statsPending != null) {
+                    AppLog.w(
+                        AppLog.TAG_PAIRING,
+                        "Retrato pendente da TV pertence a outra conta; mantendo em disco",
+                    )
+                }
                 return@launch
             }
             val effectiveUserId = runCatching { app.accounts.ensureTvSessionUser() }
@@ -824,19 +933,38 @@ class PairedSyncManager(private val app: MystApp) {
             if (effectiveUserId <= 0L) return@launch
             runCatching {
                 suppressLocalChanges()
-                PairingSync.mergeSnapshot(
-                    app = app,
-                    userId = effectiveUserId,
-                    snapshot = pending.snapshot,
-                )
+                if (fullBelongsToAccount && pending != null) {
+                    PairingSync.mergeSnapshot(
+                        app = app,
+                        userId = effectiveUserId,
+                        snapshot = pending.snapshot,
+                    )
+                }
+                if (statsBelongToAccount && statsPending != null) {
+                    PairingSync.mergeSnapshot(
+                        app = app,
+                        userId = effectiveUserId,
+                        snapshot = PairSnapshot(playEvents = statsPending.events),
+                    )
+                }
                 suppressLocalChanges()
-                if (pushTvSnapshotToPhone()) {
+                // Entrega as estatísticas primeiro, por um canal que não
+                // depende do retrato completo.
+                val statsPushed = pushTvStatsToPhone()
+                val fullPushed = if (fullBelongsToAccount) {
+                    pushTvSnapshotToPhone()
+                } else {
+                    true
+                }
+                if (statsPushed && fullPushed) {
+                    val restoredEvents = (pending?.snapshot?.playEvents?.size ?: 0) +
+                        (statsPending?.events?.size ?: 0)
                     AppLog.i(
                         AppLog.TAG_PAIRING,
                         "Dados pendentes da TV restaurados e reenviados: " +
-                            "playlists=${pending.snapshot.playlists.size} " +
-                            "histórico=${pending.snapshot.history.size} " +
-                            "eventos=${pending.snapshot.playEvents.size}",
+                            "playlists=${pending?.snapshot?.playlists?.size ?: 0} " +
+                            "histórico=${pending?.snapshot?.history?.size ?: 0} " +
+                            "eventos=$restoredEvents",
                     )
                 } else {
                     scheduleTvPushRetry()
@@ -969,15 +1097,37 @@ class PairedSyncManager(private val app: MystApp) {
                 if (isTv) {
                     tvPushRetryJob?.cancel()
                     tvPushRetryJob = null
-                    val pushed = runCatching { pushTvSnapshotToPhone() }
-                        .onFailure {
-                            AppLog.d(
-                                AppLog.TAG_PAIRING,
-                                "Retrato direto não entregue; usando aviso: ${it.message}",
-                            )
-                        }
-                        .getOrDefault(false)
-                    if (!pushed) {
+                    val statsChanged = tables.any { it == "play_events" }
+                    val otherChanged = tables.any { it != "play_events" }
+                    // Estatísticas primeiro e por um canal só delas: assim um
+                    // problema no retrato completo (playlists/cache do YouTube)
+                    // nunca impede um play da TV de chegar ao celular.
+                    val statsPushed = if (statsChanged) {
+                        runCatching { pushTvStatsToPhone() }
+                            .onFailure {
+                                AppLog.d(
+                                    AppLog.TAG_PAIRING,
+                                    "Estatísticas diretas não entregues: ${it.message}",
+                                )
+                            }
+                            .getOrDefault(false)
+                    } else {
+                        false
+                    }
+                    val fullNeeded = otherChanged || !statsChanged || !statsPushed
+                    val fullPushed = if (fullNeeded) {
+                        runCatching { pushTvSnapshotToPhone() }
+                            .onFailure {
+                                AppLog.d(
+                                    AppLog.TAG_PAIRING,
+                                    "Retrato direto não entregue; usando aviso: ${it.message}",
+                                )
+                            }
+                            .getOrDefault(false)
+                    } else {
+                        true
+                    }
+                    if (!fullPushed) {
                         val notified = runCatching { notifyPhone("sync") }
                             .onFailure {
                                 AppLog.d(
@@ -1012,6 +1162,14 @@ class PairedSyncManager(private val app: MystApp) {
             var waitMs = TV_PUSH_RETRY_INITIAL_MS
             while (isActive && app.session.hasTvPairing) {
                 delay(waitMs)
+                val statsPushed = runCatching { pushTvStatsToPhone() }
+                    .onFailure {
+                        AppLog.d(
+                            AppLog.TAG_PAIRING,
+                            "Nova tentativa de estatísticas da TV falhou: ${it.message}",
+                        )
+                    }
+                    .getOrDefault(false)
                 val pushed = runCatching { pushTvSnapshotToPhone() }
                     .onFailure {
                         AppLog.d(
@@ -1020,7 +1178,7 @@ class PairedSyncManager(private val app: MystApp) {
                         )
                     }
                     .getOrDefault(false)
-                if (pushed) {
+                if (statsPushed && pushed) {
                     AppLog.i(
                         AppLog.TAG_PAIRING,
                         "Retrato pendente da TV entregue ao celular",
@@ -1152,6 +1310,8 @@ class PairedSyncManager(private val app: MystApp) {
         private const val VERIFY_DISCOVERY_TIMEOUT_MS = 4_000L
         private const val TV_PUSH_RETRY_INITIAL_MS = 5_000L
         private const val TV_PUSH_RETRY_MAX_MS = 60_000L
+        /** Janela do envio rápido; o outbox guarda o restante até o ack. */
+        private const val MAX_RECENT_STATS = 200
         private const val PENDING_UNPAIR_RETRY_INITIAL_MS = 4_000L
         private const val PENDING_UNPAIR_RETRY_MAX_MS = 60_000L
 

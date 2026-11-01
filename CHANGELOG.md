@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.1.8 Beta 5 — 01/11/2026
+
+Correção das estatísticas da TV no celular, com um canal dedicado que não depende do retrato completo.
+
+**Versão:** `versionName "0.1.8 Beta 5"` · `versionCode 44` · tag `v0.1.8-beta.5`. A build 44 instala por cima da 43 e anteriores com a mesma assinatura, mantendo conta Myst, playlists, histórico e estatísticas. Esta é uma **Release completa**, não uma pré-release.
+
+### Corrigido
+- **Canal `/stats` separado:** a TV envia somente os eventos de reprodução para o celular, sem playlists, capas ou cache do YouTube. Um problema no merge do retrato completo não impede mais uma música ouvida na TV de entrar nas Estatísticas.
+- **Outbox de estatísticas confiável:** os eventos são gravados em `filesDir/pairing/tv_pending_stats.json` antes da rede e só são apagados depois do `ack`. O retry com espera crescente tenta o canal de estatísticas antes do retrato completo, e o outbox é restaurado no próximo processo/pareamento com a mesma conta Myst.
+- **Atualização ao vivo no celular:** a tela de Estatísticas pede uma sincronização imediata ao abrir/atualizar e continua observando `play_events` para recarregar com debounce quando o merge da TV termina.
+- **Sem apagar eventos novos:** o retrato completo só limpa o outbox de estatísticas quando todos os eventos pendentes estão no snapshot enviado. Uma reprodução criada durante a requisição permanece guardada.
+- **Release normal:** o workflow de release deixa de marcar a Beta 5 como pré-release e verifica o campo `isPrerelease` antes de concluir.
+
+### Compatibilidade
+- Atualiza por cima da Beta 4 (`versionCode 43`) e anteriores com a mesma assinatura.
+- Atualize **celular e TV** para a Beta 5, porque o endpoint `/stats` é novo nos dois lados.
+- Nenhuma migração do Room foi necessária.
+
+### Build e release
+- `versionCode 44`, `versionName "0.1.8 Beta 5"`, tag `v0.1.8-beta.5`.
+- `RELEASE_NOTES.md` começa com `versionCode: 44`; o pop-up de atualização usa `app.apk` no celular e `app-tv.apk` na TV.
+
 ## 0.1.8 Beta 4 — 31/10/2026
 
 Correção do despareamento celular ↔ TV e envio completo dos dados temporários da TV.

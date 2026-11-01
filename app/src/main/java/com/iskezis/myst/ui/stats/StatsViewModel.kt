@@ -66,6 +66,9 @@ class StatsViewModel(private val app: MystApp) : ViewModel() {
     private var statsObserver: InvalidationTracker.Observer? = null
 
     init {
+        // Puxa da TV qualquer estatística que ainda esteja no outbox antes de
+        // mostrar a tela. O observer recarrega quando o merge terminar.
+        app.pairedSync.requestSync()
         load(StatsPeriod.WEEK)
         observePlayEvents()
     }
@@ -120,6 +123,7 @@ class StatsViewModel(private val app: MystApp) : ViewModel() {
 
     fun refresh() {
         albumAttempts.clear()
+        app.pairedSync.requestSync()
         load(_state.value.period)
     }
 

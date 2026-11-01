@@ -1,29 +1,30 @@
-versionCode: 43
-## MystMusic 0.1.8 Beta 4
+versionCode: 44
+## MystMusic 0.1.8 Beta 5
 
-Correção do despareamento celular ↔ TV. Agora a TV para a música antes de sair do pareamento e todos os dados temporários dela chegam ao celular, inclusive quando a rede falha no primeiro instante.
+Correção das estatísticas da TV no celular. A música ouvida na TV agora tem um canal próprio para as Estatísticas, sem depender do envio de playlists, histórico ou cache do YouTube.
 
 ### Correções desta build
-- **A TV para de tocar ao desconectar:** o celular pede a parada antes de montar o retrato final. A TV libera o `MediaController`, envia uma ação direta ao `PlaybackService`, grava o último histórico/estatística e só então se desliga. Antes, um controller ainda vinculado mantinha o serviço vivo e a música continuava depois de o pareamento sumir da tela.
-- **Despareamento confirmado nos dois lados:** a TV responde com o retrato final e espera o celular confirmar que mesclou os dados antes de apagar o Room em memória, o tema temporário e os arquivos da sessão. Se a confirmação não chegar, a TV preserva o retrato completo no outbox e não perde dados.
-- **Outbox completo da TV:** além das estatísticas, ficam em disco no outbox as playlists, faixas, histórico, afinidades, lápides e buscas recentes da TV. O retrato é reaplicado na próxima abertura ou no próximo pareamento com a mesma conta Myst e reenviado antes de qualquer novo play.
-- **Celular tenta de novo:** se a TV estiver desligada ou fora da rede quando o usuário desconectar, o pareamento some da interface imediatamente, mas o celular guarda as credenciais por um período curto e continua tentando parar a TV e buscar o retrato final. O aviso de força agora explica esse comportamento.
-- **Dados em tempo real:** buscas recentes da TV passaram a viajar no snapshot; o `PlaybackService` avisa o sincronizador após gravar histórico, álbum e eventos de reprodução, e o retrato final é mesclado antes de a TV limpar os dados.
+- **Canal exclusivo de estatísticas:** a TV envia os eventos de reprodução para o novo endpoint `/stats` do celular, separado do retrato completo. Se o merge de playlists/cache falhar ou demorar, a reprodução da TV ainda entra nas Estatísticas.
+- **Outbox próprio:** os eventos ficam em `filesDir/pairing/tv_pending_stats.json` antes da rede e só são apagados depois do `ack` do celular. Se o celular estiver dormindo, fora da rede ou com o app fechado, a TV tenta de novo com espera crescente e também restaura o outbox na próxima abertura/pareamento.
+- **Entrega imediata:** o `PlaybackService` da TV avisa o sincronizador assim que o evento dos 10 s é gravado e quando o tempo final é atualizado. O retry do canal de estatísticas roda antes do retrato completo.
+- **Celular puxa ao abrir as Estatísticas:** a tela pede uma sincronização imediata ao abrir e ao atualizar, além de continuar recarregando ao vivo pelo observer de `play_events`.
+- **Sem perda por limpeza indevida:** o retrato completo só apaga o outbox de estatísticas quando todos os eventos pendentes estão incluídos no envio. Uma reprodução criada durante a requisição continua guardada.
+- **Release completa:** a Beta 5 é publicada como Release normal no GitHub, não como pré-release.
 
 ### Compatibilidade
-- Atualiza por cima da Beta 3 (`versionCode 42`) e anteriores com a mesma assinatura, mantendo conta Myst, playlists, histórico e estatísticas.
-- A TV usa o mesmo APK do flavor `tv` (`armeabi-v7a`, 32 bits). Para o despareamento novo funcionar por completo, atualize **celular e TV** para a Beta 4.
+- Atualiza por cima da Beta 4 (`versionCode 43`) e anteriores com a mesma assinatura, mantendo conta Myst, playlists, histórico e estatísticas.
+- Atualize **celular e TV** para a Beta 5: o canal `/stats` é novo nos dois lados.
 - Nenhuma migração do Room foi necessária nesta build.
+- A TV continua usando o APK `app-tv.apk` (`armeabi-v7a`, 32 bits).
 
 ### Build e assinatura
-- `versionCode: 43`, `versionName "0.1.8 Beta 4"`, compilado pelos workflows do GitHub Actions com a keystore estável dos Secrets.
+- `versionCode: 44`, `versionName "0.1.8 Beta 5"`, compilado pelos workflows do GitHub Actions com a keystore estável dos Secrets.
 - Assets desta release: `app.apk` (celular), `app-tv.apk` (Android TV) e `SHA256SUMS.txt`.
-- A release é uma pré-release por ser um beta; o app lê o `versionCode` da primeira linha do corpo e aceita a atualização.
+- O app lê o `versionCode` da primeira linha deste arquivo para o pop-up de atualização.
 
 ### Como testar
-1. Instale a Beta 4 no celular e na TV.
-2. Pareie a TV, toque uma música e, com ela tocando, use **Configurações → Desconectar TV** no celular.
-3. A música da TV deve parar na hora, a TV deve voltar à tela do código e o celular deve esconder a TV.
-4. Repita o teste desconectando pela própria TV e confira que o celular também esconde a TV.
-5. Na TV, antes de desconectar, gere histórico/estatísticas e confira no celular depois da desconexão que Recentes, Estatísticas e playlists continuam iguais.
-6. Se a TV estiver desligada ao desconectar, abra o app do celular depois com a TV ligada; ele deve concluir a parada e buscar o retrato final.
+1. Instale a Beta 5 no celular e na TV e confirme que o pareamento continua ativo.
+2. Na TV, toque uma música e deixe passar dos primeiros 10 segundos.
+3. Abra **Estatísticas** no celular e confira o tempo/reproduções da faixa. A tela puxa a TV ao abrir e recarrega sozinha quando o evento chega.
+4. Repita com o celular bloqueado ou com o app em segundo plano; ao abrir as Estatísticas, o evento pendente deve aparecer.
+5. Se o celular estiver desligado durante a reprodução, ligue-o depois, abra o MystMusic e confira que a TV reenvia o outbox sem duplicar a reprodução.

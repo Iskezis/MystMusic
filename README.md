@@ -4,21 +4,20 @@ Android music app (Kotlin + XML) featuring YouTube Music playback through InnerT
 
 - **App Name:** MystMusic
 - **Package:** `com.iskezis.myst`
-- **Current Version:** 0.1.8 Beta 3 (`versionCode 42`)
+- **Current Version:** 0.1.8 Beta 5 (`versionCode 44`)
 - **Status:** Beta; includes unofficial YouTube Music and Discord integrations.
 - **Theme Color:** Sky blue (`#38BDF8`), simple two-color gradients, minimalist surfaces.
 - **UI Language:** Portuguese (Brazil).
 - **Build Process:** Handled exclusively via GitHub Actions.
 - **Final APKs:** `apks/app.apk` (mobile) and `apks/app-tv.apk` (Android TV, `armeabi-v7a`).
 
-## What's new in 0.1.8 Beta 3
+## What's new in 0.1.8 Beta 5
 
-- **Update installation fixed:** the downloaded APK is now handed to Android through a `PackageInstaller` session instead of a temporary `FileProvider` URI in the app cache. This fixes the “error parsing the package” message reported by some phone and TV installers, which could not read the cached file.
-- **APK validation before install:** the download must match the GitHub asset size and the published SHA-256, start with a valid ZIP header, declare `com.iskezis.myst`, and have a newer `versionCode`. Invalid files show a clear error and a retry button instead of opening the installer.
-- **Visible installer failures:** blocked installs, signature conflicts, invalid packages, incompatible devices and low storage are reported in a notification with the reason.
-- **TV statistics sync:** plays on the TV are kept in a disk outbox until the phone confirms they were saved, then restored and re-sent on the next app start or pairing with the same Myst account. The Statistics screen also reloads live when a TV snapshot arrives.
-- **In-app updates:** when the app opens with both accounts signed in, it checks the latest GitHub Release. A pop-up shows the current → new version, download size, release notes and the buttons **Atualizar** / **Agora não**. A GitHub button next to Statistics allows a manual check.
-- **Stable releases:** the `Release` workflow publishes `app.apk`, `app-tv.apk` and `SHA256SUMS.txt` on GitHub Releases using the stable keystore stored in GitHub Secrets.
+- **Dedicated TV statistics channel:** the TV now sends only playback events to the phone through `/stats`, independently of the full snapshot. A playlist or YouTube-cache merge problem can no longer block a song played on the TV from reaching Statistics.
+- **Reliable statistics outbox:** events are stored in `tv_pending_stats.json` before the network and are only cleared after the phone acknowledges them. Retries run with backoff, and the outbox is restored on the next process start or pairing with the same Myst account.
+- **Live phone updates:** the Statistics screen requests an immediate sync when opened/refreshed and keeps observing `play_events` to reload after the TV merge completes.
+- **No lost events during full syncs:** the full snapshot only clears the statistics outbox when every pending event was included in that request.
+- **Full release:** Beta 5 is published as a normal GitHub Release, not a pre-release.
 
 The complete history is in [CHANGELOG.md](CHANGELOG.md).
 

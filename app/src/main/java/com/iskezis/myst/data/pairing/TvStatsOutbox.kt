@@ -41,28 +41,19 @@ object TvStatsOutbox {
         if (userId <= 0L) return
         synchronized(lock) {
             runCatching {
-                val existing = read(context)
+                val stored = read(context)
+                val existing = stored
                     ?.takeIf { it.userId == userId }
                     ?.events
                     .orEmpty()
                 val merged = merge(existing, events)
                 if (merged.isEmpty()) {
-                    clearLocked(context)
+                    // Não apaga o outbox de outra conta só porque a conta
+                    // atual ainda não tem eventos.
+                    if (stored == null || stored.userId == userId) clearLocked(context)
                     return
                 }
-                val directory = File(context.filesDir, DIRECTORY).apply { mkdirs() }
-                val target = File(directory, FILE_NAME)
-                val temp = File(directory, "$FILE_NAME.tmp")
-                val payload = PendingTvStats(
-                    userId = userId,
-                    savedAt = System.currentTimeMillis(),
-                    events = merged,
-                )
-                temp.writeText(PairingSync.json.encodeToString(PendingTvStats.serializer(), payload))
-                if (!temp.renameTo(target)) {
-                    temp.copyTo(target, overwrite = true)
-                    temp.delete()
-                }
+                writeLocked(context, userId, merged)
                 AppLog.d(
                     AppLog.TAG_PAIRING,
                     "Estatísticas da TV guardadas para reenvio: ${merged.size} evento(s)",
@@ -79,6 +70,39 @@ object TvStatsOutbox {
 
     fun load(context: Context): PendingTvStats? = synchronized(lock) {
         read(context)?.takeIf { it.userId > 0L && it.events.isNotEmpty() }
+    }
+
+    /**
+     * Remove do outbox somente o que o celular confirmou, mantendo eventos
+     * criados ou atualizados enquanto a requisição estava em andamento.
+     */
+    fun ack(context: Context, userId: Long, delivered: List<PairPlayEvent>) {
+        if (userId <= 0L || delivered.isEmpty()) return
+        synchronized(lock) {
+            runCatching {
+                val stored = read(context) ?: return
+                if (stored.userId != userId) return
+                val deliveredByKey = delivered.associateBy { key(it) }
+                val remaining = stored.events.filter { pending ->
+                    val sent = deliveredByKey[key(pending)] ?: return@filter true
+                    // Se a TV gravou mais tempo depois do envio, mantém a
+                    // versão mais nova para o próximo ack.
+                    pending.playedMs > sent.playedMs ||
+                        (pending.completed && !sent.completed)
+                }
+                if (remaining.isEmpty()) {
+                    clearLocked(context)
+                } else {
+                    writeLocked(context, userId, remaining)
+                }
+            }.onFailure {
+                AppLog.failure(
+                    AppLog.TAG_PAIRING,
+                    "Não foi possível confirmar as estatísticas da TV",
+                    it,
+                )
+            }
+        }
     }
 
     fun clear(context: Context) {
@@ -123,6 +147,27 @@ object TvStatsOutbox {
         return byKey.values
             .sortedByDescending { it.startedAt }
             .take(MAX_EVENTS)
+    }
+
+    private fun key(event: PairPlayEvent): String {
+        val startedAt = event.startedAt.takeIf { it > 0L } ?: 1L
+        return "${event.videoId.trim()}|$startedAt"
+    }
+
+    private fun writeLocked(context: Context, userId: Long, events: List<PairPlayEvent>) {
+        val directory = File(context.filesDir, DIRECTORY).apply { mkdirs() }
+        val target = File(directory, FILE_NAME)
+        val temp = File(directory, "$FILE_NAME.tmp")
+        val payload = PendingTvStats(
+            userId = userId,
+            savedAt = System.currentTimeMillis(),
+            events = events,
+        )
+        temp.writeText(PairingSync.json.encodeToString(PendingTvStats.serializer(), payload))
+        if (!temp.renameTo(target)) {
+            temp.copyTo(target, overwrite = true)
+            temp.delete()
+        }
     }
 
     private fun clearLocked(context: Context) {

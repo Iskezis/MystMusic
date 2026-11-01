@@ -14,7 +14,7 @@ Atualize após cada etapa. Marque [x] só quando o build do GitHub estiver verde
 - [x] 10. Revisão final + APKs em apks/
 
 ## Fases 0.2.0
-Marque cada subitem só com build verde + verificação. Versão durante o desenvolvimento: `0.2.0-dev.N` (versionCode crescente a partir de 10); por pedido do usuário em 31/10/2026, a final é **`0.1.8 Beta`**. O hotfix do teclado da TV foi a build 40 (`v0.1.8-beta`), a correção das estatísticas da TV é a **`0.1.8 Beta 2`** (`versionCode 41`, tag `v0.1.8-beta.2`), a correção da instalação da atualização é a **`0.1.8 Beta 3`** (`versionCode 42`, tag `v0.1.8-beta.3`) e a correção do despareamento/dados da TV é a **`0.1.8 Beta 4`** (`versionCode 43`, tag `v0.1.8-beta.4`).
+Marque cada subitem só com build verde + verificação. Versão durante o desenvolvimento: `0.2.0-dev.N` (versionCode crescente a partir de 10); por pedido do usuário em 31/10/2026, a final é **`0.1.8 Beta`**. O hotfix do teclado da TV foi a build 40 (`v0.1.8-beta`), a correção das estatísticas da TV é a **`0.1.8 Beta 2`** (`versionCode 41`, tag `v0.1.8-beta.2`), a correção da instalação da atualização é a **`0.1.8 Beta 3`** (`versionCode 42`, tag `v0.1.8-beta.3`), a correção do despareamento/dados da TV é a **`0.1.8 Beta 4`** (`versionCode 43`, tag `v0.1.8-beta.4`) e o canal dedicado de estatísticas da TV é a **`0.1.8 Beta 5`** (`versionCode 44`, tag `v0.1.8-beta.5`).
 
 - [x] 11. Tema do sistema + Aparência
   - [x] Segue o tema do sistema (claro/escuro) em todas as telas, celular e TV
@@ -129,6 +129,14 @@ Marque cada subitem só com build verde + verificação. Versão durante o desen
   - [x] Buscas recentes da TV viajam no snapshot e o `PlaybackService` avisa o sync após histórico, álbum, evento e pulo
   - [x] Buscas em `SharedPreferences` são limpas ao encerrar a sessão temporária da TV
   - [x] Build verde, APKs em `apks/` e release `v0.1.8-beta.4` publicada
+- [x] Canal dedicado das estatísticas da TV (0.1.8 Beta 5, versionCode 44)
+  - [x] TV envia só eventos de reprodução para o novo endpoint `/stats`, independente do retrato completo
+  - [x] Outbox `tv_pending_stats.json` gravado antes da rede e apagado só depois do `ack`
+  - [x] Retry do canal de estatísticas antes do retrato completo; restauração no início do processo/pareamento
+  - [x] Celular mescla apenas `play_events` ao receber `/stats` e pede sync ao abrir/atualizar Estatísticas
+  - [x] Retrato completo não apaga eventos novos que não estavam no snapshot enviado
+  - [x] Workflow de release publica a Beta 5 como Release normal e falha se `isPrerelease` for verdadeiro
+  - [ ] Build verde, APKs em `apks/` e release `v0.1.8-beta.5` publicada
 
 ## Riscos conhecidos da 0.2.0
 - Atualização por cima só instala se a assinatura for a mesma. As APKs até a 0.2.0-dev.3 usam a chave de debug do runner; a keystore fixa entrou no 0.2.0-dev.4. Quem tem uma APK anterior ao dev.4 precisa **desinstalar e reinstalar uma vez**; isso apaga os dados locais, então salve um `Mystaccount.json` antes. Do dev.4 em diante as atualizações instalam por cima.

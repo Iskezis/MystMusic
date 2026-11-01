@@ -73,12 +73,20 @@ jobs:
           TITLE="MystMusic ${RELEASE_TAG}"
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" app.apk app-tv.apk SHA256SUMS.txt --clobber
-            gh release edit "$RELEASE_TAG" --title "$TITLE" --notes-file RELEASE_NOTES.md --prerelease
+            # Beta 5 e seguintes são Releases completas, não pré-releases.
+            gh release edit "$RELEASE_TAG" --title "$TITLE" --notes-file RELEASE_NOTES.md \
+              --prerelease=false --latest
           else
             gh release create "$RELEASE_TAG" app.apk app-tv.apk SHA256SUMS.txt \
-              --title "$TITLE" --notes-file RELEASE_NOTES.md --prerelease
+              --title "$TITLE" --notes-file RELEASE_NOTES.md --latest
           fi
       - name: Conferir assets publicados
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release view "$RELEASE_TAG" --json tagName,isPrerelease,assets
+        run: |
+          gh release view "$RELEASE_TAG" --json tagName,isPrerelease,assets
+          PRE=$(gh release view "$RELEASE_TAG" --json isPrerelease --jq .isPrerelease)
+          if [ "$PRE" = "true" ]; then
+            echo "::error::A release $RELEASE_TAG foi publicada como pré-release."
+            exit 1
+          fi
