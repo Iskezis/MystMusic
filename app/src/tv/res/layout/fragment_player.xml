@@ -57,9 +57,10 @@
                     android:nextFocusDown="@id/playerMore"
                     android:nextFocusRight="@id/playerMore"
                     android:src="@drawable/ic_back"
-                    app:tint="@android:color/white" />
+                    app:tint="?attr/mystOnSurface" />
 
                 <TextView
+                    android:id="@+id/playerHeaderTitle"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -72,7 +73,7 @@
                     android:shadowRadius="8"
                     android:text="@string/player_now_playing"
                     android:textAllCaps="true"
-                    android:textColor="@android:color/white"
+                    android:textColor="?attr/mystOnSurface"
                     android:textSize="18sp" />
 
                 <Space
@@ -100,7 +101,7 @@
                     android:shadowDx="0"
                     android:shadowDy="2"
                     android:shadowRadius="8"
-                    android:textColor="@android:color/white"
+                    android:textColor="?attr/mystOnSurface"
                     android:textSize="34sp" />
 
                 <ImageButton
@@ -114,7 +115,7 @@
                     android:nextFocusDown="@id/playerArtist"
                     android:nextFocusLeft="@id/playerBack"
                     android:src="@drawable/ic_more"
-                    app:tint="@android:color/white" />
+                    app:tint="?attr/mystOnSurface" />
             </LinearLayout>
 
             <TextView
@@ -134,7 +135,7 @@
                 android:shadowDx="0"
                 android:shadowDy="2"
                 android:shadowRadius="8"
-                android:textColor="#CCFFFFFF"
+                android:textColor="?attr/mystOnSurfaceDim"
                 android:textSize="24sp" />
 
             <TextView
@@ -154,7 +155,7 @@
                 android:shadowDx="0"
                 android:shadowDy="2"
                 android:shadowRadius="8"
-                android:textColor="#99FFFFFF"
+                android:textColor="?attr/mystOnSurfaceDim"
                 android:textSize="@dimen/text_body"
                 android:visibility="gone" />
 
@@ -172,6 +173,8 @@
                 android:nextFocusUp="@id/playerArtist"
                 android:paddingTop="@dimen/space_s"
                 android:paddingBottom="@dimen/space_s"
+                android:paddingStart="@dimen/space_s"
+                android:paddingEnd="@dimen/space_s"
                 android:progressDrawable="@drawable/progress_player"
                 android:splitTrack="false"
                 android:thumb="@null" />
@@ -190,7 +193,7 @@
                     android:shadowDx="0"
                     android:shadowDy="2"
                     android:shadowRadius="8"
-                    android:textColor="#B3FFFFFF"
+                    android:textColor="?attr/mystOnSurfaceDim"
                     android:textSize="18sp" />
 
                 <TextView
@@ -201,7 +204,7 @@
                     android:shadowDx="0"
                     android:shadowDy="2"
                     android:shadowRadius="8"
-                    android:textColor="#B3FFFFFF"
+                    android:textColor="?attr/mystOnSurfaceDim"
                     android:textSize="18sp" />
             </LinearLayout>
 
@@ -224,7 +227,7 @@
                     android:nextFocusRight="@id/playerPlay"
                     android:nextFocusUp="@id/playerSeek"
                     android:src="@drawable/ic_previous"
-                    app:tint="@android:color/white" />
+                    app:tint="?attr/mystOnSurface" />
 
                 <ImageButton
                     android:id="@+id/playerPlay"
@@ -240,7 +243,7 @@
                     android:nextFocusUp="@id/playerSeek"
                     android:padding="28dp"
                     android:src="@drawable/ic_play"
-                    app:tint="@android:color/white" />
+                    app:tint="?attr/mystOnSurface" />
 
                 <ImageButton
                     android:id="@+id/playerNext"
@@ -253,7 +256,7 @@
                     android:nextFocusRight="@id/playerQueue"
                     android:nextFocusUp="@id/playerSeek"
                     android:src="@drawable/ic_next"
-                    app:tint="@android:color/white" />
+                    app:tint="?attr/mystOnSurface" />
             </LinearLayout>
 
             <LinearLayout
@@ -299,7 +302,7 @@
                         android:shadowDy="1"
                         android:shadowRadius="3"
                         android:text="@string/player_repeat_one_number"
-                        android:textColor="@android:color/white"
+                        android:textColor="?attr/mystOnSurface"
                         android:textSize="10sp"
                         android:visibility="gone" />
                 </FrameLayout>
@@ -319,7 +322,7 @@
                     android:nextFocusLeft="@id/playerRepeat"
                     android:nextFocusUp="@id/playerNext"
                     android:src="@drawable/ic_queue_music"
-                    app:tint="@android:color/white" />
+                    app:tint="?attr/mystOnSurface" />
             </LinearLayout>
 
             <TextView
@@ -333,7 +336,7 @@
                 android:shadowDy="2"
                 android:shadowRadius="8"
                 android:text="@string/player_error_stream"
-                android:textColor="#FCA5A5"
+                android:textColor="?attr/mystError"
                 android:textSize="18sp"
                 android:visibility="gone" />
 

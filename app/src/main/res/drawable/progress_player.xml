@@ -3,14 +3,14 @@
     <item android:id="@android:id/background">
         <shape android:shape="rectangle">
             <corners android:radius="3dp" />
-            <solid android:color="#33FFFFFF" />
+            <solid android:color="?attr/mystStrokeStrong" />
         </shape>
     </item>
     <item android:id="@android:id/progress">
         <clip>
             <shape android:shape="rectangle">
                 <corners android:radius="3dp" />
-                <solid android:color="@android:color/white" />
+                <solid android:color="?attr/mystOnSurface" />
             </shape>
         </clip>
     </item>

@@ -15,6 +15,7 @@
         android:src="@drawable/bg_cover_placeholder" />
 
     <ScrollView
+        android:id="@+id/playerScroll"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
@@ -43,7 +44,7 @@
                     android:contentDescription="@string/auth_back"
                     android:padding="12dp"
                     android:src="@drawable/ic_arrow_down"
-                    app:tint="@android:color/white" />
+                    app:tint="?attr/mystOnSurface" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -53,6 +54,7 @@
                     android:orientation="vertical">
 
                     <TextView
+                        android:id="@+id/playerHeaderTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/poppins_semibold"
@@ -63,10 +65,11 @@
                         android:shadowRadius="8"
                         android:text="@string/player_now_playing"
                         android:textAllCaps="true"
-                        android:textColor="@android:color/white"
+                        android:textColor="?attr/mystOnSurface"
                         android:textSize="@dimen/text_label" />
 
                     <TextView
+                        android:id="@+id/playerHeaderSubtitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/poppins_medium"
@@ -75,7 +78,7 @@
                         android:shadowDy="2"
                         android:shadowRadius="8"
                         android:text="@string/app_name"
-                        android:textColor="#B3FFFFFF"
+                        android:textColor="?attr/mystOnSurfaceDim"
                         android:textSize="@dimen/text_small" />
                 </LinearLayout>
 
@@ -129,7 +132,7 @@
                         android:shadowDx="0"
                         android:shadowDy="2"
                         android:shadowRadius="8"
-                        android:textColor="@android:color/white"
+                        android:textColor="?attr/mystOnSurface"
                         android:textSize="24sp" />
 
                     <TextView
@@ -147,7 +150,7 @@
                         android:shadowDx="0"
                         android:shadowDy="2"
                         android:shadowRadius="8"
-                        android:textColor="#CCFFFFFF"
+                        android:textColor="?attr/mystOnSurfaceDim"
                         android:textSize="@dimen/text_body" />
 
                     <TextView
@@ -164,7 +167,7 @@
                         android:shadowDx="0"
                         android:shadowDy="2"
                         android:shadowRadius="8"
-                        android:textColor="#99FFFFFF"
+                        android:textColor="?attr/mystOnSurfaceDim"
                         android:textSize="@dimen/text_small"
                         android:visibility="gone" />
                 </LinearLayout>
@@ -178,7 +181,7 @@
                     android:contentDescription="@string/player_more"
                     android:padding="12dp"
                     android:src="@drawable/ic_more"
-                    app:tint="@android:color/white" />
+                    app:tint="?attr/mystOnSurface" />
             </LinearLayout>
 
             <SeekBar
@@ -191,6 +194,8 @@
                 android:max="1000"
                 android:maxHeight="@dimen/player_progress_height"
                 android:minHeight="32dp"
+                android:paddingStart="@dimen/space_s"
+                android:paddingEnd="@dimen/space_s"
                 android:progressDrawable="@drawable/progress_player"
                 android:splitTrack="false"
                 android:thumb="@null" />
@@ -210,7 +215,7 @@
                     android:shadowDx="0"
                     android:shadowDy="2"
                     android:shadowRadius="8"
-                    android:textColor="#B3FFFFFF"
+                    android:textColor="?attr/mystOnSurfaceDim"
                     android:textSize="@dimen/text_small" />
 
                 <TextView
@@ -222,7 +227,7 @@
                     android:shadowDx="0"
                     android:shadowDy="2"
                     android:shadowRadius="8"
-                    android:textColor="#B3FFFFFF"
+                    android:textColor="?attr/mystOnSurfaceDim"
                     android:textSize="@dimen/text_small" />
             </LinearLayout>
 
@@ -241,7 +246,7 @@
                     android:contentDescription="@string/player_previous"
                     android:padding="12dp"
                     android:src="@drawable/ic_previous"
-                    app:tint="@android:color/white" />
+                    app:tint="?attr/mystOnSurface" />
 
                 <ImageButton
                     android:id="@+id/playerPlay"
@@ -253,7 +258,7 @@
                     android:contentDescription="@string/player_play"
                     android:padding="20dp"
                     android:src="@drawable/ic_play"
-                    app:tint="@android:color/white" />
+                    app:tint="?attr/mystOnSurface" />
 
                 <ImageButton
                     android:id="@+id/playerNext"
@@ -263,7 +268,7 @@
                     android:contentDescription="@string/player_next"
                     android:padding="12dp"
                     android:src="@drawable/ic_next"
-                    app:tint="@android:color/white" />
+                    app:tint="?attr/mystOnSurface" />
             </LinearLayout>
 
             <LinearLayout
@@ -307,7 +312,7 @@
                         android:shadowDy="1"
                         android:shadowRadius="3"
                         android:text="@string/player_repeat_one_number"
-                        android:textColor="@android:color/white"
+                        android:textColor="?attr/mystOnSurface"
                         android:textSize="9sp"
                         android:visibility="gone" />
                 </FrameLayout>
@@ -325,7 +330,7 @@
                     android:contentDescription="@string/player_queue"
                     android:padding="12dp"
                     android:src="@drawable/ic_queue_music"
-                    app:tint="@android:color/white" />
+                    app:tint="?attr/mystOnSurface" />
             </LinearLayout>
 
             <TextView
@@ -340,7 +345,7 @@
                 android:shadowDy="2"
                 android:shadowRadius="8"
                 android:text="@string/player_error_stream"
-                android:textColor="#FCA5A5"
+                android:textColor="?attr/mystError"
                 android:textSize="@dimen/text_small"
                 android:visibility="gone" />
 
