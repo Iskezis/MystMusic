@@ -33,12 +33,15 @@ class PlayerPlayCircleDrawable(density: Float) : Drawable() {
         invalidateSelf()
     }
 
+    override fun isStateful(): Boolean = true
+
     override fun onStateChange(state: IntArray): Boolean {
         val newFocused = state.contains(android.R.attr.state_focused)
         val newPressed = state.contains(android.R.attr.state_pressed)
         if (newFocused == focused && newPressed == pressed) return false
         focused = newFocused
         pressed = newPressed
+        invalidateSelf()
         return true
     }
 

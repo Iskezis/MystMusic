@@ -78,6 +78,7 @@ class PlayerFragment : Fragment() {
     private var latest: PlayerState = PlayerState()
     private var seeking = false
     private var loadedArtworkFor: String? = null
+    private var failedArtworkFor: String? = null
     private var backdropJob: Job? = null
     private var lastLoggedTrack: String? = null
     private var lastLoggedPlaying: Boolean? = null
@@ -271,9 +272,11 @@ class PlayerFragment : Fragment() {
         val artwork = track?.artworkUrl()
         if (artwork.isNullOrBlank()) {
             loadedArtworkFor = null
+            failedArtworkFor = null
             showPlaceholderBackdrop()
-        } else if (loadedArtworkFor != artwork) {
+        } else if (loadedArtworkFor != artwork && failedArtworkFor != artwork) {
             loadedArtworkFor = artwork
+            failedArtworkFor = null
             binding.playerCover.load(artwork) {
                 crossfade(true)
                 placeholder(R.drawable.bg_cover_placeholder)
@@ -285,6 +288,8 @@ class PlayerFragment : Fragment() {
                         if (bitmap != null && current != null && view != null) {
                             applyBackdrop(bitmap, artwork)
                         } else if (current != null) {
+                            loadedArtworkFor = null
+                            failedArtworkFor = artwork
                             showPlaceholderBackdrop()
                         }
                     },
@@ -294,6 +299,7 @@ class PlayerFragment : Fragment() {
                             "Falha ao carregar capa do player: ${AppLog.describe(result.throwable)}",
                         )
                         loadedArtworkFor = null
+                        failedArtworkFor = artwork
                         showPlaceholderBackdrop()
                     },
                 )
@@ -1112,6 +1118,7 @@ class PlayerFragment : Fragment() {
         backdropSample = null
         backdropKey = null
         loadedArtworkFor = null
+        failedArtworkFor = null
         topPalette = null
         titlePalette = null
         controlsPalette = null
