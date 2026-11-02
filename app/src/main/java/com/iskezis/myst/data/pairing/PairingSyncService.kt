@@ -18,6 +18,7 @@ import com.iskezis.myst.MainActivity
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.util.AppLog
+import com.iskezis.myst.util.AppLocale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -148,19 +149,20 @@ class PairingSyncService : Service() {
     }
 
     private fun buildNotification(): Notification {
+        val strings = AppLocale.localizedContext(this)
         val pairing = app.phonePairing.state.value
         val title = if (pairing is PhonePairingSession.State.Waiting) {
-            getString(R.string.pairing_sync_active_title)
+            strings.getString(R.string.pairing_sync_active_title)
         } else {
-            getString(R.string.pairing_sync_connected_title)
+            strings.getString(R.string.pairing_sync_connected_title)
         }
         val text = if (pairing is PhonePairingSession.State.Waiting) {
-            getString(R.string.pairing_sync_active_text)
+            strings.getString(R.string.pairing_sync_active_text)
         } else {
             val tvName = app.session.tvName.ifBlank {
-                getString(R.string.settings_tv_default_name)
+                strings.getString(R.string.settings_tv_default_name)
             }
-            getString(R.string.pairing_sync_connected_text, tvName)
+            strings.getString(R.string.pairing_sync_connected_text, tvName)
         }
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -176,7 +178,7 @@ class PairingSyncService : Service() {
             ),
             flags,
         )
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        return NotificationCompat.Builder(strings, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_tv)
             .setContentTitle(title)
             .setContentText(text)
@@ -192,13 +194,14 @@ class PairingSyncService : Service() {
 
     private fun createChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val strings = AppLocale.localizedContext(this)
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channel = NotificationChannel(
             CHANNEL_ID,
-            getString(R.string.pairing_sync_channel_name),
+            strings.getString(R.string.pairing_sync_channel_name),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = getString(R.string.pairing_sync_channel_description)
+            description = strings.getString(R.string.pairing_sync_channel_description)
             setShowBadge(false)
             setSound(null, null)
         }

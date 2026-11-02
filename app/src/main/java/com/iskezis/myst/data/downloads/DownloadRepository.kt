@@ -241,7 +241,7 @@ class DownloadRepository(
         AppLog.w(AppLog.TAG_DB, "Download falhou: ${item.videoId}: $reason")
     }
 
-    suspend fun cancelAll(userId: Long, reason: String = "Cancelado pelo usuário") {
+    suspend fun cancelAll(userId: Long, reason: String) {
         if (userId <= 0L) return
         dao.cancelActive(userId, reason, System.currentTimeMillis())
     }

@@ -6,6 +6,7 @@ import android.os.Environment
 import android.os.StatFs
 import com.iskezis.myst.data.account.AutoAccountBackup
 import com.iskezis.myst.util.AppLog
+import com.iskezis.myst.util.AppLocale
 import java.io.File
 
 /**
@@ -202,9 +203,9 @@ fun formatBytes(bytes: Long): String {
         index++
     }
     return if (value >= 100.0 || index < 1) {
-        String.format(java.util.Locale.US, "%.0f %s", value, units[index])
+        String.format(AppLocale.currentLocale, "%.0f %s", value, units[index])
     } else {
-        String.format(java.util.Locale.US, "%.1f %s", value, units[index])
+        String.format(AppLocale.currentLocale, "%.1f %s", value, units[index])
     }
 }
 

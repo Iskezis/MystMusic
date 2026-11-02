@@ -75,6 +75,10 @@ data class PairExtras(
     val discord: PairDiscord? = null,
     /** true em clientes novos, inclusive quando o Discord está desconectado. */
     val discordKnown: Boolean = false,
+    /** Idioma efetivo do celular (pt-BR, en ou es) para a TV pareada. */
+    val language: String? = null,
+    /** true em clientes novos, inclusive quando o idioma não mudou. */
+    val languageKnown: Boolean = false,
 )
 
 @Serializable
@@ -273,6 +277,8 @@ data class PairBundle(
     val tombstones: List<PairTombstone> = emptyList(),
     /** Tema/AMOLED do celular, aplicados temporariamente na TV. */
     val appearance: PairAppearance? = null,
+    /** Idioma do celular, aplicado temporariamente na TV. */
+    val language: String? = null,
     /** Discord do celular para a TV publicar a presença enquanto pareada. */
     val discord: PairDiscord? = null,
     /** Cache da biblioteca do YouTube Music; nulo em payloads antigos. */

@@ -261,7 +261,9 @@ class PhonePairingActivity : BaseActivity() {
                     codeHash = PairingCrypto.hashCode(challenge.code, challenge.nonce),
                     nonce = challenge.nonce,
                     phonePort = session.port,
-                    deviceName = Build.MODEL.orEmpty().ifBlank { "Celular" },
+                    deviceName = Build.MODEL.orEmpty().ifBlank {
+                        getString(R.string.pairing_phone_default_name)
+                    },
                 )
                 PairingHttp.postJson(
                     PairingHttp.url(target.host, target.port, "/request"),

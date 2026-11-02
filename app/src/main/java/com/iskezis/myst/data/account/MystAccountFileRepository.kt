@@ -643,7 +643,7 @@ class MystAccountFileRepository(
                     ytId = ytId,
                     title = existingPlaylist?.title?.takeIf { it.isNotBlank() }
                         ?: backup.title.trim().take(MAX_TITLE_LENGTH)
-                            .ifBlank { "Playlist do YouTube Music" },
+                            .ifBlank { "YouTube Music" },
                     thumbnailUrl = existingPlaylist?.thumbnailUrl
                         ?: backup.thumbnailUrl?.take(MAX_URL_LENGTH),
                     trackCount = maxOf(

@@ -3,6 +3,7 @@ package com.iskezis.myst.data.pairing
 import android.os.Build
 import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.MystApp
+import com.iskezis.myst.R
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -91,7 +92,9 @@ class PairedPhoneServer(
         val pairId = app.session.tvPairId ?: return unauthorized()
         val hello = PairHello(
             pairId = pairId,
-            deviceName = Build.MODEL.orEmpty().ifBlank { "Celular" },
+            deviceName = Build.MODEL.orEmpty().ifBlank {
+                app.getString(R.string.pairing_phone_default_name)
+            },
             appVersion = BuildConfig.VERSION_NAME,
             paired = app.session.hasTvPairing,
             role = "phone",

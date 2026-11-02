@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:id="@+id/languageContent"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/screen_margin"
+        android:paddingTop="@dimen/screen_margin"
+        android:paddingEnd="@dimen/screen_margin"
+        android:paddingBottom="@dimen/content_bottom_padding">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/languageBack"
+                android:layout_width="@dimen/touch_target"
+                android:layout_height="@dimen/touch_target"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/common_back"
+                android:focusable="true"
+                android:padding="12dp"
+                android:src="@drawable/ic_back"
+                app:tint="?attr/mystOnSurface" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_s"
+                android:layout_weight="1"
+                android:fontFamily="@font/poppins_medium"
+                android:text="@string/language_title"
+                android:textColor="?attr/mystOnSurface"
+                android:textSize="28sp" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_m"
+            android:text="@string/language_subtitle"
+            android:textColor="?attr/mystOnSurfaceDim"
+            android:textSize="@dimen/text_body" />
+
+        <TextView
+            android:id="@+id/languagePairedNote"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_m"
+            android:background="@drawable/bg_icon_tile"
+            android:padding="@dimen/space_m"
+            android:text="@string/language_tv_paired_note"
+            android:textColor="?attr/mystOnSurfaceDim"
+            android:textSize="@dimen/text_small"
+            android:visibility="gone" />
+
+        <RadioGroup
+            android:id="@+id/languageGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_l"
+            android:orientation="vertical">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/languageCardSystem"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="@color/appearance_card_bg"
+                app:cardCornerRadius="@dimen/corner_large"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/appearance_card_stroke"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="88dp"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/space_m">
+
+                    <FrameLayout
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_icon_tile">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_settings"
+                            app:tint="?attr/mystAccentText" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_m"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/poppins_medium"
+                            android:text="@string/language_system"
+                            android:textColor="?attr/mystOnSurface"
+                            android:textSize="18sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/language_system_desc"
+                            android:textColor="?attr/mystOnSurfaceDim"
+                            android:textSize="@dimen/text_small" />
+                    </LinearLayout>
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/languageRadioSystem"
+                        android:layout_width="wrap_content"
+                        android:layout_height="@dimen/touch_target"
+                        android:buttonTint="?attr/mystAccentText"
+                        android:clickable="false"
+                        android:focusable="false"
+                        android:importantForAccessibility="no" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/languageCardPortuguese"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_s"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="@color/appearance_card_bg"
+                app:cardCornerRadius="@dimen/corner_large"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/appearance_card_stroke"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="88dp"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/space_m">
+
+                    <FrameLayout
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_icon_tile">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:fontFamily="@font/poppins_semibold"
+                            android:text="@string/language_code_pt"
+                            android:textColor="?attr/mystAccentText"
+                            android:textSize="14sp" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_m"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/poppins_medium"
+                            android:text="@string/language_portuguese"
+                            android:textColor="?attr/mystOnSurface"
+                            android:textSize="18sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/language_portuguese_desc"
+                            android:textColor="?attr/mystOnSurfaceDim"
+                            android:textSize="@dimen/text_small" />
+                    </LinearLayout>
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/languageRadioPortuguese"
+                        android:layout_width="wrap_content"
+                        android:layout_height="@dimen/touch_target"
+                        android:buttonTint="?attr/mystAccentText"
+                        android:clickable="false"
+                        android:focusable="false"
+                        android:importantForAccessibility="no" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/languageCardEnglish"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_s"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="@color/appearance_card_bg"
+                app:cardCornerRadius="@dimen/corner_large"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/appearance_card_stroke"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="88dp"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/space_m">
+
+                    <FrameLayout
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_icon_tile">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:fontFamily="@font/poppins_semibold"
+                            android:text="@string/language_code_en"
+                            android:textColor="?attr/mystAccentText"
+                            android:textSize="14sp" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_m"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/poppins_medium"
+                            android:text="@string/language_english"
+                            android:textColor="?attr/mystOnSurface"
+                            android:textSize="18sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/language_english_desc"
+                            android:textColor="?attr/mystOnSurfaceDim"
+                            android:textSize="@dimen/text_small" />
+                    </LinearLayout>
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/languageRadioEnglish"
+                        android:layout_width="wrap_content"
+                        android:layout_height="@dimen/touch_target"
+                        android:buttonTint="?attr/mystAccentText"
+                        android:clickable="false"
+                        android:focusable="false"
+                        android:importantForAccessibility="no" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/languageCardSpanish"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_s"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="@color/appearance_card_bg"
+                app:cardCornerRadius="@dimen/corner_large"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/appearance_card_stroke"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="88dp"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/space_m">
+
+                    <FrameLayout
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_icon_tile">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:fontFamily="@font/poppins_semibold"
+                            android:text="@string/language_code_es"
+                            android:textColor="?attr/mystAccentText"
+                            android:textSize="14sp" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_m"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/poppins_medium"
+                            android:text="@string/language_spanish"
+                            android:textColor="?attr/mystOnSurface"
+                            android:textSize="18sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/language_spanish_desc"
+                            android:textColor="?attr/mystOnSurfaceDim"
+                            android:textSize="@dimen/text_small" />
+                    </LinearLayout>
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/languageRadioSpanish"
+                        android:layout_width="wrap_content"
+                        android:layout_height="@dimen/touch_target"
+                        android:buttonTint="?attr/mystAccentText"
+                        android:clickable="false"
+                        android:focusable="false"
+                        android:importantForAccessibility="no" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </RadioGroup>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_l"
+            android:text="@string/language_device_note"
+            android:textColor="?attr/mystOnSurfaceDim"
+            android:textSize="@dimen/text_small" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

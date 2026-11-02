@@ -2,6 +2,7 @@ package com.iskezis.myst.data.pairing
 
 import android.os.Build
 import com.iskezis.myst.MystApp
+import com.iskezis.myst.R
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -175,7 +176,9 @@ class PhonePairingSession(private val app: MystApp) {
                     app = app,
                     pairId = pairId,
                     pairSecret = pairSecret,
-                    phoneName = Build.MODEL.orEmpty().ifBlank { "Celular" },
+                    phoneName = Build.MODEL.orEmpty().ifBlank {
+                        app.getString(R.string.pairing_phone_default_name)
+                    },
                 )
             }.getOrElse { throwable ->
                 AppLog.failure(AppLog.TAG_PAIRING, "Falha preparando payload", throwable)

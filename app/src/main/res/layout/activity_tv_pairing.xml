@@ -89,7 +89,7 @@
                     android:fontFamily="monospace"
                     android:gravity="center"
                     android:letterSpacing="0.22"
-                    android:text="_____"
+                    android:text="@string/tv_pairing_code_empty"
                     android:textColor="?attr/mystAccentText"
                     android:textSize="@dimen/pairing_code_text" />
 
@@ -126,7 +126,7 @@
                     android:layout_margin="@dimen/pairing_key_margin"
                     android:nextFocusDown="@id/tvKey4"
                     android:nextFocusRight="@id/tvKey2"
-                    android:text="1"
+                    android:text="@string/tv_keypad_digit_1"
                     android:textSize="@dimen/pairing_key_text" />
 
                 <com.google.android.material.button.MaterialButton
@@ -138,7 +138,7 @@
                     android:nextFocusDown="@id/tvKey5"
                     android:nextFocusLeft="@id/tvKey1"
                     android:nextFocusRight="@id/tvKey3"
-                    android:text="2"
+                    android:text="@string/tv_keypad_digit_2"
                     android:textSize="@dimen/pairing_key_text" />
 
                 <com.google.android.material.button.MaterialButton
@@ -149,7 +149,7 @@
                     android:layout_margin="@dimen/pairing_key_margin"
                     android:nextFocusDown="@id/tvKey6"
                     android:nextFocusLeft="@id/tvKey2"
-                    android:text="3"
+                    android:text="@string/tv_keypad_digit_3"
                     android:textSize="@dimen/pairing_key_text" />
 
                 <com.google.android.material.button.MaterialButton
@@ -161,7 +161,7 @@
                     android:nextFocusDown="@id/tvKey7"
                     android:nextFocusRight="@id/tvKey5"
                     android:nextFocusUp="@id/tvKey1"
-                    android:text="4"
+                    android:text="@string/tv_keypad_digit_4"
                     android:textSize="@dimen/pairing_key_text" />
 
                 <com.google.android.material.button.MaterialButton
@@ -174,7 +174,7 @@
                     android:nextFocusLeft="@id/tvKey4"
                     android:nextFocusRight="@id/tvKey6"
                     android:nextFocusUp="@id/tvKey2"
-                    android:text="5"
+                    android:text="@string/tv_keypad_digit_5"
                     android:textSize="@dimen/pairing_key_text" />
 
                 <com.google.android.material.button.MaterialButton
@@ -186,7 +186,7 @@
                     android:nextFocusDown="@id/tvKey9"
                     android:nextFocusLeft="@id/tvKey5"
                     android:nextFocusUp="@id/tvKey3"
-                    android:text="6"
+                    android:text="@string/tv_keypad_digit_6"
                     android:textSize="@dimen/pairing_key_text" />
 
                 <com.google.android.material.button.MaterialButton
@@ -198,7 +198,7 @@
                     android:nextFocusDown="@id/tvKeyBack"
                     android:nextFocusRight="@id/tvKey8"
                     android:nextFocusUp="@id/tvKey4"
-                    android:text="7"
+                    android:text="@string/tv_keypad_digit_7"
                     android:textSize="@dimen/pairing_key_text" />
 
                 <com.google.android.material.button.MaterialButton
@@ -211,7 +211,7 @@
                     android:nextFocusLeft="@id/tvKey7"
                     android:nextFocusRight="@id/tvKey9"
                     android:nextFocusUp="@id/tvKey5"
-                    android:text="8"
+                    android:text="@string/tv_keypad_digit_8"
                     android:textSize="@dimen/pairing_key_text" />
 
                 <com.google.android.material.button.MaterialButton
@@ -223,7 +223,7 @@
                     android:nextFocusDown="@id/tvPairConfirm"
                     android:nextFocusLeft="@id/tvKey8"
                     android:nextFocusUp="@id/tvKey6"
-                    android:text="9"
+                    android:text="@string/tv_keypad_digit_9"
                     android:textSize="@dimen/pairing_key_text" />
 
                 <com.google.android.material.button.MaterialButton
@@ -248,7 +248,7 @@
                     android:nextFocusLeft="@id/tvKeyBack"
                     android:nextFocusRight="@id/tvPairConfirm"
                     android:nextFocusUp="@id/tvKey8"
-                    android:text="0"
+                    android:text="@string/tv_keypad_digit_0"
                     android:textSize="@dimen/pairing_key_text" />
 
                 <com.google.android.material.button.MaterialButton

@@ -194,11 +194,11 @@ class YouTubeLibraryRepository(
                 refreshPlaylistTracks(userId, ytId, force = true)
                 tracks = cachedTracks(userId, ytId)
             }
-            if (tracks.isEmpty()) throw MusicException("A playlist não tem músicas")
+            if (tracks.isEmpty()) throw EmptyPlaylistException("A playlist não tem músicas")
             val summary = dao.playlist(userId, ytId)
             val name = summary?.title?.takeIf { it.isNotBlank() }
                 ?: fallbackTitle.takeIf { it.isNotBlank() }
-                ?: "Playlist do YouTube Music"
+                ?: "YouTube Music"
             AppLog.i(
                 AppLog.TAG_TUBE,
                 "Copiando playlist $ytId (${tracks.size} faixas) para Myst como \"$name\"",

@@ -613,6 +613,21 @@
     <string name="settings_storage_subtitle">Downloads, cache e espaço livre</string>
     <string name="settings_updates">Atualizações</string>
     <string name="settings_updates_subtitle">Canal estável ou betas e verificação manual</string>
+    <string name="settings_language">Idioma</string>
+    <string name="settings_language_subtitle">Idioma do app neste aparelho</string>
+    <string name="settings_language_value_system">Sistema · %1$s</string>
+    <string name="language_title">Idioma</string>
+    <string name="language_subtitle">Escolha o idioma do MystMusic. A mudança é aplicada na hora.</string>
+    <string name="language_system">Sistema</string>
+    <string name="language_system_desc">Usa o idioma do aparelho; fora de português, inglês ou espanhol, usa English.</string>
+    <string name="language_portuguese">Português (Brasil)</string>
+    <string name="language_portuguese_desc">Interface em português do Brasil.</string>
+    <string name="language_english">English</string>
+    <string name="language_english_desc">Interface in English (United States).</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_spanish_desc">Interfaz en español latinoamericano.</string>
+    <string name="language_device_note">O idioma é salvo neste aparelho e não altera a sua conta Myst.</string>
+    <string name="language_tv_paired_note">Enquanto esta TV estiver pareada, o idioma é o mesmo do celular. Desconecte para escolher outro nesta TV.</string>
     <string name="storage_title">Armazenamento</string>
     <string name="storage_subtitle">Controle o que fica salvo no aparelho.</string>
     <string name="storage_downloads_title">Músicas baixadas</string>
@@ -768,4 +783,26 @@
     <string name="update_settings_up_to_date_title">Tudo em dia</string>
     <string name="update_settings_up_to_date_desc">Você está na versão mais recente deste canal.</string>
     <string name="update_settings_error_title">Não foi possível verificar</string>
+
+    <!-- Textos de dados internos exibidos ao usuário (fase 20). -->
+    <string name="youtube_liked_songs">Músicas curtidas</string>
+    <string name="pairing_phone_default_name">Celular</string>
+    <string name="download_removed_by_user">Removido pelo usuário</string>
+    <string name="download_cancel_reason">Cancelado pelo usuário</string>
+
+    <!-- Rótulos não traduzíveis (números do teclado e códigos de idioma). -->
+    <string name="tv_pairing_code_empty" translatable="false">_____</string>
+    <string name="tv_keypad_digit_0" translatable="false">0</string>
+    <string name="tv_keypad_digit_1" translatable="false">1</string>
+    <string name="tv_keypad_digit_2" translatable="false">2</string>
+    <string name="tv_keypad_digit_3" translatable="false">3</string>
+    <string name="tv_keypad_digit_4" translatable="false">4</string>
+    <string name="tv_keypad_digit_5" translatable="false">5</string>
+    <string name="tv_keypad_digit_6" translatable="false">6</string>
+    <string name="tv_keypad_digit_7" translatable="false">7</string>
+    <string name="tv_keypad_digit_8" translatable="false">8</string>
+    <string name="tv_keypad_digit_9" translatable="false">9</string>
+    <string name="language_code_pt" translatable="false">PT</string>
+    <string name="language_code_en" translatable="false">EN</string>
+    <string name="language_code_es" translatable="false">ES</string>
 </resources>

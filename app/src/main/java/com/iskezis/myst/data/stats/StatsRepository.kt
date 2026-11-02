@@ -5,6 +5,7 @@ import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.PlayEventEntity
 import com.iskezis.myst.data.db.PlayEventMissingAlbum
 import com.iskezis.myst.data.youtube.Track
+import com.iskezis.myst.util.AppLocale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -283,9 +284,12 @@ class StatsRepository(private val database: AppDatabase) {
         values: Map<String, Long>,
     ): List<StatsDay> {
         val keyFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val locale = AppLocale.currentLocale
+        // Em inglês a data curta é mês/dia; em pt-BR e espanhol é dia/mês.
+        val shortDate = if (locale.language.equals("en", ignoreCase = true)) "MM/dd" else "dd/MM"
         val labelFormat = SimpleDateFormat(
-            if (period == StatsPeriod.WEEK) "EEE" else "dd/MM",
-            Locale.getDefault(),
+            if (period == StatsPeriod.WEEK) "EEE" else shortDate,
+            locale,
         )
         val calendar = Calendar.getInstance().apply {
             timeInMillis = chartStart
@@ -300,7 +304,7 @@ class StatsRepository(private val database: AppDatabase) {
                 val rawLabel = labelFormat.format(calendar.time)
                 val label = if (period == StatsPeriod.WEEK) {
                     rawLabel.replaceFirstChar { char ->
-                        if (char.isLowerCase()) char.titlecase(Locale.getDefault()) else char.toString()
+                        if (char.isLowerCase()) char.titlecase(locale) else char.toString()
                     }
                 } else {
                     rawLabel

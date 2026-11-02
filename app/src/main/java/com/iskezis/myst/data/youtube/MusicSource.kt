@@ -161,6 +161,13 @@ data class YtPlaylist(
 open class MusicException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
 /**
+ * A playlist existe mas está vazia. É um erro de domínio tipado para a UI
+ * mostrar a mensagem certa sem comparar o texto da exceção (que muda com o
+ * idioma).
+ */
+class EmptyPlaylistException(message: String) : MusicException(message)
+
+/**
  * A sessão do YouTube Music existe no aparelho, mas a conta recusou a
  * requisição (cookies expirados, revogados ou 401/403). A UI mostra o aviso
  * para entrar de novo; nada é apagado e o usuário não é deslogado sozinho.

@@ -8,7 +8,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
-import com.iskezis.myst.data.youtube.MusicException
+import com.iskezis.myst.data.youtube.EmptyPlaylistException
 import com.iskezis.myst.data.youtube.PlaylistPage
 import com.iskezis.myst.data.youtube.SessionExpiredException
 import com.iskezis.myst.data.youtube.Track
@@ -187,7 +187,7 @@ class PublicPlaylistViewModel(
                 }
                 val distinct = all.distinctBy { it.videoId }
                 if (distinct.isEmpty()) {
-                    throw MusicException("A playlist não tem músicas")
+                    throw EmptyPlaylistException("A playlist não tem músicas")
                 }
                 val name = loaded.title.ifBlank { fallbackTitle }
                     .ifBlank { app.getString(R.string.browse_playlist) }
@@ -214,7 +214,7 @@ class PublicPlaylistViewModel(
                 _state.update { it.copy(copying = false) }
                 _message.value = when {
                     t is SessionExpiredException -> R.string.yt_session_expired
-                    t is MusicException && t.message?.contains("não tem músicas") == true ->
+                    t is EmptyPlaylistException ->
                         R.string.browse_empty_playlist
                     else -> R.string.browse_copy_error
                 }

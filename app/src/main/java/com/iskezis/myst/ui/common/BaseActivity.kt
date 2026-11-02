@@ -18,6 +18,10 @@ abstract class BaseActivity : AppCompatActivity() {
         (application as? MystApp)?.applyAppearanceNightMode()
         MystTheme.applyAmoledOverlay(this)
         super.onCreate(savedInstanceState)
+        // Reavalia o idioma depois do `super`: cobre a troca feita nas
+        // configurações do Android e um idioma novo chegado pela TV. Chamar
+        // antes do `super` arriscaria recriar a Activity no meio da criação.
+        (application as? MystApp)?.language?.apply()
         // O AppCompat pode aplicar o modo noturno durante o `super.onCreate`.
         // Reaplica o overlay depois disso para a TV já nascer AMOLED quando o
         // tema chega pelo pareamento no mesmo processo.

@@ -23,6 +23,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Permissão do wrapper
         run: chmod +x ./gradlew
+      - name: Validar traduções (pt-BR, en, es)
+        run: python3 tools/check_strings.py
       - name: Preparar keystore estável
         env:
           MYST_KEYSTORE_B64: ${{ secrets.MYST_KEYSTORE_B64 }}

@@ -21,10 +21,12 @@ import androidx.navigation.fragment.findNavController
 import coil.load
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.iskezis.myst.BuildConfig
+import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.data.account.AutoAccountBackup
 import com.iskezis.myst.data.account.AvatarStore
 import com.iskezis.myst.data.account.MystAccountFileRepository
+import com.iskezis.myst.data.settings.AppLanguage
 import com.iskezis.myst.data.discord.DiscordConnection
 import com.iskezis.myst.data.discord.DiscordState
 import com.iskezis.myst.databinding.FragmentSettingsBinding
@@ -48,6 +50,7 @@ class SettingsFragment : Fragment() {
     private val viewModel: SettingsViewModel by viewModels {
         SettingsViewModel.factory(requireActivity().application)
     }
+    private val app get() = requireActivity().application as MystApp
 
     private val discordLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -114,6 +117,18 @@ class SettingsFragment : Fragment() {
         return binding.root
     }
 
+    private fun languageSummary(): String {
+        val selected = app.language.language
+        return if (selected == AppLanguage.SYSTEM) {
+            getString(
+                R.string.settings_language_value_system,
+                getString(app.language.effectiveLanguage().labelRes),
+            )
+        } else {
+            getString(selected.labelRes)
+        }
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         AppLog.d(AppLog.TAG_UI, "SettingsFragment.onViewCreated")
@@ -158,6 +173,14 @@ class SettingsFragment : Fragment() {
                 }
         }
         binding.settingsUpdatesCard.pressScale()
+        binding.settingsLanguageCard.setOnClickListener {
+            runCatching { findNavController().navigate(R.id.languageFragment) }
+                .onFailure {
+                    AppLog.failure(AppLog.TAG_UI, "Falha abrindo Idioma", it)
+                }
+        }
+        binding.settingsLanguageCard.pressScale()
+        binding.settingsLanguageValue.text = languageSummary()
         val isTv = BuildConfig.FLAVOR == "tv"
         binding.settingsTvCard.isVisible = true
         binding.settingsTvCard.setOnClickListener {

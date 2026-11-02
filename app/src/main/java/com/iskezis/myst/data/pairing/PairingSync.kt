@@ -4,6 +4,7 @@ import android.net.Uri
 import android.util.Base64
 import androidx.room.withTransaction
 import com.iskezis.myst.MystApp
+import com.iskezis.myst.R
 import com.iskezis.myst.data.account.AvatarStore
 import com.iskezis.myst.data.account.SessionManager
 import com.iskezis.myst.data.account.YouTubeAccount
@@ -19,6 +20,7 @@ import com.iskezis.myst.data.db.YtHistoryEntity
 import com.iskezis.myst.data.db.YtPlaylistEntity
 import com.iskezis.myst.data.db.YtPlaylistTrackEntity
 import com.iskezis.myst.data.db.YtSyncEntity
+import com.iskezis.myst.data.settings.AppLanguage
 import com.iskezis.myst.data.settings.AppearanceSettings
 import com.iskezis.myst.data.settings.ThemeMode
 import com.iskezis.myst.data.youtube.Track
@@ -93,6 +95,7 @@ object PairingSync {
             playEvents = snapshot.playEvents,
             tombstones = snapshot.tombstones,
             appearance = extras.appearance,
+            language = extras.language,
             discord = extras.discord,
             youtube = snapshot.youtube,
             pairId = pairId,
@@ -120,6 +123,8 @@ object PairingSync {
                 )
             },
             discordKnown = true,
+            language = app.language.effectiveTag(),
+            languageKnown = true,
         )
     }
 
@@ -438,6 +443,7 @@ object PairingSync {
         // pareamento existir. É gravado nas preferências do aparelho para
         // sobreviver a uma recriação de Activity e apagado na desconexão/logout.
         applyAppearance(app, bundle.appearance, immediate = false)
+        applyLanguage(app, bundle.language, known = bundle.language != null)
         applyDiscord(app, bundle.discord, known = true)
 
         if (!account.avatarBase64.isNullOrBlank()) {
@@ -464,7 +470,7 @@ object PairingSync {
         app.session.saveTvPairing(
             pairId = pairId,
             secret = secret,
-            name = bundle.phoneName.ifBlank { "Celular" },
+            name = bundle.phoneName.ifBlank { app.getString(R.string.pairing_phone_default_name) },
         )
         AppLog.i(
             AppLog.TAG_PAIRING,
@@ -482,7 +488,20 @@ object PairingSync {
      */
     fun applyExtras(app: MystApp, extras: PairExtras) {
         applyAppearance(app, extras.appearance, immediate = true)
+        applyLanguage(app, extras.language, known = extras.languageKnown)
         applyDiscord(app, extras.discord, known = extras.discordKnown)
+    }
+
+    /**
+     * A TV adota o idioma efetivo do celular enquanto o pareamento existir.
+     * A escolha local da TV não é sobrescrita: ela volta a valer na desconexão.
+     */
+    private fun applyLanguage(app: MystApp, incoming: String?, known: Boolean) {
+        if (!known) return
+        val tag = incoming?.takeIf { it.isNotBlank() } ?: return
+        val language = AppLanguage.fromTag(tag).takeIf { it != AppLanguage.SYSTEM }
+            ?: AppLanguage.ENGLISH
+        app.language.setPairedLanguage(language)
     }
 
     /**

@@ -2,7 +2,9 @@ package com.iskezis.myst.data.youtube
 
 import android.content.Context
 import android.net.Uri
+import com.iskezis.myst.R
 import com.iskezis.myst.data.account.SessionManager
+import com.iskezis.myst.data.settings.LanguagePreferences
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.Thumbnails
 import com.iskezis.myst.util.sha1Hex
@@ -40,9 +42,11 @@ import java.util.concurrent.TimeUnit
  * formato esperado vira lista vazia ou erro de domínio.
  */
 class InnerTubeClient(
-    @Suppress("unused") private val context: Context,
+    private val context: Context,
     private val session: SessionManager,
 ) : MusicSource {
+
+    private val language = LanguagePreferences(context)
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -353,7 +357,7 @@ class InnerTubeClient(
             val liked = items.firstOrNull { it.liked }
                 ?: YtPlaylist(
                     id = LIKED_PLAYLIST_ID,
-                    title = "Músicas curtidas",
+                    title = context.getString(R.string.youtube_liked_songs),
                     liked = true,
                 )
             (listOf(liked) + items.filterNot { it.liked }).take(limit)
@@ -1105,11 +1109,9 @@ class InnerTubeClient(
                 ?.let { (it as? JsonPrimitive)?.contentOrNull }
         if (browseId.isNullOrBlank()) return null
         if (!browseId.startsWith("VL")) return null
-        val normalizedTitle = title.lowercase()
-        val liked = browseId == LIKED_PLAYLIST_ID ||
-            normalizedTitle == "músicas curtidas" ||
-            normalizedTitle == "liked music" ||
-            normalizedTitle == "títulos curtidos"
+        // A playlist de curtidas tem id estável; não dependemos do título
+        // traduzido ("Músicas curtidas", "Liked music", "Música que te gusta").
+        val liked = browseId == LIKED_PLAYLIST_ID
         val id = if (liked) LIKED_PLAYLIST_ID else browseId
         return YtPlaylist(
             id = id,
@@ -1256,29 +1258,37 @@ class InnerTubeClient(
                     ?.get("title") as? JsonObject,
             ).lowercase()
             val contents = carousel["contents"] as? JsonArray ?: return@walkObjects
-            val isAlbums = title.contains("álbum") || title.contains("album")
-            val isSingles = title.contains("single") || title.contains("ep")
-            if (isAlbums) albumsBrowse = albumsBrowse ?: carouselBrowseTarget(carousel)
-            if (isSingles) singlesBrowse = singlesBrowse ?: carouselBrowseTarget(carousel)
-            contents.forEach { element ->
-                val obj = element as? JsonObject ?: return@forEach
-                val renderer = (obj["musicTwoRowItemRenderer"] as? JsonObject)
+            val renderers = contents.mapNotNull { element ->
+                val obj = element as? JsonObject ?: return@mapNotNull null
+                (obj["musicTwoRowItemRenderer"] as? JsonObject)
                     ?: (obj["musicResponsiveListItemRenderer"] as? JsonObject)
-                    ?: return@forEach
+            }
+            // O tipo de cada item diz o que o carrossel contém; o título só é
+            // usado para separar álbuns de singles (ambos são pageType ALBUM)
+            // ou quando a resposta antiga não traz pageType.
+            val types = renderers.mapNotNull { musicPageType(it) }.toSet()
+            val titleSaysAlbum = title.hasAnyToken(ALBUM_TITLE_TOKENS)
+            val titleSaysPlaylist = title.hasAnyToken(PLAYLIST_TITLE_TOKENS)
+            val titleSaysArtist = title.hasAnyToken(RELATED_TITLE_TOKENS)
+            val isAlbums = "MUSIC_PAGE_TYPE_ALBUM" in types ||
+                (types.isEmpty() && titleSaysAlbum)
+            val isPlaylists = "MUSIC_PAGE_TYPE_PLAYLIST" in types ||
+                (types.isEmpty() && titleSaysPlaylist)
+            val isArtists = "MUSIC_PAGE_TYPE_ARTIST" in types ||
+                (types.isEmpty() && titleSaysArtist)
+            val isSingles = isAlbums && title.hasAnyToken(SINGLE_TITLE_TOKENS)
+            val albumsOnly = isAlbums && !isSingles
+            if (albumsOnly || isSingles) {
+                val target = carouselBrowseTarget(carousel)
+                if (isSingles) singlesBrowse = singlesBrowse ?: target
+                else albumsBrowse = albumsBrowse ?: target
+            }
+            renderers.forEach { renderer ->
                 when {
-                    isAlbums -> {
-                        parseAlbumSummary(renderer)?.let { albums.add(it) }
-                    }
-                    isSingles -> {
-                        parseAlbumSummary(renderer)?.let { singles.add(it) }
-                    }
-                    title.contains("playlist") -> {
-                        parsePlaylistSummary(renderer)?.let { playlists.add(it) }
-                    }
-                    title.contains("fã") || title.contains("semelhante") ||
-                        title.contains("relacionad") || title.contains("também") -> {
-                        parseArtistSummary(renderer)?.let { related.add(it) }
-                    }
+                    albumsOnly -> parseAlbumSummary(renderer)?.let { albums.add(it) }
+                    isSingles -> parseAlbumSummary(renderer)?.let { singles.add(it) }
+                    isPlaylists -> parsePlaylistSummary(renderer)?.let { playlists.add(it) }
+                    isArtists -> parseArtistSummary(renderer)?.let { related.add(it) }
                 }
             }
         }
@@ -1313,7 +1323,7 @@ class InnerTubeClient(
         val title = header?.let { runsText(it["title"] as? JsonObject) }.orEmpty()
         val subtitle = header?.let { runsText(it["subtitle"] as? JsonObject) }.orEmpty()
         val strapline = header?.get("straplineTextOne") as? JsonObject
-        val artist = runsText(strapline).ifBlank { subtitleArtist(subtitle) }
+        val artist = runsText(strapline).ifBlank { header?.let(::headerAuthor).orEmpty() }
         val artistId = browseIdForPage(strapline, "MUSIC_PAGE_TYPE_ARTIST")
         val year = Regex("\\b(?:19|20)\\d{2}\\b").find(subtitle)?.value.orEmpty()
         val shelf = findTrackShelf(root)
@@ -1355,13 +1365,7 @@ class InnerTubeClient(
         val secondSubtitle = header?.let { runsText(it["secondSubtitle"] as? JsonObject) }.orEmpty()
         val strapline = header?.get("straplineTextOne") as? JsonObject
         val author = runsText(strapline).ifBlank {
-            subtitle.split("•").map { it.trim() }
-                .firstOrNull { part ->
-                    part.isNotBlank() &&
-                        !part.equals("playlist", ignoreCase = true) &&
-                        !part.matches(Regex("\\d{4}"))
-                }
-                .orEmpty()
+            header?.let { headerAuthor(it) }.orEmpty()
         }
         val shelf = findTrackShelf(root)
         val tracks = parseShelfTracks(shelf, TrackContext())
@@ -1392,7 +1396,7 @@ class InnerTubeClient(
         if (title.isBlank()) return null
         val subtitle = columns.getOrNull(1) ?: JsonObject(emptyMap())
         val subtitleText = runsText(subtitle)
-        if (isNonMusicResult(subtitleText)) return null
+        if (isNonMusicItem(item, subtitleText)) return null
         val segments = subtitleSegments(subtitle)
         val artistSegment = segments.firstOrNull { segmentPageType(it) == "MUSIC_PAGE_TYPE_ARTIST" }
         val albumSegment = segments.firstOrNull { segmentPageType(it) == "MUSIC_PAGE_TYPE_ALBUM" }
@@ -1442,7 +1446,7 @@ class InnerTubeClient(
         if (title.isBlank()) return null
         val subtitleObject = item["subtitle"] as? JsonObject ?: JsonObject(emptyMap())
         val subtitle = runsText(subtitleObject)
-        if (isNonMusicResult(subtitle)) return null
+        if (isNonMusicItem(item, subtitle)) return null
         val navigation = item["navigationEndpoint"] as? JsonObject ?: return null
         val watch = navigation["watchEndpoint"] as? JsonObject ?: return null
         val videoId = (watch["videoId"] as? JsonPrimitive)?.contentOrNull ?: return null
@@ -1492,12 +1496,18 @@ class InnerTubeClient(
         if (!browseId.startsWith("MPRE") && !browseId.startsWith("OLAK")) return null
         val parts = subtitle.split("•").map { it.trim() }.filter { it.isNotBlank() }
         val year = parts.firstOrNull { it.matches(Regex("\\b(?:19|20)\\d{2}\\b")) }.orEmpty()
-        val artist = parts.firstOrNull { part ->
-            !part.equals("álbum", ignoreCase = true) &&
-                !part.equals("single", ignoreCase = true) &&
-                !part.equals("ep", ignoreCase = true) &&
-                !part.matches(Regex("\\d{4}"))
-        }.orEmpty()
+        val artistSegment = summarySubtitleSegments(item)
+            .firstOrNull { segmentPageType(it) == "MUSIC_PAGE_TYPE_ARTIST" }
+        val artist = segmentText(artistSegment).ifBlank {
+            parts.firstOrNull { part ->
+                !part.equals("álbum", ignoreCase = true) &&
+                    !part.equals("album", ignoreCase = true) &&
+                    !part.equals("sencillo", ignoreCase = true) &&
+                    !part.equals("single", ignoreCase = true) &&
+                    !part.equals("ep", ignoreCase = true) &&
+                    !part.matches(Regex("\\d{4}"))
+            }.orEmpty()
+        }
         return AlbumSummary(
             browseId = browseId,
             title = title,
@@ -1516,12 +1526,20 @@ class InnerTubeClient(
             ?: return null
         if (!browseId.startsWith("VL")) return null
         val parts = subtitle.split("•").map { it.trim() }.filter { it.isNotBlank() }
-        val author = parts.firstOrNull { part ->
-            !part.equals("playlist", ignoreCase = true) &&
-                !part.contains("música", ignoreCase = true) &&
-                !part.contains("song", ignoreCase = true) &&
-                !part.matches(Regex("\\d{4}"))
-        }.orEmpty()
+        val artistSegment = summarySubtitleSegments(item)
+            .firstOrNull { segmentPageType(it) == "MUSIC_PAGE_TYPE_ARTIST" }
+        val author = segmentText(artistSegment).ifBlank {
+            parts.firstOrNull { part ->
+                !part.equals("playlist", ignoreCase = true) &&
+                    !part.equals("lista", ignoreCase = true) &&
+                    !part.equals("lista de reproducción", ignoreCase = true) &&
+                    !part.contains("música", ignoreCase = true) &&
+                    !part.contains("canción", ignoreCase = true) &&
+                    !part.contains("song", ignoreCase = true) &&
+                    !part.matches(Regex("\\d{4}")) &&
+                    !isMetaSegment(part)
+            }.orEmpty()
+        }
         return PlaylistSummary(
             browseId = browseId,
             title = title,
@@ -1545,6 +1563,46 @@ class InnerTubeClient(
         val title = (item["title"] as? JsonObject)?.let(::runsText).orEmpty()
         val subtitle = (item["subtitle"] as? JsonObject)?.let(::runsText).orEmpty()
         return if (title.isBlank()) null else title to subtitle
+    }
+
+    private fun summarySubtitleSegments(item: JsonObject): List<List<JsonObject>> {
+        val columns = (item["flexColumns"] as? JsonArray)?.mapNotNull { column ->
+            (column as? JsonObject)
+                ?.get("musicResponsiveListItemFlexColumnRenderer")
+                ?.let { it as? JsonObject }
+                ?.get("text")
+                ?.let { it as? JsonObject }
+        }.orEmpty()
+        val subtitle = columns.getOrNull(1)
+            ?: item["subtitle"] as? JsonObject
+            ?: return emptyList()
+        return subtitleSegments(subtitle)
+    }
+
+    /**
+     * Autor de uma playlist no cabeçalho: o trecho com pageType ARTIST é o
+     * canal. Sem endpoint, usa o primeiro trecho que não é rótulo nem contagem.
+     */
+    private fun headerAuthor(header: JsonObject): String {
+        val subtitle = header["subtitle"] as? JsonObject
+        val segments = subtitle?.let(::subtitleSegments).orEmpty()
+        val artistSegment = segments.firstOrNull {
+            segmentPageType(it) == "MUSIC_PAGE_TYPE_ARTIST" ||
+                segmentBrowseId(it, "MUSIC_PAGE_TYPE_ARTIST") != null
+        }
+        val structural = segmentText(artistSegment)
+        if (structural.isNotBlank()) return structural
+        return runsText(subtitle).split("•")
+            .map { it.trim() }
+            .firstOrNull { part ->
+                part.isNotBlank() &&
+                    !part.equals("playlist", ignoreCase = true) &&
+                    !part.equals("lista", ignoreCase = true) &&
+                    !part.equals("lista de reproducción", ignoreCase = true) &&
+                    !part.matches(Regex("\\b(?:19|20)\\d{2}\\b")) &&
+                    !isMetaSegment(part)
+            }
+            .orEmpty()
     }
 
     private fun searchKind(item: JsonObject): SearchKind? {
@@ -1634,10 +1692,10 @@ class InnerTubeClient(
         return null
     }
 
-    private fun isTypeSegment(text: String): Boolean = text.trim().lowercase() in setOf(
-        "música", "musica", "vídeo", "video", "canção", "cancao", "álbum", "album",
-        "single", "ep", "playlist", "artista", "artist", "episódio", "episodio",
-    )
+    private fun isTypeSegment(text: String): Boolean = text.trim().lowercase() in TYPE_SEGMENTS
+
+    private fun String.hasAnyToken(tokens: Set<String>): Boolean =
+        tokens.any { contains(it, ignoreCase = true) }
 
     private fun isMetaSegment(text: String): Boolean {
         val normalized = text.lowercase()
@@ -1645,21 +1703,53 @@ class InnerTubeClient(
             text.matches(Regex("\\b(?:19|20)\\d{2}\\b")) ||
             normalized.contains("visualiza") ||
             normalized.contains("view") ||
+            normalized.contains("vista") ||
+            normalized.contains("reprodu") ||
             normalized.contains("tocou") ||
             normalized.contains("ouvintes") ||
+            normalized.contains("oyentes") ||
             normalized.contains("música") ||
             normalized.contains("musica") ||
+            normalized.contains("canción") ||
+            normalized.contains("cancion") ||
             normalized.contains("song") ||
             normalized.contains("curtida") ||
             normalized.contains("like")
     }
 
-    private fun isNonMusicResult(text: String): Boolean {
+    /**
+     * Detecta episódios de podcast e perfis em resultados mistos. O tipo da
+     * página vem do `browseEndpoint` (estrutural, independente do idioma); o
+     * texto é só uma rede de segurança para respostas antigas sem pageType.
+     */
+    private fun isNonMusicItem(item: JsonObject, text: String): Boolean {
+        val type = musicPageType(item).orEmpty()
+        if (type.contains("PODCAST", ignoreCase = true) ||
+            type.contains("EPISODE", ignoreCase = true)
+        ) {
+            return true
+        }
         val normalized = text.trim().lowercase()
         return normalized.startsWith("episódio") ||
             normalized.startsWith("episodio") ||
+            normalized.startsWith("episode") ||
             normalized.startsWith("perfil") ||
+            normalized.startsWith("profile") ||
             normalized.startsWith("podcast")
+    }
+
+    /** Primeiro `pageType` musical encontrado em qualquer endpoint do item. */
+    private fun musicPageType(item: JsonObject): String? {
+        var found: String? = null
+        walkObjects(item) { candidate ->
+            if (found != null) return@walkObjects
+            val browse = candidate["browseEndpoint"] as? JsonObject ?: return@walkObjects
+            val configs = browse["browseEndpointContextSupportedConfigs"] as? JsonObject
+            val music = configs?.get("browseEndpointContextMusicConfig") as? JsonObject
+            val type = (music?.get("pageType") as? JsonPrimitive)?.contentOrNull
+            if (!type.isNullOrBlank()) found = type
+        }
+        return found
     }
 
     /**
@@ -1674,13 +1764,13 @@ class InnerTubeClient(
             ?.trim()
             .orEmpty()
         if (label.isBlank()) return ""
-        val withoutAction = label.replace(
-            Regex("^(Reproduzir|Tocar|Ouvir|Play)\\s+", RegexOption.IGNORE_CASE),
-            "",
-        )
-        val separator = withoutAction.lastIndexOf(" - ")
+        // O rótulo acessível é "Reproduzir música - Artista" / "Play song -
+        // Artist" / "Reproducir canción - Artista". O verbo muda com o idioma,
+        // então não o comparamos: o artista é sempre o trecho após o último
+        // separador " - ".
+        val separator = label.lastIndexOf(" - ")
         if (separator <= 0) return ""
-        return withoutAction.substring(separator + 3).trim()
+        return label.substring(separator + 3).trim()
     }
 
     private fun isDuration(text: String): Boolean =
@@ -1782,20 +1872,27 @@ class InnerTubeClient(
         walkObjects(root) { item ->
             val chip = item["chipCloudChipRenderer"] as? JsonObject ?: return@walkObjects
             val label = runsText(chip["text"] as? JsonObject)
-            val filter = when {
-                label.contains("música", ignoreCase = true) ||
-                    label.contains("musica", ignoreCase = true) -> SearchFilter.SONGS
-                label.contains("artista", ignoreCase = true) -> SearchFilter.ARTISTS
-                label.contains("álbum", ignoreCase = true) ||
-                    label.contains("album", ignoreCase = true) -> SearchFilter.ALBUMS
-                label.contains("playlist", ignoreCase = true) -> SearchFilter.PLAYLISTS
-                else -> null
-            } ?: return@walkObjects
-            val params = ((chip["navigationEndpoint"] as? JsonObject)
+            val rawParams = ((chip["navigationEndpoint"] as? JsonObject)
                 ?.get("searchEndpoint") as? JsonObject)
                 ?.get("params")
                 ?.let { (it as? JsonPrimitive)?.contentOrNull }
-                ?.let { Uri.decode(it) }
+            val params = rawParams?.let { Uri.decode(it) }
+            // Os params são protobuf em base64 e não mudam com o idioma; por
+            // isso o filtro vem deles primeiro. O rótulo é só fallback.
+            val filter = filterForParams(rawParams, params) ?: when {
+                label.contains("música", ignoreCase = true) ||
+                    label.contains("musica", ignoreCase = true) ||
+                    label.contains("canción", ignoreCase = true) ||
+                    label.contains("cancion", ignoreCase = true) ||
+                    label.contains("song", ignoreCase = true) -> SearchFilter.SONGS
+                label.contains("artista", ignoreCase = true) ||
+                    label.contains("artist", ignoreCase = true) -> SearchFilter.ARTISTS
+                label.contains("álbum", ignoreCase = true) ||
+                    label.contains("album", ignoreCase = true) -> SearchFilter.ALBUMS
+                label.contains("playlist", ignoreCase = true) ||
+                    label.contains("lista", ignoreCase = true) -> SearchFilter.PLAYLISTS
+                else -> null
+            } ?: return@walkObjects
             if (!found.containsKey(filter)) {
                 found[filter] = SearchChip(filter, label, params)
             }
@@ -1803,12 +1900,11 @@ class InnerTubeClient(
         return found.values.toList()
     }
 
-    private fun subtitleArtist(subtitle: String): String =
-        subtitle.split("•").map { it.trim() }.firstOrNull { part ->
-            part.isNotBlank() &&
-                !part.equals("álbum", ignoreCase = true) &&
-                !part.matches(Regex("\\d{4}"))
-        }.orEmpty()
+    private fun filterForParams(raw: String?, decoded: String?): SearchFilter? =
+        SearchFilter.entries.firstOrNull { filter ->
+            val expected = filter.defaultParams() ?: return@firstOrNull false
+            expected == raw || expected == decoded
+        }
 
     private fun SearchFilter.defaultParams(): String? = when (this) {
         SearchFilter.ALL -> null
@@ -1874,24 +1970,6 @@ class InnerTubeClient(
      * "Artista • 1,2 mi visualizações". Só tratamos o segundo trecho como
      * álbum quando ele não é um número, ano, duração ou contagem de views.
      */
-    private fun parseSubtitle(raw: String): Pair<String, String> {
-        if (raw.isBlank()) return "" to ""
-        val parts = raw.split("•").map { it.trim() }.filter { it.isNotBlank() }
-        val artist = parts.firstOrNull().orEmpty()
-            .removeSuffix(" E")
-            .removeSuffix(" E ")
-            .trim()
-        val album = parts.drop(1).firstOrNull { candidate ->
-            !candidate.matches(Regex("\\d{4}")) &&
-                !candidate.matches(Regex("\\d+[:.]\\d+.*")) &&
-                !candidate.contains("visualiza", ignoreCase = true) &&
-                !candidate.contains("view", ignoreCase = true) &&
-                !candidate.contains("curtida", ignoreCase = true) &&
-                !candidate.contains("like", ignoreCase = true)
-        }.orEmpty()
-        return artist to album
-    }
-
     private fun parseDuration(raw: String?): Long {
         if (raw.isNullOrBlank()) return 0L
         val cleaned = raw.trim()
@@ -2113,11 +2191,17 @@ class InnerTubeClient(
     }
 
     private fun clientContext(clientName: String): JsonObject = buildJsonObject {
+        val languageTag = language.effectiveTag()
+        val country = when {
+            languageTag.startsWith("pt", ignoreCase = true) -> "BR"
+            languageTag.startsWith("es", ignoreCase = true) -> "MX"
+            else -> "US"
+        }
         put("client", buildJsonObject {
             put("clientName", clientName)
             put("clientVersion", clientVersion(clientName))
-            put("hl", "pt")
-            put("gl", "BR")
+            put("hl", languageTag)
+            put("gl", country)
             when (clientName) {
                 VISIONOS -> {
                     put("osName", "visionOS")
@@ -2215,6 +2299,20 @@ class InnerTubeClient(
         private const val PLAYLISTS_FILTER = "EgeKAQQoADgBahIQBRAJEAMQDhAEEBAQChAVEBE="
         private const val URL_TTL_MS = 30 * 60 * 1000L
         private const val LIKED_PLAYLIST_ID = "VLLM"
+        private val TYPE_SEGMENTS = setOf(
+            "música", "musica", "canción", "cancion", "song",
+            "vídeo", "video", "canção", "cancao",
+            "álbum", "album", "single", "sencillo", "ep", "playlist",
+            "lista", "lista de reproducción", "artista", "artist",
+            "episódio", "episodio", "episode",
+        )
+        private val SINGLE_TITLE_TOKENS = setOf("single", "sencillo", "ep", "extended")
+        private val ALBUM_TITLE_TOKENS = setOf("álbum", "album")
+        private val PLAYLIST_TITLE_TOKENS = setOf("playlist", "lista")
+        private val RELATED_TITLE_TOKENS = setOf(
+            "fã", "semelhante", "relacionad", "também",
+            "similar", "related", "fan", "también",
+        )
         private const val PLAYBACK_PROBE_OFFSET = 1048576L
         private const val PLAYBACK_PROBE_SIZE = 262144L
         private const val PLAYBACK_PROBE_MIN_BYTES = 32768L

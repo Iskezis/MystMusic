@@ -172,7 +172,10 @@ class DownloadsViewModel(private val app: MystApp) : ViewModel() {
             try {
                 withContext(Dispatchers.IO) {
                     DownloadService.cancelAll(app)
-                    app.downloads.cancelAll(userId, "Removido pelo usuário")
+                    app.downloads.cancelAll(
+                        userId,
+                        app.getString(R.string.download_removed_by_user),
+                    )
                     app.downloads.removeAll(userId)
                 }
                 refreshSpace()

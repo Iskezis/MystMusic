@@ -13,6 +13,7 @@ import com.iskezis.myst.data.downloads.StoragePreferences
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.ui.common.LoadState
 import com.iskezis.myst.util.AppLog
+import com.iskezis.myst.util.AppLocale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.Collator
 
 data class CachedTrackItem(
     val videoId: String,
@@ -221,7 +223,10 @@ class CacheViewModel(private val app: MystApp) : ViewModel() {
                     ?: 0L,
                 bytes = bytes,
             )
-        }.sortedBy { it.title.lowercase() }
+        }.let { items ->
+            val collator = Collator.getInstance(AppLocale.currentLocale)
+            items.sortedWith { a, b -> collator.compare(a.title, b.title) }
+        }
 
         return CacheUiState(
             load = if (items.isEmpty()) LoadState.Empty else LoadState.Data(items),

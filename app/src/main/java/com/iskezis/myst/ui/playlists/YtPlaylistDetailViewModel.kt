@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.data.db.YtPlaylistEntity
+import com.iskezis.myst.data.youtube.EmptyPlaylistException
 import com.iskezis.myst.data.youtube.MusicException
 import com.iskezis.myst.data.youtube.SessionExpiredException
 import com.iskezis.myst.data.youtube.Track
@@ -114,7 +115,7 @@ class YtPlaylistDetailViewModel(
                 }
                 _message.value = when {
                     expired -> R.string.yt_session_expired
-                    t is MusicException && t.message?.contains("não tem músicas") == true ->
+                    t is EmptyPlaylistException ->
                         R.string.yt_playlist_empty
                     else -> R.string.yt_copy_error
                 }

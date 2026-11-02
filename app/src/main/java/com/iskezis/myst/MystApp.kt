@@ -21,6 +21,7 @@ import com.iskezis.myst.data.downloads.StoragePreferences
 import com.iskezis.myst.data.pairing.PairedSyncManager
 import com.iskezis.myst.data.pairing.PhonePairingSession
 import com.iskezis.myst.data.settings.AppearancePreferences
+import com.iskezis.myst.data.settings.LanguagePreferences
 import com.iskezis.myst.data.settings.SearchHistoryStore
 import com.iskezis.myst.data.recommendations.RecommendationRepository
 import com.iskezis.myst.data.spotify.SpotifyImporter
@@ -65,6 +66,13 @@ class MystApp : Application(), ImageLoaderFactory {
     val database: AppDatabase by lazy { AppDatabase.get(this) }
     val session: SessionManager by lazy { SessionManager(this) }
     val appearance: AppearancePreferences by lazy { AppearancePreferences(this) }
+    val language: LanguagePreferences by lazy {
+        LanguagePreferences(this) {
+            // Os títulos e metadados devolvidos pelo InnerTube mudam com hl/gl.
+            // Limpar os caches evita misturar respostas em dois idiomas.
+            youtube.invalidate()
+        }
+    }
     val searchHistory: SearchHistoryStore by lazy { SearchHistoryStore(this) }
     val storagePreferences: StoragePreferences by lazy { StoragePreferences(this) }
     val downloadStorage: DownloadStorage by lazy { DownloadStorage(this) }
@@ -120,6 +128,9 @@ class MystApp : Application(), ImageLoaderFactory {
         // tema errado ao abrir o app, inclusive quando o usuário escolheu
         // Claro/Escuro em vez de seguir o sistema.
         AppCompatDelegate.setDefaultNightMode(appearance.nightMode)
+        // A locale também precisa estar aplicada antes da primeira tela e de
+        // qualquer serviço que monte notificação.
+        language.apply()
         AppLog.attach(this)
         installCrashLogger()
         downloadIndex.start()
@@ -145,9 +156,10 @@ class MystApp : Application(), ImageLoaderFactory {
             // antes de qualquer tela; o banco novo será em memória.
             TvEphemeralData.purge(this)
             if (!session.hasTvPairing) {
-                // Sem pareamento não existe tema temporário do celular para
-                // manter; a próxima tela usa o padrão do sistema.
+                // Sem pareamento não existe tema/idioma temporário do celular
+                // para manter; a próxima tela usa os padrões do aparelho.
                 TvEphemeralData.resetAppearance(this)
+                language.clearPairedLanguage()
             }
         }
         // Mantém o Mystaccount.json interno e a cópia externa (quando o
@@ -165,6 +177,11 @@ class MystApp : Application(), ImageLoaderFactory {
             AppLog.TAG,
             "Aparência: modo=${appearance.themeMode.storageValue} " +
                 "amoled=${appearance.amoled}",
+        )
+        AppLog.i(
+            AppLog.TAG,
+            "Idioma: escolha=${language.language.storageValue} " +
+                "efetivo=${language.effectiveTag()}",
         )
         AppLog.i(
             AppLog.TAG,

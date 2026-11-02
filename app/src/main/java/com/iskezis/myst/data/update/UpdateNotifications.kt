@@ -14,6 +14,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.iskezis.myst.MainActivity
 import com.iskezis.myst.R
+import com.iskezis.myst.util.AppLocale
 import com.iskezis.myst.util.AppLog
 
 /**
@@ -24,6 +25,7 @@ import com.iskezis.myst.util.AppLog
 object UpdateNotifications {
 
     fun showInstallFailure(context: Context, status: Int) {
+        val localized = AppLocale.localizedContext(context.applicationContext)
         val app = context.applicationContext
         val manager = NotificationManagerCompat.from(app)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -46,7 +48,7 @@ object UpdateNotifications {
             return
         }
 
-        createChannel(app)
+        createChannel(localized)
         val message = messageRes(status)
         val open = PendingIntent.getActivity(
             app,
@@ -61,11 +63,11 @@ object UpdateNotifications {
                     0
                 },
         )
-        val notification = NotificationCompat.Builder(app, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(localized, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_error)
-            .setContentTitle(app.getString(R.string.update_install_failed_title))
-            .setContentText(app.getString(message))
-            .setStyle(NotificationCompat.BigTextStyle().bigText(app.getString(message)))
+            .setContentTitle(localized.getString(R.string.update_install_failed_title))
+            .setContentText(localized.getString(message))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(localized.getString(message)))
             .setContentIntent(open)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

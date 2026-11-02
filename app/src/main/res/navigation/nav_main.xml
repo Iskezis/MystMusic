@@ -40,6 +40,11 @@
         android:label="@string/update_settings_title" />
 
     <fragment
+        android:id="@+id/languageFragment"
+        android:name="com.iskezis.myst.ui.settings.LanguageFragment"
+        android:label="@string/language_title" />
+
+    <fragment
         android:id="@+id/downloadsFragment"
         android:name="com.iskezis.myst.ui.downloads.DownloadsFragment"
         android:label="@string/downloads_title" />

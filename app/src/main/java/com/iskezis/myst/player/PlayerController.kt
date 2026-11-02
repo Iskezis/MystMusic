@@ -16,6 +16,7 @@ import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
 import com.iskezis.myst.data.youtube.LoginRequiredException
 import com.iskezis.myst.data.youtube.Track
+import com.iskezis.myst.util.AppLocale
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -87,7 +88,7 @@ class PlayerController(context: Context) {
             _state.value = _state.value.copy(
                 error = error != null || loginRequired,
                 errorMessage = when {
-                    loginRequired -> appContext.getString(R.string.player_error_login_required)
+                    loginRequired -> localizedString(R.string.player_error_login_required)
                     error != null -> messageFor(error)
                     else -> null
                 },
@@ -160,7 +161,7 @@ class PlayerController(context: Context) {
                     controller = null
                     _state.value = _state.value.copy(
                         error = true,
-                        errorMessage = appContext.getString(R.string.player_connection_error),
+                        errorMessage = localizedString(R.string.player_connection_error),
                     )
                 }
             },
@@ -360,7 +361,7 @@ class PlayerController(context: Context) {
             pendingPlay = PendingPlay(tracks, startIndex, shuffle)
             _state.value = _state.value.copy(
                 error = true,
-                errorMessage = appContext.getString(R.string.player_connection_error),
+                errorMessage = localizedString(R.string.player_connection_error),
             )
             connect()
         }
@@ -394,7 +395,7 @@ class PlayerController(context: Context) {
                 hasPrevious = player.hasPreviousMediaItem(),
                 error = (playbackError != null || loginRequired) && track != null,
                 errorMessage = when {
-                    loginRequired -> appContext.getString(R.string.player_error_login_required)
+                    loginRequired -> localizedString(R.string.player_error_login_required)
                     playbackError != null -> messageFor(playbackError)
                     else -> null
                 },
@@ -415,16 +416,13 @@ class PlayerController(context: Context) {
         }
     }
 
+    private fun localizedString(resId: Int): String =
+        AppLocale.localizedContext(appContext).getString(resId)
+
     private fun detectsLoginRequired(error: PlaybackException?): Boolean {
         var cause: Throwable? = error
         while (cause != null) {
             if (cause is LoginRequiredException) return true
-            val message = cause.message.orEmpty()
-            if (message.contains("login", ignoreCase = true) &&
-                (message.contains("YouTube", ignoreCase = true) || message.contains("faixa", ignoreCase = true))
-            ) {
-                return true
-            }
             cause = cause.cause
         }
         val failure = (appContext as? MystApp)?.lastStreamFailure ?: return false
@@ -433,7 +431,7 @@ class PlayerController(context: Context) {
         return recent && failure.videoId == videoId && failure.loginRequired
     }
 
-    private fun messageFor(error: PlaybackException): String = appContext.getString(
+    private fun messageFor(error: PlaybackException): String = localizedString(
         when (error.errorCode) {
             PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
             PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,

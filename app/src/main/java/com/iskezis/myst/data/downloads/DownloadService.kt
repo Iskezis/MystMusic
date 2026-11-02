@@ -25,6 +25,7 @@ import com.iskezis.myst.data.youtube.StreamInfo
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.player.StreamResolver
 import com.iskezis.myst.util.AppLog
+import com.iskezis.myst.util.AppLocale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -197,7 +198,7 @@ class DownloadService : Service() {
                         // O cancelamento precisa terminar mesmo que o serviço
                         // seja encerrado em seguida (stopSelf cancela o scope).
                         withContext(NonCancellable) {
-                            runCatching { repository.cancelAll(userId) }
+                            runCatching { repository.cancelAll(userId, cancelReason()) }
                         }
                         finishNotification(success = false, cancelled = true)
                     } else {
@@ -670,17 +671,21 @@ class DownloadService : Service() {
 
     private fun createChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val strings = AppLocale.localizedContext(this)
         val manager = notificationManager()
         val channel = NotificationChannel(
             CHANNEL_ID,
-            getString(R.string.download_channel_name),
+            strings.getString(R.string.download_channel_name),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = getString(R.string.download_channel_description)
+            description = strings.getString(R.string.download_channel_description)
             setShowBadge(false)
         }
         manager.createNotificationChannel(channel)
     }
+
+    private fun cancelReason(): String =
+        AppLocale.localizedContext(this).getString(R.string.download_cancel_reason)
 
     private fun buildNotification(
         item: DownloadEntity?,
@@ -691,6 +696,7 @@ class DownloadService : Service() {
         cancelled: Boolean = false,
         waiting: Boolean = false,
     ): Notification {
+        val strings = AppLocale.localizedContext(this)
         val content = PendingIntent.getActivity(
             this,
             0,
@@ -709,7 +715,7 @@ class DownloadService : Service() {
             Intent(this, DownloadService::class.java).setAction(ACTION_RECOVER),
             pendingFlags(),
         )
-        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(strings, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_arrow_down)
             .setContentIntent(content)
             .setOnlyAlertOnce(true)
@@ -718,12 +724,12 @@ class DownloadService : Service() {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
         if (done) {
             builder.setContentTitle(
-                getString(
+                strings.getString(
                     if (cancelled) R.string.download_cancelled else R.string.download_finished,
                 ),
             )
             builder.setContentText(
-                getString(
+                strings.getString(
                     if (failed > 0) R.string.download_finished_failed else R.string.download_finished_ok,
                     finished,
                     failed,
@@ -739,7 +745,7 @@ class DownloadService : Service() {
             0
         }
         builder.setContentTitle(
-            getString(
+            strings.getString(
                 when {
                     waiting -> R.string.download_waiting_network
                     preparing -> R.string.download_preparing
@@ -754,15 +760,15 @@ class DownloadService : Service() {
         }
         builder.setContentText(
             if (item != null) {
-                getString(
+                strings.getString(
                     R.string.download_progress,
                     finished.coerceAtMost(completed),
                     completed,
-                    item.title.ifBlank { getString(R.string.player_unknown_title) },
+                    item.title.ifBlank { strings.getString(R.string.player_unknown_title) },
                     itemPercent,
                 )
             } else {
-                getString(
+                strings.getString(
                     R.string.download_progress_aggregate,
                     finished.coerceAtMost(completed),
                     completed,
@@ -772,12 +778,12 @@ class DownloadService : Service() {
         builder.setProgress(100, itemPercent, (preparing || waiting) && item == null)
         builder.addAction(
             R.drawable.ic_sync,
-            getString(R.string.download_recover),
+            strings.getString(R.string.download_recover),
             recover,
         )
         builder.addAction(
             R.drawable.ic_close,
-            getString(R.string.download_cancel),
+            strings.getString(R.string.download_cancel),
             cancel,
         )
         return builder.build()
@@ -831,7 +837,7 @@ class DownloadService : Service() {
             // Não deixa a fila presa se o serviço não tiver workers ativos.
             val userId = app.session.mystUserId
             withContext(NonCancellable) {
-                runCatching { repository.cancelAll(userId) }
+                runCatching { repository.cancelAll(userId, cancelReason()) }
             }
             if (workerJob?.isActive != true) {
                 finishNotification(success = false, cancelled = true)

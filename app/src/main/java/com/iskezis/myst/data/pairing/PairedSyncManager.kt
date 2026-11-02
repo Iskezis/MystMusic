@@ -6,6 +6,7 @@ import android.os.Looper
 import androidx.room.InvalidationTracker
 import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.MystApp
+import com.iskezis.myst.R
 import com.iskezis.myst.data.account.TvEphemeralData
 import com.iskezis.myst.player.PlaybackService
 import com.iskezis.myst.ui.pairing.TvPairingActivity
@@ -1238,7 +1239,9 @@ class PairedSyncManager(private val app: MystApp) {
             ports += PHONE_PORT
             ports.forEach { port ->
                 val cached = PairingNsd.Target(
-                    name = app.session.tvName.ifBlank { "Celular" },
+                    name = app.session.tvName.ifBlank {
+                        app.getString(R.string.pairing_phone_default_name)
+                    },
                     host = host,
                     port = port,
                 )
