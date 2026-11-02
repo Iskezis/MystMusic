@@ -80,6 +80,7 @@ class PlayerFragment : Fragment() {
     private var loadedArtworkFor: String? = null
     private var failedArtworkFor: String? = null
     private var backdropJob: Job? = null
+    private var placeholderJob: Job? = null
     private var lastLoggedTrack: String? = null
     private var lastLoggedPlaying: Boolean? = null
     private var initialFocusApplied = false
@@ -472,7 +473,12 @@ class PlayerFragment : Fragment() {
         scrollView = binding.playerRoot.findViewById<View>(R.id.playerScroll) as? ScrollView
         scrollView?.viewTreeObserver?.addOnScrollChangedListener(scrollListener)
         binding.playerRoot.post {
-            if (view != null && backdropSample == null) {
+            // Não inicie a medição do placeholder se a capa já pediu o fundo.
+            // Com a capa em cache, o Coil entrega o bitmap no mesmo frame em
+            // que o fragmento abre; sem esta guarda o placeholder cancelava o
+            // desfoque real e o player ficava sem o fundo da capa na segunda
+            // abertura.
+            if (view != null && backdropSample == null && backdropKey == null) {
                 measurePlaceholderPalette()
             }
         }
@@ -493,6 +499,7 @@ class PlayerFragment : Fragment() {
         if (backdropKey == PLACEHOLDER_BACKDROP) return
         backdropKey = PLACEHOLDER_BACKDROP
         backdropJob?.cancel()
+        backdropJob = null
         current.playerCover.setImageResource(R.drawable.bg_cover_placeholder)
         current.playerBackdrop.setImageResource(R.drawable.bg_cover_placeholder)
         measurePlaceholderPalette()
@@ -506,6 +513,10 @@ class PlayerFragment : Fragment() {
     private fun measurePlaceholderPalette() {
         val current = _binding ?: return
         if (!isAdded || view == null) return
+        // Uma capa real sempre vence o placeholder. Se o pedido da capa já
+        // chegou, não inicie uma medição que poderia cancelar o desfoque.
+        if (backdropKey != null && backdropKey != PLACEHOLDER_BACKDROP) return
+        backdropKey = PLACEHOLDER_BACKDROP
         val root = current.playerRoot
         if (root.width <= 0 || root.height <= 0) {
             root.post { if (view != null) measurePlaceholderPalette() }
@@ -520,8 +531,8 @@ class PlayerFragment : Fragment() {
             applyPalettes(previous.top, previous.title, previous.controls, animate = false)
             return
         }
-        backdropJob?.cancel()
-        backdropJob = viewLifecycleOwner.lifecycleScope.launch {
+        placeholderJob?.cancel()
+        placeholderJob = viewLifecycleOwner.lifecycleScope.launch {
             val result = withContext(Dispatchers.Default) {
                 try {
                     val sample = AdaptiveContentColors.renderSample(drawable, width, height)
@@ -568,6 +579,10 @@ class PlayerFragment : Fragment() {
         val height = root.height
         val zones = computeZones()
         val previous = previousPalettes()
+        // O pedido da capa invalida a medição do placeholder; ela não pode
+        // voltar depois e sobrescrever a paleta/fundo reais.
+        placeholderJob?.cancel()
+        placeholderJob = null
         backdropJob?.cancel()
         backdropJob = viewLifecycleOwner.lifecycleScope.launch {
             val result = withContext(Dispatchers.Default) {
@@ -612,6 +627,10 @@ class PlayerFragment : Fragment() {
             } else {
                 active.playerBackdrop.setImageDrawable(drawable)
             }
+            AppLog.d(
+                AppLog.TAG_UI,
+                "Fundo do player aplicado: ${blurred.width}x${blurred.height} para $key",
+            )
             applyPalettes(
                 result.palettes.top,
                 result.palettes.title,
@@ -1103,6 +1122,8 @@ class PlayerFragment : Fragment() {
         AppLog.d(AppLog.TAG_UI, "PlayerFragment.onDestroyView")
         backdropJob?.cancel()
         backdropJob = null
+        placeholderJob?.cancel()
+        placeholderJob = null
         paletteAnimator?.cancel()
         paletteAnimator = null
         scrollRemeasureJob?.cancel()
