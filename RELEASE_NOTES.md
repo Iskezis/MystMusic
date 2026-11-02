@@ -1,26 +1,26 @@
-versionCode: 45
-## MystMusic 0.2.5 Beta 1 — canal de atualização
+versionCode: 46
+## MystMusic 0.2.5 Beta 2 — idioma
 
-Nova tela **Configurações → Atualizações** para escolher quais versões o app deve avisar e conferir a atualização na hora.
+Novo seletor de idioma em **Configurações → Idioma** e tradução completa do app para **inglês** e **espanhol**, com o português como padrão.
 
 ### Novidades desta beta
-- **Canal de atualização:** **Somente estáveis** (padrão em instalação nova) ou **Estáveis e betas**. A preferência fica no aparelho, vale na hora e não depende da conta Myst.
-- **Migração sem susto:** quem já está em uma build `alpha`, `beta`, `rc` ou `dev` começa no canal **Estáveis e betas** na primeira leitura, para não parar de receber atualizações sem querer.
-- **Classificação correta:** uma release conta como beta quando o GitHub a marca como pré-release **ou** quando a tag tem `-alpha`, `-beta`, `-rc` ou `-dev`. As Betas 1–5 continuam sendo betas mesmo tendo sido publicadas como Release normal.
-- **Sem downgrade:** o pop-up só aparece quando o `versionCode` remoto é maior que o instalado. Voltar de beta para estável não rebaixa o app.
-- **Tela com três estados:** verificando (indicador), tudo em dia e erro com **Tentar novamente**. O pop-up de nova versão e o download continuam funcionando, agora com um selo **Beta** quando for o caso.
-- **Verificar agora:** botão manual na tela; trocar de canal limpa o cache ETag e dispara a verificação imediatamente.
-- **TV:** a mesma tela, com os cards focáveis por D-pad e foco inicial no canal selecionado.
-- **Workflow de release:** tags beta são publicadas como pré-release e tags estáveis como Release normal; o workflow falha se a classificação não bater com a tag.
+- **Escolha do idioma:** Sistema, Português (Brasil), English ou Español. A troca é aplicada na hora, sem reiniciar o app, e fica salva no aparelho.
+- **Sistema:** segue o idioma do celular; se o aparelho estiver em outro idioma, o app usa inglês. No Android 13+ o MystMusic também aparece nas configurações de idioma do sistema.
+- **Tudo traduzido:** telas, diálogos, notificações, mensagens de erro, downloads, Discord, pareamento e atualização, incluindo plurais e nomes padrão.
+- **Datas, números e durações** seguem o idioma escolhido, inclusive nas Estatísticas e no player.
+- **YouTube Music localizado:** as buscas e recomendações usam o idioma e o país correspondentes, sem quebrar a busca, as playlists ou a reprodução.
+- **TV pareada:** a TV adota o idioma do celular enquanto estiver conectada e volta ao próprio idioma ao desconectar ou deslogar.
+- **Canal de atualização:** esta Beta 2 é uma **pré-release**; ela aparece para quem escolheu **Estáveis e betas** e não é oferecida no canal **Somente estáveis**.
 
 ### Compatibilidade
-- Atualiza por cima da Beta 5 (`versionCode 44`) e anteriores com a mesma assinatura, mantendo conta Myst, playlists, histórico, downloads e estatísticas.
+- Atualiza por cima da Beta 1 (`versionCode 45`) e anteriores com a mesma assinatura, mantendo conta Myst, playlists, histórico, downloads e estatísticas.
 - Nenhuma migração do Room nesta build.
 - A TV continua usando `app-tv.apk` (`armeabi-v7a`, 32 bits).
 
 ### Como testar
-1. Abra **Configurações → Atualizações** e confirme a versão instalada.
-2. Alterne entre **Somente estáveis** e **Estáveis e betas** e use **Verificar agora**.
-3. No canal estável, as releases com tag beta não devem aparecer; no canal beta, a maior versão válida deve aparecer com o selo **Beta**.
-4. Feche e abra o app: a escolha deve continuar salva.
-5. Repita na TV usando o controle remoto.
+1. Abra **Configurações → Idioma** e troque entre Sistema, Português, English e Español.
+2. Confira que a tela muda na hora e que a escolha continua salva ao fechar e abrir o app.
+3. Percorra Navegação, Busca, Playlists, Player, Configurações e Estatísticas nos três idiomas.
+4. Confira datas, números e a ordem dos itens nas Estatísticas.
+5. Pareie a TV e veja se ela adota o idioma do celular; desconecte e confirme que ela volta ao idioma local.
+6. Em **Configurações → Atualizações**, confira que a Beta 2 aparece no canal **Estáveis e betas** e some no canal **Somente estáveis**.
