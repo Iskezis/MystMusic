@@ -463,7 +463,7 @@ class PlayerFragment : Fragment() {
         binding.playerSeek.thumb = seekThumb
         applyPaletteFrame(initial, initial, initial)
 
-        scrollView = binding.playerRoot.findViewById<ScrollView>(R.id.playerScroll)
+        scrollView = binding.playerRoot.findViewById<View>(R.id.playerScroll) as? ScrollView
         scrollView?.viewTreeObserver?.addOnScrollChangedListener(scrollListener)
         binding.playerRoot.post {
             if (view != null && backdropSample == null) {
