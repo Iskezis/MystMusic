@@ -1,26 +1,34 @@
-versionCode: 46
-## MystMusic 0.2.5 Beta 2 — idioma
+versionCode: 47
+## MystMusic 0.2.5 Beta 3 — cores adaptativas no player
 
-Novo seletor de idioma em **Configurações → Idioma** e tradução completa do app para **inglês** e **espanhol**, com o português como padrão.
+O player agora escolhe preto ou branco olhando para o fundo real: a própria capa borrada, sem usar as cores do tema.
 
 ### Novidades desta beta
-- **Escolha do idioma:** Sistema, Português (Brasil), English ou Español. A troca é aplicada na hora, sem reiniciar o app, e fica salva no aparelho.
-- **Sistema:** segue o idioma do celular; se o aparelho estiver em outro idioma, o app usa inglês. No Android 13+ o MystMusic também aparece nas configurações de idioma do sistema.
-- **Tudo traduzido:** telas, diálogos, notificações, mensagens de erro, downloads, Discord, pareamento e atualização, incluindo plurais e nomes padrão.
-- **Datas, números e durações** seguem o idioma escolhido, inclusive nas Estatísticas e no player.
-- **YouTube Music localizado:** as buscas e recomendações usam o idioma e o país correspondentes, sem quebrar a busca, as playlists ou a reprodução.
-- **TV pareada:** a TV adota o idioma do celular enquanto estiver conectada e volta ao próprio idioma ao desconectar ou deslogar.
-- **Canal de atualização:** esta Beta 2 é uma **pré-release**; ela aparece para quem escolheu **Estáveis e betas** e não é oferecida no canal **Somente estáveis**.
+- **Contraste real:** cada área do player mede a luminância do fundo e escolhe a cor de conteúdo com maior contraste WCAG, com histerese de 15% para capas de luminância média não ficarem piscando.
+- **Três zonas independentes:** topo (voltar, título da tela), bloco de título/artista e controles (progresso, tempos, play/pause, anterior/próximo, repetição e fila) podem usar preto ou branco separadamente, porque o blur pode ser claro em cima e escuro embaixo.
+- **Transição suave:** as cores mudam em 250 ms e o fundo faz crossfade junto, sem piscar entre faixas.
+- **Play/pause circular:** o botão vira um círculo preenchido com a cor do conteúdo e o ícone na cor oposta; na TV, o anel de foco do D-pad é desenhado dentro do círculo e continua visível em qualquer fundo.
+- **Barra de progresso adaptativa:** trilho com 25% de alpha, preenchimento sólido e bolinha na cor do conteúdo.
+- **Capa ausente:** o placeholder também é medido de verdade; se uma capa falhar, o player cai no placeholder sem repetir a requisição a cada atualização de estado.
+- **Temas e capas:** funciona nos temas claro, escuro e Preto AMOLED, com qualquer cor de destaque, em capas claras, escuras, brancas, pretas e coloridas.
+- **TV:** a mesma lógica de zonas e contraste, com o cabeçalho agora exibindo o nome do app abaixo de "Tocando agora".
+- **Canal de atualização:** esta Beta 3 é uma **pré-release**; ela aparece para quem escolheu **Estáveis e betas** e não é oferecida no canal **Somente estáveis**.
 
 ### Compatibilidade
-- Atualiza por cima da Beta 1 (`versionCode 45`) e anteriores com a mesma assinatura, mantendo conta Myst, playlists, histórico, downloads e estatísticas.
+- Atualiza por cima da Beta 2 (`versionCode 46`) e anteriores com a mesma assinatura, mantendo conta Myst, conta YouTube, playlists, histórico, downloads e estatísticas.
 - Nenhuma migração do Room nesta build.
 - A TV continua usando `app-tv.apk` (`armeabi-v7a`, 32 bits).
 
 ### Como testar
-1. Abra **Configurações → Idioma** e troque entre Sistema, Português, English e Español.
-2. Confira que a tela muda na hora e que a escolha continua salva ao fechar e abrir o app.
-3. Percorra Navegação, Busca, Playlists, Player, Configurações e Estatísticas nos três idiomas.
-4. Confira datas, números e a ordem dos itens nas Estatísticas.
-5. Pareie a TV e veja se ela adota o idioma do celular; desconecte e confirme que ela volta ao idioma local.
-6. Em **Configurações → Atualizações**, confira que a Beta 2 aparece no canal **Estáveis e betas** e some no canal **Somente estáveis**.
+1. Abra o player com capas claras, escuras, brancas, pretas e coloridas.
+2. Confira ícones, textos, tempos, barra de progresso e play/pause em cada faixa; use pausar/continuar e arraste a barra.
+3. Troque entre tema claro, escuro e Preto AMOLED, e entre as cores de destaque.
+4. Role o player: as cores devem se ajustar à área visível da capa borrada.
+5. Na TV, navegue com o D-pad e confira o anel de foco no play.
+6. Teste uma faixa sem capa ou com capa que falhe; o placeholder deve manter tudo legível.
+
+### Detalhes
+- A escolha é por contraste relativo WCAG, não por um limiar fixo; a histerese de 15% evita piscar em capas de luminância média.
+- A medição usa uma amostra reduzida do blur já posicionado na tela (mesmo recorte `centerCrop` do fundo), sempre fora da thread principal.
+- O helper `AdaptiveContentColors` fica em `ui/common` e será reutilizado na fila em tela cheia da fase 22.
+- As barras de status e navegação continuam seguindo o tema escuro/claro do app, porque o fundo do player é desenhado abaixo delas; os controles do player seguem a capa.
