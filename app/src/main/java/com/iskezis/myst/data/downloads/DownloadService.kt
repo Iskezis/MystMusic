@@ -509,16 +509,20 @@ class DownloadService : Service() {
         return free <= 0L || free >= MIN_FREE_BYTES
     }
 
-    private fun friendlyReason(error: Throwable?): String = when {
-        error is LoginRequiredException -> "Entre no YouTube novamente para baixar"
-        error is HttpFailure && error.code in listOf(401, 403) ->
-            "Faixa restrita ou conta do YouTube expirada"
-        error is HttpFailure && error.code == 404 -> "Faixa indisponível"
-        error is IOException && error.message?.contains("Espaço", ignoreCase = true) == true ->
-            "Espaço insuficiente no armazenamento"
-        error is IOException && error.message?.contains("conex", ignoreCase = true) == true ->
-            "Sem conexão; tente baixar novamente"
-        else -> "Não foi possível baixar; tente novamente"
+    private fun friendlyReason(error: Throwable?): String {
+        val strings = AppLocale.localizedContext(this)
+        return when {
+            error is LoginRequiredException -> strings.getString(R.string.download_error_login)
+            error is HttpFailure && error.code in listOf(401, 403) ->
+                strings.getString(R.string.download_error_restricted)
+            error is HttpFailure && error.code == 404 ->
+                strings.getString(R.string.download_error_unavailable)
+            error is IOException && error.message?.contains("Espaço", ignoreCase = true) == true ->
+                strings.getString(R.string.track_download_space)
+            error is IOException && error.message?.contains("conex", ignoreCase = true) == true ->
+                strings.getString(R.string.download_error_network)
+            else -> strings.getString(R.string.track_download_error)
+        }
     }
 
     private fun concurrency(): Int = if (BuildConfig.FLAVOR == "tv") 1 else 2

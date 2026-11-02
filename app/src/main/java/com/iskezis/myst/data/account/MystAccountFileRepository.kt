@@ -7,6 +7,7 @@ import android.util.Base64
 import androidx.room.InvalidationTracker
 import androidx.room.withTransaction
 import com.iskezis.myst.BuildConfig
+import com.iskezis.myst.R
 import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.ArtistAffinityEntity
 import com.iskezis.myst.data.db.HistoryEntity
@@ -21,6 +22,7 @@ import com.iskezis.myst.data.db.YtSyncEntity
 import com.iskezis.myst.data.settings.AppearancePreferences
 import com.iskezis.myst.data.settings.AppearanceSettings
 import com.iskezis.myst.data.settings.ThemeMode
+import com.iskezis.myst.util.AppLocale
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -489,7 +491,9 @@ class MystAccountFileRepository(
                 .associateBy { it.name.trim().lowercase() }
                 .toMutableMap()
             playlists.forEach { backup ->
-                val name = backup.name.trim().take(40).ifBlank { "Playlist restaurada" }
+                val name = backup.name.trim().take(40).ifBlank {
+                    AppLocale.localizedContext(context).getString(R.string.account_restored_playlist_name)
+                }
                 val existingPlaylist = existingByName[name.lowercase()]
                 val playlistId = existingPlaylist?.id ?: playlistDao.insert(
                     PlaylistEntity(

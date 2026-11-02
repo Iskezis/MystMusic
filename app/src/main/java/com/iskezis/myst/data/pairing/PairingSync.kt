@@ -24,6 +24,7 @@ import com.iskezis.myst.data.settings.AppLanguage
 import com.iskezis.myst.data.settings.AppearanceSettings
 import com.iskezis.myst.data.settings.ThemeMode
 import com.iskezis.myst.data.youtube.Track
+import com.iskezis.myst.util.AppLocale
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.sha256Hex
 import kotlinx.coroutines.Dispatchers
@@ -470,7 +471,9 @@ object PairingSync {
         app.session.saveTvPairing(
             pairId = pairId,
             secret = secret,
-            name = bundle.phoneName.ifBlank { app.getString(R.string.pairing_phone_default_name) },
+            name = bundle.phoneName.ifBlank {
+                AppLocale.localizedContext(app).getString(R.string.pairing_phone_default_name)
+            },
         )
         AppLog.i(
             AppLog.TAG_PAIRING,

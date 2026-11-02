@@ -3,6 +3,7 @@ package com.iskezis.myst.data.pairing
 import android.os.Build
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
+import com.iskezis.myst.util.AppLocale
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -177,7 +178,7 @@ class PhonePairingSession(private val app: MystApp) {
                     pairId = pairId,
                     pairSecret = pairSecret,
                     phoneName = Build.MODEL.orEmpty().ifBlank {
-                        app.getString(R.string.pairing_phone_default_name)
+                        AppLocale.localizedContext(app).getString(R.string.pairing_phone_default_name)
                     },
                 )
             }.getOrElse { throwable ->

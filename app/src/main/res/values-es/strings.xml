@@ -789,4 +789,10 @@
     <string name="pairing_phone_default_name">Teléfono</string>
     <string name="download_removed_by_user">Eliminado por el usuario</string>
     <string name="download_cancel_reason">Cancelado por el usuario</string>
+    <string name="spotify_default_name">Lista de Spotify</string>
+    <string name="account_restored_playlist_name">Lista restaurada</string>
+    <string name="download_error_login">Inicia sesión de nuevo en YouTube para descargar</string>
+    <string name="download_error_restricted">Pista restringida o cuenta de YouTube caducada</string>
+    <string name="download_error_unavailable">Pista no disponible</string>
+    <string name="download_error_network">Sin conexión; intenta descargar de nuevo</string>
 </resources>

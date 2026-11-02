@@ -805,4 +805,10 @@
     <string name="language_code_pt" translatable="false">PT</string>
     <string name="language_code_en" translatable="false">EN</string>
     <string name="language_code_es" translatable="false">ES</string>
+    <string name="spotify_default_name">Playlist do Spotify</string>
+    <string name="account_restored_playlist_name">Playlist restaurada</string>
+    <string name="download_error_login">Entre no YouTube novamente para baixar</string>
+    <string name="download_error_restricted">Faixa restrita ou conta do YouTube expirada</string>
+    <string name="download_error_unavailable">Faixa indisponível</string>
+    <string name="download_error_network">Sem conexão; tente baixar novamente</string>
 </resources>

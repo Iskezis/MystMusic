@@ -7,9 +7,11 @@ import android.net.Uri
 import android.util.Base64
 import android.util.Log
 import com.iskezis.myst.BuildConfig
+import com.iskezis.myst.R
 import com.iskezis.myst.data.db.PlaylistRepository
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.data.youtube.YouTubeRepository
+import com.iskezis.myst.util.AppLocale
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.normalizeText
 import com.iskezis.myst.util.similarity
@@ -144,7 +146,9 @@ class SpotifyImporter(
         }
 
         currentCoroutineContext().ensureActive()
-        val name = playlist.name.ifBlank { DEFAULT_NAME }
+        val name = playlist.name.ifBlank {
+            AppLocale.localizedContext(context).getString(R.string.spotify_default_name)
+        }
         AppLog.i(AppLog.TAG_SPOTIFY, "Criando playlist Myst $name com ${mapped.size} faixas")
         val playlistId = playlists.create(userId, name)
         playlists.addTracks(playlistId, mapped)
@@ -591,7 +595,6 @@ class SpotifyImporter(
     companion object {
         private const val TAG = "SpotifyImport"
         private const val API_BASE = "https://api.spotify.com/v1"
-        private const val DEFAULT_NAME = "Playlist do Spotify"
         private const val AD_TITLE = "Advertisement"
         private const val MAX_TRACKS = 500
         private const val MAPPING_CONCURRENCY = 4

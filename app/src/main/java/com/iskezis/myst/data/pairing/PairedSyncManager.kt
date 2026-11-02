@@ -10,6 +10,7 @@ import com.iskezis.myst.R
 import com.iskezis.myst.data.account.TvEphemeralData
 import com.iskezis.myst.player.PlaybackService
 import com.iskezis.myst.ui.pairing.TvPairingActivity
+import com.iskezis.myst.util.AppLocale
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -1240,7 +1241,7 @@ class PairedSyncManager(private val app: MystApp) {
             ports.forEach { port ->
                 val cached = PairingNsd.Target(
                     name = app.session.tvName.ifBlank {
-                        app.getString(R.string.pairing_phone_default_name)
+                        AppLocale.localizedContext(app).getString(R.string.pairing_phone_default_name)
                     },
                     host = host,
                     port = port,

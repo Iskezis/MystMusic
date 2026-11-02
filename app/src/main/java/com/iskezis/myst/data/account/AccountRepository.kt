@@ -8,6 +8,7 @@ import androidx.room.withTransaction
 import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.UserEntity
+import com.iskezis.myst.data.settings.LanguagePreferences
 import com.iskezis.myst.data.settings.SearchHistoryStore
 import com.iskezis.myst.data.youtube.InnerTubeClient
 import com.iskezis.myst.util.AppLog
@@ -533,6 +534,7 @@ class AccountRepository(
         }
         TvEphemeralData.purge(context)
         TvEphemeralData.resetAppearance(context)
+        LanguagePreferences(context).clearPairedLanguage()
         SearchHistoryStore(context).clearAll()
     }
 

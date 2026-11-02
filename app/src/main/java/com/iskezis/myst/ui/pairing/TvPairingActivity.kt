@@ -265,7 +265,12 @@ class TvPairingActivity : BaseActivity() {
                     PairingHttp.url(host, request.phonePort, "/confirm"),
                     json.encodeToString(
                         PairConfirm.serializer(),
-                        PairConfirm(code, Build.MODEL.orEmpty().ifBlank { "TV" }),
+                        PairConfirm(
+                            code,
+                            Build.MODEL.orEmpty().ifBlank {
+                                getString(R.string.settings_tv_default_name)
+                            },
+                        ),
                     ),
                 )
                 val wrapper = json.decodeFromString(PairPayload.serializer(), payload)

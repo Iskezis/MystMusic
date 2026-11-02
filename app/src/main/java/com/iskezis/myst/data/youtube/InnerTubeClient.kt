@@ -5,6 +5,7 @@ import android.net.Uri
 import com.iskezis.myst.R
 import com.iskezis.myst.data.account.SessionManager
 import com.iskezis.myst.data.settings.LanguagePreferences
+import com.iskezis.myst.util.AppLocale
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.Thumbnails
 import com.iskezis.myst.util.sha1Hex
@@ -357,7 +358,7 @@ class InnerTubeClient(
             val liked = items.firstOrNull { it.liked }
                 ?: YtPlaylist(
                     id = LIKED_PLAYLIST_ID,
-                    title = context.getString(R.string.youtube_liked_songs),
+                    title = AppLocale.localizedContext(context).getString(R.string.youtube_liked_songs),
                     liked = true,
                 )
             (listOf(liked) + items.filterNot { it.liked }).take(limit)
