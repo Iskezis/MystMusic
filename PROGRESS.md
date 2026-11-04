@@ -323,7 +323,8 @@ Marque cada subitem só com build verde + verificação em aparelho. `versionCod
 | 41520863561 | v0.2.5-beta.4 (65c72ac) | verde | Release 0.2.5 Beta 4: build mobile/tv com a keystore estável, assinatura conferida, `SHA256SUMS.txt` e assets publicados, `isPrerelease=true` verificado | `apks/app.apk`, `apks/app-tv.apk` (assets da release) |
 | 41521680082 | ced4b6e | verde | Registro da Beta 4: APKs da release copiados para `apks/`, `PROGRESS.md` e `RELEASE_NOTES.md` atualizados no commit final | — (substituídos pela Beta 5) |
 | 41745196201 | 8a81bb2 | falha | Fase 22: `applyAdaptiveColor` era uma função-membro chamada em sintaxe de extensão e o compilador caía na extensão privada do `QueueAdapter`; helper movido para `ui/common` | — |
-| 41745808469 | c2cbbbf | verde | Fase 22: fila em tela cheia com fundo borrado compartilhado, crossfade de 300 ms, paletas adaptativas por zona, estados completo/vazio/erro e D-pad na TV; mobile/tv/testes verdes | `apks/app.apk`, `apks/app-tv.apk` |
+| 41745808469 | c2cbbbf | verde | Fase 22: fila em tela cheia com fundo borrado compartilhado, crossfade de 300 ms, paletas adaptativas por zona, estados completo/vazio/erro e D-pad na TV; mobile/tv/testes verdes | — (substituído pelo run final) |
+| 41901194887 | f02a6e4 | verde | Fase 22 final: limpeza de imports, `PROGRESS.md` com as decisões da fila e APKs do run anterior; mobile/tv/testes verdes | `apks/app.apk`, `apks/app-tv.apk` |
 
 ## Decisões
 - YouTube Music (fase 13): a biblioteca da conta é **somente leitura**. O cache fica em tabelas próprias do Room (`yt_playlists`, `yt_playlist_tracks`, `yt_history`, `yt_sync_state`), com validade de 15 minutos e estratégia *stale-while-revalidate*: a tela mostra o cache na hora e atualiza em segundo plano. O botão/gesto de atualizar força a rede. Nenhuma escrita é enviada ao YouTube.
