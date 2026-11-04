@@ -19,6 +19,7 @@ import com.iskezis.myst.databinding.ItemQueueHeaderBinding
 import com.iskezis.myst.databinding.ItemQueueTrackBinding
 import com.iskezis.myst.ui.common.AdaptiveContentColors
 import com.iskezis.myst.ui.common.ContentPalette
+import com.iskezis.myst.ui.common.applyAdaptiveColor
 import com.iskezis.myst.util.UiAnimations.focusScale
 import com.iskezis.myst.util.formatDuration
 
@@ -211,14 +212,5 @@ class QueueAdapter(
     private companion object {
         const val TYPE_HEADER = 0
         const val TYPE_ENTRY = 1
-    }
-}
-
-private fun TextView.applyAdaptiveColor(color: Int, palette: ContentPalette) {
-    setTextColor(ColorStateList.valueOf(color))
-    if (palette.isDarkContent) {
-        setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
-    } else {
-        setShadowLayer(5f, 0f, 2f, 0x99000000.toInt())
     }
 }

@@ -40,6 +40,7 @@ import com.iskezis.myst.player.PlayerState
 import com.iskezis.myst.ui.common.AdaptiveContentColors
 import com.iskezis.myst.ui.common.BackdropCache
 import com.iskezis.myst.ui.common.ContentPalette
+import com.iskezis.myst.ui.common.applyAdaptiveColor
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.BlurUtils
 import com.iskezis.myst.util.MystTheme
@@ -776,15 +777,6 @@ class QueueFragment : Fragment() {
         tintIcon(current.queueErrorIcon, palette.secondary, palette.disabled)
         current.queueErrorTitle.applyAdaptiveColor(palette.primary, palette)
         styleButton(current.queueRetry, palette)
-    }
-
-    private fun applyAdaptiveColor(view: TextView, color: Int, palette: ContentPalette) {
-        view.setTextColor(color)
-        if (palette.isDarkContent) {
-            view.setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
-        } else {
-            view.setShadowLayer(6f, 0f, 2f, 0x99000000.toInt())
-        }
     }
 
     private fun tintIcon(view: ImageView, color: Int, disabled: Int) {

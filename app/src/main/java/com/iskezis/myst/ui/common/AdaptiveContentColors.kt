@@ -2,9 +2,11 @@ package com.iskezis.myst.ui.common
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.drawable.Drawable
+import android.widget.TextView
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
@@ -26,6 +28,20 @@ data class ContentPalette(
     val opposite: Int,
     val ripple: Int,
 )
+
+/**
+ * Aplica a cor adaptativa de texto e a sombra de legibilidade: sobre fundo
+ * claro (conteúdo preto) a sombra é removida; sobre fundo escuro (conteúdo
+ * branco) uma sombra escura suave destaca o texto.
+ */
+fun TextView.applyAdaptiveColor(color: Int, palette: ContentPalette) {
+    setTextColor(color)
+    if (palette.isDarkContent) {
+        setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
+    } else {
+        setShadowLayer(5f, 0f, 2f, 0x99000000.toInt())
+    }
+}
 
 /**
  * Escolhe preto ou branco para o conteúdo do player a partir da luminância
