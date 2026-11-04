@@ -166,11 +166,16 @@ Marque cada subitem só com build verde + verificação em aparelho. `versionCod
   - [x] Fundo = capa da faixa atual borrada (mesmo helper do player), troca com crossfade
   - [x] Cores adaptativas (fase 21), começa na faixa atual, mantém todas as ações atuais da fila
   - [x] Transição de entrada/saída e botão voltar; TV com D-pad e blur leve
-- [ ] 23. Capas animadas
-  - [ ] Interface `AnimatedCoverProvider` com ao menos 1 provedor funcional + fallback estático
-  - [ ] Reprodução em loop, sem som, recortada na capa do player, sincronizada com play/pause
-  - [ ] Cache (vídeo + resultado positivo/negativo) e uso de dados controlado
-  - [ ] Interruptor em Aparência; desligado/oculto em TV fraca e com economia de dados/bateria
+- [x] 23. Capas animadas
+  - [x] Interface `AnimatedCoverProvider` com provedor funcional Apple Music/iTunes (sem credenciais) + fallback estático silencioso
+  - [x] Correspondência por título, artista, álbum e duração (±8 s), com prioridade para o título exato e arte quadrada
+  - [x] Reprodução em loop, sem som, recortada na capa do player, sincronizada com play/pause, fila, saída da tela e tela desligada
+  - [x] Player Media3 dedicado (720p), debounce de 600 ms, primeiro frame com crossfade e capa estática por baixo
+  - [x] Cache Room positivo (30 dias) / negativo (7 dias), invalidação em erro de reprodução, poda e migração não destrutiva 6 → 7
+  - [x] Cache de mídia HLS em `SimpleCache` LRU de 60 MB, separado do cache de áudio e dos downloads
+  - [x] Uso controlado: só Wi-Fi/não medido, sem Economia de dados, sem Economia de bateria e fora de aparelho de baixa memória
+  - [x] Interruptor em Configurações → Aparência; oculto e desligado no flavor TV
+  - [x] Strings novas em `values/`, `values-en/` e `values-es/`; testes JVM do matcher e do parser
 - [ ] 24. Personalização de áudio: espacial + fade cruzado
   - [ ] Configurações → Áudio
   - [ ] Áudio espacial: liga/desliga + intensidade, sem clipping, desligado para mono
@@ -189,6 +194,8 @@ Marque cada subitem só com build verde + verificação em aparelho. `versionCod
 - Fase 20 muda os textos retornados pelo YouTube (`hl`): qualquer parser que compare texto em português quebrará. Revisar `data/youtube`.
 - Fases 23 e 24 aumentam consumo de decodificadores/dados; testar em aparelho real e na TV 32 bits.
 - Provedores de capa animada são não oficiais e podem parar de funcionar; o app nunca pode depender deles.
+- Fase 23: o provedor Apple Music foi validado com o álbum `1713845538` (HLS público acessível); o parser exige que o `videoArtwork` pertença ao cabeçalho do álbum para não pegar arte de recomendação. A verificação física (celular e TV) fica com o usuário, pois o ambiente do agente não tem ADB nem aparelho.
+- O `build.yml` passou a rodar mobile, testes e TV em invocações separadas do Gradle; isso evita a corrida do KSP no mesmo `app/schemas/<versão>.json` quando uma versão nova do Room é exportada.
 
 ## Riscos conhecidos da 0.2.0
 - Atualização por cima só instala se a assinatura for a mesma. As APKs até a 0.2.0-dev.3 usam a chave de debug do runner; a keystore fixa entrou no 0.2.0-dev.4. Quem tem uma APK anterior ao dev.4 precisa **desinstalar e reinstalar uma vez**; isso apaga os dados locais, então salve um `Mystaccount.json` antes. Do dev.4 em diante as atualizações instalam por cima.
