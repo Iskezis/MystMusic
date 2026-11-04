@@ -1,12 +1,10 @@
 package com.iskezis.myst.ui.player
 
-import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import android.widget.TextView
 import androidx.annotation.StringRes
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
