@@ -36,15 +36,21 @@ jobs:
           else
             echo "::warning::MYST_KEYSTORE_B64 ausente; usando a chave de debug do runner. As atualizações exigirão reinstalação."
           fi
-      - name: Build mobile + testes
+      - name: Build mobile
         run: |
           if [ -f release.keystore ] && [ -n "$MYST_KEYSTORE_PASSWORD" ]; then
             echo "APK_VARIANT=release" >> "$GITHUB_ENV"
-            ./gradlew assembleMobileRelease testMobileDebugUnitTest --stacktrace --no-daemon --no-build-cache
+            ./gradlew assembleMobileRelease --stacktrace --no-daemon --no-build-cache
           else
             echo "APK_VARIANT=debug" >> "$GITHUB_ENV"
-            ./gradlew assembleMobileDebug testMobileDebugUnitTest --stacktrace --no-daemon --no-build-cache
+            ./gradlew assembleMobileDebug --stacktrace --no-daemon --no-build-cache
           fi
+      # O Room exporta o mesmo app/schemas/<versão>.json para todos os
+      # variants. Testes e mobile na mesma invocação podem rodar dois KSPs em
+      # paralelo e um ler o arquivo enquanto o outro o escreve ("Empty schema
+      # file"). Cada variant roda em uma invocação separada.
+      - name: Testes mobile
+        run: ./gradlew testMobileDebugUnitTest --stacktrace --no-daemon --no-build-cache
       # O Room exporta o mesmo app/schemas/<versão>.json para os dois
       # flavors. Invocações separadas (e sem cache de build) evitam que uma
       # variante leia o schema no meio da escrita da outra.
