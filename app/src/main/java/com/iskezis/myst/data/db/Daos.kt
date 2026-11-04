@@ -703,3 +703,18 @@ data class PlayEventHourStat(
     @ColumnInfo(name = "hour") val hour: Int,
     @ColumnInfo(name = "playedMs") val playedMs: Long,
 )
+
+@Dao
+interface AnimatedCoverDao {
+    @Query("SELECT * FROM animated_cover WHERE albumKey = :albumKey LIMIT 1")
+    suspend fun find(albumKey: String): AnimatedCoverEntity?
+
+    @Upsert
+    suspend fun upsert(entry: AnimatedCoverEntity)
+
+    @Query("DELETE FROM animated_cover WHERE albumKey = :albumKey")
+    suspend fun delete(albumKey: String)
+
+    @Query("DELETE FROM animated_cover WHERE fetchedAt < :before")
+    suspend fun deleteOlderThan(before: Long)
+}

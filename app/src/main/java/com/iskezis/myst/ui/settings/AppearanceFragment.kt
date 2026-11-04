@@ -75,6 +75,11 @@ class AppearanceFragment : Fragment() {
             }
         }
 
+        binding.appearanceAnimatedCoversSwitch.setOnCheckedChangeListener { _, checked ->
+            if (rendering) return@setOnCheckedChangeListener
+            viewModel.setAnimatedCovers(checked)
+        }
+
         viewModel.refresh()
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -102,6 +107,9 @@ class AppearanceFragment : Fragment() {
             )
             binding.appearanceAmoledRow.isVisible = showAmoled
         }
+
+        binding.appearanceAnimatedCoversRow.isVisible = state.animatedCoversAvailable
+        binding.appearanceAnimatedCoversSwitch.isChecked = state.animatedCoversEnabled
         rendering = false
     }
 

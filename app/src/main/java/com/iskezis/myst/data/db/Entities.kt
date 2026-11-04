@@ -333,3 +333,22 @@ data class PlayEventEntity(
     val completed: Boolean,
     val source: String,
 )
+
+/**
+ * Cache público da arte em movimento, sem vínculo com a conta Myst. A chave
+ * é por álbum porque várias faixas compartilham a mesma capa animada.
+ * `notFound` evita consultar o provedor de novo por 7 dias; um resultado
+ * positivo vale 30 dias e é revalidado quando o player falha.
+ */
+@Entity(
+    tableName = "animated_cover",
+    indices = [Index(value = ["fetchedAt"])],
+)
+data class AnimatedCoverEntity(
+    @PrimaryKey val albumKey: String,
+    val url: String,
+    val provider: String,
+    val mime: String,
+    val fetchedAt: Long,
+    val notFound: Boolean,
+)

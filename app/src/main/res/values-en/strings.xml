@@ -297,6 +297,8 @@
     <string name="appearance_theme_dark_desc">Dark background with light text</string>
     <string name="appearance_amoled">AMOLED black</string>
     <string name="appearance_amoled_desc">#000000 background and near-black surfaces</string>
+    <string name="appearance_animated_covers">Animated covers</string>
+    <string name="appearance_animated_covers_desc">Shows short looping videos in the player when available. Uses more data; off in battery saver or on mobile data.</string>
     <string name="appearance_device_note">The theme is saved on this device and does not change your Myst account.</string>
 
     <string name="discord_warning_title">Discord Rich Presence</string>

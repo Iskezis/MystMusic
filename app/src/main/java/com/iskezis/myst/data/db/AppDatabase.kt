@@ -22,8 +22,9 @@ import com.iskezis.myst.BuildConfig
         PairTombstoneEntity::class,
         PlayEventEntity::class,
         DownloadEntity::class,
+        AnimatedCoverEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -35,6 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun pairTombstoneDao(): PairTombstoneDao
     abstract fun playEventDao(): PlayEventDao
     abstract fun downloadDao(): DownloadDao
+    abstract fun animatedCoverDao(): AnimatedCoverDao
 
     companion object {
         @Volatile
@@ -70,6 +72,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_3_4,
                     MIGRATION_4_5,
                     MIGRATION_5_6,
+                    MIGRATION_6_7,
                 )
                 .build()
         }
@@ -409,6 +412,32 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS `index_downloads_userId_addedAt` " +
                         "ON `downloads` (`userId`, `addedAt`)",
+                )
+            }
+        }
+
+        /**
+         * 0.2.5 Beta 6: cache da arte em movimento. Tabela nova, sem chave
+         * estrangeira; nenhuma linha existente é alterada.
+         */
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `animated_cover` (
+                        `albumKey` TEXT NOT NULL,
+                        `url` TEXT NOT NULL,
+                        `provider` TEXT NOT NULL,
+                        `mime` TEXT NOT NULL,
+                        `fetchedAt` INTEGER NOT NULL,
+                        `notFound` INTEGER NOT NULL,
+                        PRIMARY KEY(`albumKey`)
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_animated_cover_fetchedAt` " +
+                        "ON `animated_cover` (`fetchedAt`)",
                 )
             }
         }

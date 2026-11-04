@@ -297,6 +297,8 @@
     <string name="appearance_theme_dark_desc">Fondo oscuro con texto claro</string>
     <string name="appearance_amoled">Negro AMOLED</string>
     <string name="appearance_amoled_desc">Fondo #000000 y superficies casi negras</string>
+    <string name="appearance_animated_covers">Portadas animadas</string>
+    <string name="appearance_animated_covers_desc">Muestra videos cortos en bucle en el reproductor cuando están disponibles. Usa más datos; se desactiva con el ahorro de batería o en datos móviles.</string>
     <string name="appearance_device_note">El tema se guarda en este dispositivo y no cambia tu cuenta Myst.</string>
 
     <string name="discord_warning_title">Discord Rich Presence</string>

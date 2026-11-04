@@ -5,10 +5,12 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.app.Activity
+import android.content.BroadcastReceiver
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -41,8 +43,10 @@ import com.google.android.material.button.MaterialButton
 import com.iskezis.myst.BuildConfig
 import com.iskezis.myst.MystApp
 import com.iskezis.myst.R
+import com.iskezis.myst.data.animatedcover.AnimatedCoverPolicy
 import com.iskezis.myst.data.youtube.Track
 import com.iskezis.myst.databinding.FragmentPlayerBinding
+import com.iskezis.myst.player.AnimatedCoverPlayer
 import com.iskezis.myst.player.PlayerController
 import com.iskezis.myst.player.PlayerState
 import com.iskezis.myst.ui.auth.YouTubeLoginActivity
@@ -68,6 +72,7 @@ private const val PALETTE_TRANSITION_MS = 250L
 private const val PALETTE_SCROLL_DEBOUNCE_MS = 90L
 private const val DISABLED_ALPHA = 0.38f
 private const val PLACEHOLDER_BACKDROP = "placeholder"
+private const val ANIMATED_COVER_DEBOUNCE_MS = 600L
 
 class PlayerFragment : Fragment() {
 
@@ -77,6 +82,31 @@ class PlayerFragment : Fragment() {
         get() = (activity?.application as? MystApp)?.playerController
     private var latest: PlayerState = PlayerState()
     private var seeking = false
+    private var animatedCoverPlayer: AnimatedCoverPlayer? = null
+    private var animatedCoverJob: Job? = null
+    private var animatedTrackId: String? = null
+    private var animatedAlbumKey: String? = null
+    private var animatedLookupDone = false
+    private var animatedHasCover = false
+    private var queueOpen = false
+    private var screenOff = false
+    private var screenReceiverRegistered = false
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                Intent.ACTION_SCREEN_OFF -> {
+                    screenOff = true
+                    animatedCoverPlayer?.setScreenVisible(false)
+                }
+
+                Intent.ACTION_SCREEN_ON -> {
+                    screenOff = false
+                    animatedCoverPlayer?.setScreenVisible(true)
+                    animatedCoverPlayer?.setPlaying(latest.isPlaying && !queueOpen)
+                }
+            }
+        }
+    }
     private var loadedArtworkFor: String? = null
     private var failedArtworkFor: String? = null
     private var backdropJob: Job? = null
@@ -167,6 +197,8 @@ class PlayerFragment : Fragment() {
             QueueFragment.RESULT_CLOSED,
             viewLifecycleOwner,
         ) { _, _ ->
+            queueOpen = false
+            updateAnimatedCover(latest)
             val current = _binding
             if (current != null) {
                 current.playerScroll.importantForAccessibility =
@@ -199,6 +231,7 @@ class PlayerFragment : Fragment() {
         ).forEach { it.pressScale() }
         setupTvFocus()
         setupAdaptiveColors()
+        setupAnimatedCover()
         animateCoverEntrance()
         binding.playerSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -373,8 +406,151 @@ class PlayerFragment : Fragment() {
             lastLoggedPlaying = state.isPlaying
             AppLog.i(AppLog.TAG_PLAYER, "Player isPlaying=${state.isPlaying}")
         }
+        updateAnimatedCover(state)
         updateTvFocusOrder()
         applyInitialFocus()
+    }
+
+    private fun setupAnimatedCover() {
+        val context = context ?: return
+        if (!AnimatedCoverPolicy.isSupported(context)) return
+        animatedCoverPlayer = runCatching {
+            AnimatedCoverPlayer(context, binding.playerAnimatedCover) { failedAlbumKey ->
+                onAnimatedCoverError(failedAlbumKey)
+            }
+        }.onFailure {
+            AppLog.failure(AppLog.TAG_PLAYER, "Não foi possível criar o player de capas animadas", it)
+        }.getOrNull()
+    }
+
+    /**
+     * Só busca o vídeo quando a tela está ativa, a música está tocando e há
+     * Wi-Fi/bateria normal. Ao trocar de faixa, espera 600 ms para não baixar
+     * capas de músicas puladas rapidamente.
+     */
+    private fun updateAnimatedCover(state: PlayerState) {
+        val current = _binding ?: return
+        val player = animatedCoverPlayer ?: return
+        val app = activity?.application as? MystApp ?: return
+        val track = state.track
+        if (track == null ||
+            state.error ||
+            !AnimatedCoverPolicy.canResolve(current.root.context, app.animatedCoverPreferences)
+        ) {
+            resetAnimatedCover()
+            return
+        }
+
+        if (track.videoId != animatedTrackId) {
+            resetAnimatedCover()
+            animatedTrackId = track.videoId
+        }
+        player.setPlaying(state.isPlaying && !queueOpen && !screenOff)
+        if (!state.isPlaying || queueOpen || screenOff || animatedLookupDone) return
+
+        animatedLookupDone = true
+        val videoId = track.videoId
+        animatedCoverJob?.cancel()
+        animatedCoverJob = viewLifecycleOwner.lifecycleScope.launch {
+            delay(ANIMATED_COVER_DEBOUNCE_MS)
+            if (!isAdded || _binding == null || animatedTrackId != videoId) return@launch
+            val resolved = try {
+                app.animatedCovers.resolve(track)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_PLAYER, "Falha buscando capa animada", t)
+                null
+            }
+            if (resolved == null ||
+                !isAdded ||
+                _binding == null ||
+                animatedTrackId != videoId
+            ) {
+                return@launch
+            }
+            animatedAlbumKey = resolved.albumKey
+            animatedHasCover = true
+            player.load(
+                resolved.cover,
+                resolved.albumKey,
+                latest.isPlaying && !queueOpen && !screenOff,
+            )
+        }
+    }
+
+    private fun resetAnimatedCover() {
+        animatedCoverJob?.cancel()
+        animatedCoverJob = null
+        animatedTrackId = null
+        animatedAlbumKey = null
+        animatedLookupDone = false
+        animatedHasCover = false
+        animatedCoverPlayer?.clear()
+    }
+
+    private fun onAnimatedCoverError(albumKey: String?) {
+        if (albumKey != null && albumKey == animatedAlbumKey) {
+            animatedHasCover = false
+            animatedLookupDone = true
+            animatedAlbumKey = null
+        }
+        if (albumKey == null) return
+        val app = activity?.application as? MystApp ?: return
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                app.animatedCovers.invalidate(albumKey)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (t: Throwable) {
+                AppLog.failure(AppLog.TAG_PLAYER, "Falha invalidando capa animada", t)
+            }
+        }
+    }
+
+    private fun registerScreenReceiver() {
+        if (screenReceiverRegistered || animatedCoverPlayer == null) return
+        val context = context ?: return
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
+        runCatching {
+            ContextCompat.registerReceiver(
+                context,
+                screenReceiver,
+                filter,
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+            screenReceiverRegistered = true
+        }.onFailure {
+            AppLog.w(
+                AppLog.TAG_UI,
+                "Não foi possível observar a tela para pausar capas animadas: " +
+                    AppLog.describe(it),
+            )
+        }
+    }
+
+    private fun unregisterScreenReceiver() {
+        if (!screenReceiverRegistered) return
+        screenReceiverRegistered = false
+        runCatching { requireContext().unregisterReceiver(screenReceiver) }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        screenOff = false
+        registerScreenReceiver()
+        animatedCoverPlayer?.setScreenVisible(true)
+        if (!animatedHasCover) animatedLookupDone = false
+        updateAnimatedCover(latest)
+    }
+
+    override fun onStop() {
+        animatedCoverPlayer?.setScreenVisible(false)
+        unregisterScreenReceiver()
+        super.onStop()
     }
 
     private fun isTv(): Boolean = BuildConfig.FLAVOR == "tv"
@@ -1113,7 +1289,10 @@ class PlayerFragment : Fragment() {
                 .setReorderingAllowed(true)
                 .add(R.id.queueHost, QueueFragment.newInstance(), QueueFragment.TAG)
                 .commitNow()
+            queueOpen = true
+            animatedCoverPlayer?.setPlaying(false)
         } catch (t: Throwable) {
+            queueOpen = false
             current.playerScroll.importantForAccessibility =
                 View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
             AppLog.failure(AppLog.TAG_UI, "Falha abrindo a fila em tela cheia", t)
@@ -1173,6 +1352,15 @@ class PlayerFragment : Fragment() {
         seekThumb = null
         headerSubtitle = null
         lastPlayEnabled = null
+        animatedCoverJob?.cancel()
+        animatedCoverJob = null
+        unregisterScreenReceiver()
+        animatedCoverPlayer?.release()
+        animatedCoverPlayer = null
+        animatedTrackId = null
+        animatedAlbumKey = null
+        animatedHasCover = false
+        animatedLookupDone = false
         super.onDestroyView()
         _binding = null
     }

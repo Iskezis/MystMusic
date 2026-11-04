@@ -9,6 +9,9 @@ import com.iskezis.myst.data.account.AccountRepository
 import com.iskezis.myst.data.account.MystAccountFileRepository
 import com.iskezis.myst.data.account.SessionManager
 import com.iskezis.myst.data.account.TvEphemeralData
+import com.iskezis.myst.data.animatedcover.AnimatedCoverMediaCache
+import com.iskezis.myst.data.animatedcover.AnimatedCoverRepository
+import com.iskezis.myst.data.animatedcover.AppleMusicMotionProvider
 import com.iskezis.myst.data.db.AppDatabase
 import com.iskezis.myst.data.db.PlaylistRepository
 import com.iskezis.myst.data.discord.DiscordPresenceManager
@@ -21,6 +24,7 @@ import com.iskezis.myst.data.downloads.StoragePreferences
 import com.iskezis.myst.data.pairing.PairedSyncManager
 import com.iskezis.myst.data.pairing.PhonePairingSession
 import com.iskezis.myst.data.settings.AppearancePreferences
+import com.iskezis.myst.data.settings.AnimatedCoverPreferences
 import com.iskezis.myst.data.settings.LanguagePreferences
 import com.iskezis.myst.data.settings.SearchHistoryStore
 import com.iskezis.myst.data.recommendations.RecommendationRepository
@@ -66,6 +70,15 @@ class MystApp : Application(), ImageLoaderFactory {
     val database: AppDatabase by lazy { AppDatabase.get(this) }
     val session: SessionManager by lazy { SessionManager(this) }
     val appearance: AppearancePreferences by lazy { AppearancePreferences(this) }
+    val animatedCoverPreferences: AnimatedCoverPreferences by lazy {
+        AnimatedCoverPreferences(this)
+    }
+    val animatedCovers: AnimatedCoverRepository by lazy {
+        AnimatedCoverRepository(
+            database.animatedCoverDao(),
+            listOf(AppleMusicMotionProvider()),
+        )
+    }
     val language: LanguagePreferences by lazy {
         LanguagePreferences(this) {
             // Os títulos e metadados devolvidos pelo InnerTube mudam com hl/gl.
@@ -149,6 +162,9 @@ class MystApp : Application(), ImageLoaderFactory {
                 audioCache.trim()
             }.onFailure {
                 AppLog.failure(AppLog.TAG_PLAYER, "Falha preparando a poda do cache", it)
+            }
+            if (BuildConfig.FLAVOR != "tv") {
+                AnimatedCoverMediaCache.get(this@MystApp)
             }
         }
         if (BuildConfig.FLAVOR == "tv") {

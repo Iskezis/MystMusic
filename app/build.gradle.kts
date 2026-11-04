@@ -54,8 +54,8 @@ android {
         applicationId = "com.iskezis.myst"
         minSdk = 21
         targetSdk = 34
-        versionCode = 49
-        versionName = "0.2.5 Beta 5"
+        versionCode = 50
+        versionName = "0.2.5 Beta 6"
         multiDexEnabled = true
         vectorDrawables.useSupportLibrary = true
 
@@ -164,6 +164,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.media3.exoplayer)
+    implementation(libs.media3.exoplayer.hls)
     implementation(libs.media3.datasource.okhttp)
     implementation(libs.media3.session)
     implementation(libs.media3.ui)

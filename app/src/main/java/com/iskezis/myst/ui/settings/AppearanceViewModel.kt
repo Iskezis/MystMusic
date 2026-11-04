@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.iskezis.myst.MystApp
+import com.iskezis.myst.data.animatedcover.AnimatedCoverPolicy
 import com.iskezis.myst.data.settings.ThemeMode
 import com.iskezis.myst.util.AppLog
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +18,8 @@ data class AppearanceState(
     val mode: ThemeMode = ThemeMode.SYSTEM,
     val amoled: Boolean = false,
     val darkEffective: Boolean = true,
+    val animatedCoversAvailable: Boolean = false,
+    val animatedCoversEnabled: Boolean = true,
 )
 
 /**
@@ -64,10 +67,21 @@ class AppearanceViewModel(private val app: MystApp) : ViewModel() {
         return true
     }
 
+    fun setAnimatedCovers(enabled: Boolean): Boolean {
+        if (!AnimatedCoverPolicy.isSupported(app)) return false
+        if (app.animatedCoverPreferences.enabled == enabled) return false
+        app.animatedCoverPreferences.enabled = enabled
+        _state.value = readState()
+        AppLog.i(AppLog.TAG_UI, "Aparência: capas animadas=$enabled")
+        return true
+    }
+
     private fun readState(): AppearanceState = AppearanceState(
         mode = app.appearance.themeMode,
         amoled = app.appearance.amoled,
         darkEffective = app.appearance.isDarkEffective(app),
+        animatedCoversAvailable = AnimatedCoverPolicy.isSupported(app),
+        animatedCoversEnabled = app.animatedCoverPreferences.enabled,
     )
 
     companion object {
