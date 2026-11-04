@@ -22,7 +22,7 @@ class AppleMusicMotionParserTest {
         """.trimIndent()
         assertEquals(
             "https://mvod.example/apple/square.m3u8",
-            AppleMusicMotionParser.extractMotionUrl(html),
+            AppleMusicMotionParser.extractMotionUrl(html, 1L),
         )
     }
 

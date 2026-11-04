@@ -70,7 +70,7 @@ class AnimatedCoverPlayer(
 
     private val listener = object : Player.Listener {
         override fun onRenderedFirstFrame() {
-            if (released || firstFrameShown) return
+            if (released || firstFrameShown || currentUrl == null) return
             firstFrameShown = true
             player.playWhenReady = playRequested && screenVisible
             show()

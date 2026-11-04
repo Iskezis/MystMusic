@@ -1,5 +1,6 @@
 package com.iskezis.myst.data.animatedcover
 
+import android.os.SystemClock
 import com.iskezis.myst.util.AppLocale
 import java.io.IOException
 import java.util.Locale
@@ -31,7 +32,7 @@ class AppleMusicMotionProvider : AnimatedCoverProvider {
     private val http = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(6, TimeUnit.SECONDS)
-        .callTimeout(7, TimeUnit.SECONDS)
+        .callTimeout(6, TimeUnit.SECONDS)
         .followRedirects(true)
         .followSslRedirects(true)
         .build()
@@ -41,16 +42,17 @@ class AppleMusicMotionProvider : AnimatedCoverProvider {
     override suspend fun find(track: TrackKey): AnimatedCover? = withContext(Dispatchers.IO) {
         val preferred = storefront()
         val storefronts = if (preferred == "us") listOf("us") else listOf(preferred, "us")
+        val deadline = SystemClock.elapsedRealtime() + PROVIDER_BUDGET_MS
         var lastError: Throwable? = null
 
         for (storefront in storefronts) {
             try {
-                val candidates = search(track, storefront)
+                val candidates = search(track, storefront, deadline)
                 val match = AnimatedCoverMatcher.bestMatch(track, candidates)
                 if (match == null) continue
                 val albumId = match.albumId ?: continue
-                val html = get(albumPageUrl(storefront, albumId))
-                val url = AppleMusicMotionParser.extractMotionUrl(html) ?: continue
+                val html = get(albumPageUrl(storefront, albumId), deadline)
+                val url = AppleMusicMotionParser.extractMotionUrl(html, albumId) ?: continue
                 val mime = if (url.contains(".m3u8", ignoreCase = true)) "hls" else "mp4"
                 return@withContext AnimatedCover(
                     url = url,
@@ -69,8 +71,12 @@ class AppleMusicMotionProvider : AnimatedCoverProvider {
         null
     }
 
-    private fun search(track: TrackKey, storefront: String): List<AnimatedCoverCandidate> {
-        val term = listOf(track.artist, track.title, track.album)
+    private fun search(
+        track: TrackKey,
+        storefront: String,
+        deadline: Long,
+    ): List<AnimatedCoverCandidate> {
+        val term = listOf(track.artist, track.title)
             .filter { it.isNotBlank() }
             .joinToString(" ")
         val url = "https://itunes.apple.com/search".toHttpUrl().newBuilder()
@@ -80,7 +86,7 @@ class AppleMusicMotionProvider : AnimatedCoverProvider {
             .addQueryParameter("country", storefront)
             .addQueryParameter("limit", "25")
             .build()
-        val root = json.parseToJsonElement(get(url.toString())).jsonObject
+        val root = json.parseToJsonElement(get(url.toString(), deadline)).jsonObject
         return root["results"]?.jsonArray?.mapNotNull { element ->
             val item = element as? JsonObject ?: return@mapNotNull null
             AnimatedCoverCandidate(
@@ -93,14 +99,20 @@ class AppleMusicMotionProvider : AnimatedCoverProvider {
         }.orEmpty()
     }
 
-    private fun get(url: String): String {
+    private fun get(url: String, deadline: Long): String {
+        val remaining = deadline - SystemClock.elapsedRealtime()
+        if (remaining <= 0L) {
+            throw IOException("Provedor $PROVIDER_ID excedeu o tempo limite")
+        }
         val request = Request.Builder()
             .url(url)
             .header("Accept", "application/json, text/html;q=0.9, */*;q=0.8")
             .header("Accept-Language", "en-US,en;q=0.8")
             .header("User-Agent", USER_AGENT)
             .build()
-        http.newCall(request).execute().use { response ->
+        val call = http.newCall(request)
+        call.timeout().timeout(remaining, TimeUnit.MILLISECONDS)
+        call.execute().use { response ->
             if (!response.isSuccessful) {
                 throw IOException("Provedor $PROVIDER_ID respondeu HTTP ${response.code}")
             }
@@ -125,6 +137,7 @@ class AppleMusicMotionProvider : AnimatedCoverProvider {
 
     companion object {
         const val PROVIDER_ID = "apple-music"
+        private const val PROVIDER_BUDGET_MS = 5_500L
         private const val USER_AGENT =
             "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 " +
                 "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"

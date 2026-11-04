@@ -26,6 +26,29 @@ class AnimatedCoverMatcherTest {
     }
 
     @Test
+    fun prefersExactTitleWhenAlbumIsMissing() {
+        val target = track.copy(album = "")
+        val versioned = AnimatedCoverCandidate(
+            title = "Shake It Off (Taylor's Version)",
+            artist = "Taylor Swift",
+            album = "1989 (Taylor's Version)",
+            durationMs = 219_209L,
+            albumId = 1713845538L,
+        )
+        val original = AnimatedCoverCandidate(
+            title = "Shake It Off",
+            artist = "Taylor Swift",
+            album = "1989",
+            durationMs = 219_209L,
+            albumId = 1440935467L,
+        )
+        assertEquals(
+            original,
+            AnimatedCoverMatcher.bestMatch(target, listOf(versioned, original)),
+        )
+    }
+
+    @Test
     fun rejectsDifferentDuration() {
         val candidate = AnimatedCoverCandidate(
             title = "Shake It Off",

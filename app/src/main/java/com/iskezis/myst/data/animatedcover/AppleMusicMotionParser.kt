@@ -27,7 +27,7 @@ object AppleMusicMotionParser {
         "motionTallVideo3x4",
     )
 
-    fun extractMotionUrl(html: String): String? {
+    fun extractMotionUrl(html: String, albumId: Long? = null): String? {
         val script = serializedData.find(html)?.groupValues?.getOrNull(1) ?: return null
         val root = runCatching { Json.parseToJsonElement(script) }.getOrNull() ?: return null
         val stack = ArrayDeque<JsonElement>()
@@ -36,8 +36,8 @@ object AppleMusicMotionParser {
             when (val element = stack.removeLast()) {
                 is JsonObject -> {
                     val artwork = element["videoArtwork"] as? JsonObject
-                    artwork?.let { found ->
-                        motionUrlFromArtwork(found)?.let { return it }
+                    if (artwork != null && belongsToAlbum(element, albumId)) {
+                        motionUrlFromArtwork(artwork)?.let { return it }
                     }
                     element.values.forEach(stack::addLast)
                 }
@@ -47,6 +47,12 @@ object AppleMusicMotionParser {
             }
         }
         return null
+    }
+
+    private fun belongsToAlbum(element: JsonObject, albumId: Long?): Boolean {
+        if (albumId == null) return true
+        val id = (element["id"] as? JsonPrimitive)?.contentOrNull ?: return false
+        return id.contains(albumId.toString())
     }
 
     private fun motionUrlFromArtwork(artwork: JsonObject): String? {

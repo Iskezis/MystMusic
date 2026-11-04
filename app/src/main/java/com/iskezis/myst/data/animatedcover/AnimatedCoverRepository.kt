@@ -81,11 +81,21 @@ class AnimatedCoverRepository(
             return ResolvedAnimatedCover(key, found)
         }
 
-        if (hadError) {
-            // Mantém uma URL antiga quando a consulta falhou; se ela tiver
-            // expirado, o erro de reprodução invalida a linha e tenta de novo.
-            return cached?.takeIf { !it.notFound }?.toResolved(key)
+        // Uma URL positiva vencida ainda pode funcionar (ou o formato da
+        // página mudou). Mantém a capa e renova a validade; se o vídeo estiver
+        // realmente morto, o erro de reprodução invalida e consulta de novo.
+        val stale = cached?.takeIf { !it.notFound && it.url.isNotBlank() }
+        if (stale != null) {
+            runCatching { dao.upsert(stale.copy(fetchedAt = now)) }.onFailure {
+                AppLog.w(
+                    AppLog.TAG_DB,
+                    "Capa animada: falha renovando o cache: ${AppLog.describe(it)}",
+                )
+            }
+            return stale.toResolved(key)
         }
+
+        if (hadError) return null
 
         runCatching {
             dao.upsert(

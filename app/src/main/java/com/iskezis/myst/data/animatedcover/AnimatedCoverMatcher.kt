@@ -32,6 +32,7 @@ object AnimatedCoverMatcher {
     fun bestMatch(track: TrackKey, candidates: List<AnimatedCoverCandidate>): AnimatedCoverCandidate? {
         val title = normalizeTitle(track.title)
         if (title.isBlank()) return null
+        val fullTitle = normalize(track.title)
         val artist = primaryArtist(track.artist)
         val album = normalize(track.album)
 
@@ -60,6 +61,7 @@ object AnimatedCoverMatcher {
 
             var score = 0
             score += if (title == candidateTitle) 8 else 4
+            if (fullTitle == normalize(candidate.title.orEmpty())) score += 4
             score += if (artist.isNotBlank() && artist == candidateArtist) 5 else 2
             if (album.isNotBlank()) {
                 score += if (album == candidateAlbum) 3 else 1
