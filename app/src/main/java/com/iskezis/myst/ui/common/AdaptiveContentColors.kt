@@ -207,6 +207,46 @@ object AdaptiveContentColors {
     fun withAlpha(color: Int, alpha: Int): Int =
         (color and 0x00FFFFFF) or (alpha.coerceIn(0, 255) shl 24)
 
+    /**
+     * Interpola duas paletas para a transição suave de 250–300 ms entre
+     * faixas. As cores alfa (texto secundário, trilho e ripple) também são
+     * interpoladas, sem mudar a decisão preto/branco no meio da animação.
+     */
+    fun blend(from: ContentPalette, to: ContentPalette, fraction: Float): ContentPalette {
+        val safeFraction = fraction.coerceIn(0f, 1f)
+        if (safeFraction <= 0f) return from
+        if (safeFraction >= 1f) return to
+        return ContentPalette(
+            primary = lerpColor(from.primary, to.primary, safeFraction),
+            secondary = lerpColor(from.secondary, to.secondary, safeFraction),
+            isDarkContent = if (safeFraction < 0.5f) from.isDarkContent else to.isDarkContent,
+            track = lerpColor(from.track, to.track, safeFraction),
+            disabled = lerpColor(from.disabled, to.disabled, safeFraction),
+            error = lerpColor(from.error, to.error, safeFraction),
+            opposite = lerpColor(from.opposite, to.opposite, safeFraction),
+            ripple = lerpColor(from.ripple, to.ripple, safeFraction),
+        )
+    }
+
+    private fun lerpColor(start: Int, end: Int, fraction: Float): Int {
+        val startAlpha = start ushr 24 and 0xFF
+        val startRed = start ushr 16 and 0xFF
+        val startGreen = start ushr 8 and 0xFF
+        val startBlue = start and 0xFF
+        val endAlpha = end ushr 24 and 0xFF
+        val endRed = end ushr 16 and 0xFF
+        val endGreen = end ushr 8 and 0xFF
+        val endBlue = end and 0xFF
+        val alpha = (startAlpha + (endAlpha - startAlpha) * fraction).roundToInt()
+        val red = (startRed + (endRed - startRed) * fraction).roundToInt()
+        val green = (startGreen + (endGreen - startGreen) * fraction).roundToInt()
+        val blue = (startBlue + (endBlue - startBlue) * fraction).roundToInt()
+        return (alpha.coerceIn(0, 255) shl 24) or
+            (red.coerceIn(0, 255) shl 16) or
+            (green.coerceIn(0, 255) shl 8) or
+            blue.coerceIn(0, 255)
+    }
+
     private fun linear(channel: Double): Double =
         if (channel <= 0.04045) {
             channel / 12.92

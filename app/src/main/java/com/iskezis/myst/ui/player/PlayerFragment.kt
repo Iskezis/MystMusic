@@ -16,7 +16,6 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.TransitionDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -49,6 +48,7 @@ import com.iskezis.myst.player.PlayerState
 import com.iskezis.myst.ui.auth.YouTubeLoginActivity
 import com.iskezis.myst.ui.browse.BrowseNavigation
 import com.iskezis.myst.ui.common.AdaptiveContentColors
+import com.iskezis.myst.ui.common.BackdropCache
 import com.iskezis.myst.ui.common.ContentPalette
 import com.iskezis.myst.util.AppLog
 import com.iskezis.myst.util.BlurUtils
@@ -162,8 +162,19 @@ class PlayerFragment : Fragment() {
         binding.playerNext.setOnClickListener { controller?.next() }
         binding.playerPrevious.setOnClickListener { controller?.previous() }
         binding.playerRepeat.setOnClickListener { controller?.cycleRepeat() }
-        binding.playerQueue.setOnClickListener {
-            QueueSheet.newInstance().show(childFragmentManager, QueueSheet.TAG)
+        binding.playerQueue.setOnClickListener { openQueue() }
+        childFragmentManager.setFragmentResultListener(
+            QueueFragment.RESULT_CLOSED,
+            viewLifecycleOwner,
+        ) { _, _ ->
+            val current = _binding
+            if (current != null) {
+                current.playerScroll.importantForAccessibility =
+                    View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
+                if (isTv()) {
+                    current.playerQueue.requestFocus()
+                }
+            }
         }
         binding.playerRetry.setOnClickListener { retry() }
         binding.playerYouTubeLogin.setOnClickListener { openYouTubeLogin() }
@@ -287,7 +298,7 @@ class PlayerFragment : Fragment() {
                         val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
                         val current = _binding
                         if (bitmap != null && current != null && view != null) {
-                            applyBackdrop(bitmap, artwork)
+                            applyBackdrop(bitmap, artwork, track?.videoId)
                         } else if (current != null) {
                             loadedArtworkFor = null
                             failedArtworkFor = artwork
@@ -501,7 +512,7 @@ class PlayerFragment : Fragment() {
         backdropJob?.cancel()
         backdropJob = null
         current.playerCover.setImageResource(R.drawable.bg_cover_placeholder)
-        current.playerBackdrop.setImageResource(R.drawable.bg_cover_placeholder)
+        current.playerBackdrop.showPlaceholder()
         measurePlaceholderPalette()
     }
 
@@ -566,19 +577,22 @@ class PlayerFragment : Fragment() {
         }
     }
 
-    private fun applyBackdrop(source: Bitmap, key: String) {
+    private fun applyBackdrop(source: Bitmap, key: String, videoId: String?) {
         if (view == null || !isAdded) return
         val current = _binding ?: return
         backdropKey = key
         val root = current.playerRoot
         if (root.width <= 0 || root.height <= 0) {
-            root.post { if (view != null && backdropKey == key) applyBackdrop(source, key) }
+            root.post {
+                if (view != null && backdropKey == key) applyBackdrop(source, key, videoId)
+            }
             return
         }
         val width = root.width
         val height = root.height
         val zones = computeZones()
         val previous = previousPalettes()
+        val cached = BackdropCache.get(videoId, key)
         // O pedido da capa invalida a medição do placeholder; ela não pode
         // voltar depois e sobrescrever a paleta/fundo reais.
         placeholderJob?.cancel()
@@ -587,7 +601,9 @@ class PlayerFragment : Fragment() {
         backdropJob = viewLifecycleOwner.lifecycleScope.launch {
             val result = withContext(Dispatchers.Default) {
                 try {
-                    val blurred = BlurUtils.blur(source)
+                    val blurred = cached ?: BlurUtils.blur(source).also { blurred ->
+                        BackdropCache.put(videoId, key, blurred)
+                    }
                     val sample = AdaptiveContentColors.screenSample(blurred, width, height)
                     PlayerSample(
                         blurred = blurred,
@@ -608,25 +624,10 @@ class PlayerFragment : Fragment() {
             backdropSample?.recycle()
             backdropSample = result.sample
             val blurred = result.blurred ?: return@launch
-            val hostContext = context ?: return@launch
-            val drawable = BitmapDrawable(resources, blurred)
-            drawable.setFilterBitmap(true)
-            val previousDrawable = active.playerBackdrop.drawable
-            if (previousDrawable != null &&
-                com.iskezis.myst.util.UiAnimations.enabled(hostContext)
-            ) {
-                val transition = TransitionDrawable(arrayOf(previousDrawable, drawable))
-                transition.isCrossFadeEnabled = true
-                active.playerBackdrop.setImageDrawable(transition)
-                transition.startTransition(PALETTE_TRANSITION_MS.toInt())
-                active.playerBackdrop.postDelayed({
-                    if (isAdded && active.playerBackdrop.drawable === transition) {
-                        active.playerBackdrop.setImageDrawable(drawable)
-                    }
-                }, PALETTE_TRANSITION_MS + 40L)
-            } else {
-                active.playerBackdrop.setImageDrawable(drawable)
-            }
+            active.playerBackdrop.showBitmap(
+                blurred,
+                PALETTE_TRANSITION_MS.toInt(),
+            )
             AppLog.d(
                 AppLog.TAG_UI,
                 "Fundo do player aplicado: ${blurred.width}x${blurred.height} para $key",
@@ -1093,6 +1094,30 @@ class PlayerFragment : Fragment() {
         } catch (t: Throwable) {
             AppLog.failure(AppLog.TAG_PLAYER, "Falha copiando diagnóstico", t)
             Toast.makeText(requireContext(), R.string.error_generic, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun openQueue() {
+        val current = _binding ?: return
+        if (!isAdded) return
+        if (childFragmentManager.isStateSaved) {
+            AppLog.w(AppLog.TAG_UI, "Fila não aberta: estado do fragmento já salvo")
+            return
+        }
+        if (childFragmentManager.findFragmentByTag(QueueFragment.TAG) != null) return
+        current.playerQueue.clearFocus()
+        current.playerScroll.importantForAccessibility =
+            View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+        try {
+            childFragmentManager.beginTransaction()
+                .setReorderingAllowed(true)
+                .add(R.id.queueHost, QueueFragment.newInstance(), QueueFragment.TAG)
+                .commitNow()
+        } catch (t: Throwable) {
+            current.playerScroll.importantForAccessibility =
+                View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
+            AppLog.failure(AppLog.TAG_UI, "Falha abrindo a fila em tela cheia", t)
+            Toast.makeText(requireContext(), R.string.player_open_error, Toast.LENGTH_LONG).show()
         }
     }
 

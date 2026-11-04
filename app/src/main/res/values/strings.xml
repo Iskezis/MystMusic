@@ -344,9 +344,10 @@
     <string name="player_open_error">Não foi possível abrir o player. Tente novamente.</string>
     <string name="player_queue">Fila</string>
     <string name="player_queue_title">Fila de reprodução</string>
-    <string name="player_queue_empty">A fila está vazia</string>
+    <string name="player_queue_empty">Nada na fila</string>
     <string name="player_queue_empty_hint">Toque em uma música para começar.</string>
     <string name="player_queue_error">Não foi possível carregar a fila.</string>
+    <string name="player_queue_loading">Carregando fila…</string>
     <string name="player_queue_current">Tocando</string>
     <string name="player_queue_next">A seguir</string>
     <string name="player_queue_close">Fechar fila</string>

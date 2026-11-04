@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:background="?attr/mystBackground">
 
-    <ImageView
+    <com.iskezis.myst.ui.common.CoverBackdropView
         android:id="@+id/playerBackdrop"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -380,4 +380,9 @@
                 android:visibility="gone" />
         </LinearLayout>
     </ScrollView>
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/queueHost"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 </FrameLayout>

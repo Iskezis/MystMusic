@@ -19,12 +19,25 @@ object BlurUtils {
     private const val RADIUS = 12
     private const val PASSES = 3
 
-    fun blur(source: Bitmap): Bitmap {
+    /**
+     * [maxSize], [radius] e [passes] permitem um blur mais leve na TV 32 bits
+     * sem criar um segundo pipeline. O player usa os padrões; a fila usa uma
+     * amostra menor quando precisa gerar o fundo sem cache.
+     */
+    fun blur(
+        source: Bitmap,
+        maxSize: Int = MAX_SIZE,
+        radius: Int = RADIUS,
+        passes: Int = PASSES,
+    ): Bitmap {
+        val safeMaxSize = maxSize.coerceIn(8, 512)
+        val safeRadius = radius.coerceIn(1, 32)
+        val safePasses = passes.coerceIn(1, 5)
         val width = source.width.coerceAtLeast(1)
         val height = source.height.coerceAtLeast(1)
-        val scale = MAX_SIZE.toFloat() / maxOf(width, height)
-        val targetWidth = (width * scale).toInt().coerceIn(1, MAX_SIZE)
-        val targetHeight = (height * scale).toInt().coerceIn(1, MAX_SIZE)
+        val scale = safeMaxSize.toFloat() / maxOf(width, height)
+        val targetWidth = (width * scale).toInt().coerceIn(1, safeMaxSize)
+        val targetHeight = (height * scale).toInt().coerceIn(1, safeMaxSize)
 
         // Desenhar em um bitmap ARGB próprio evita getPixels() em bitmaps
         // HARDWARE (Coil pode usá-los) e mantém a proporção original.
@@ -38,8 +51,8 @@ object BlurUtils {
 
         var pixels = IntArray(targetWidth * targetHeight)
         scaled.getPixels(pixels, 0, targetWidth, 0, 0, targetWidth, targetHeight)
-        repeat(PASSES) {
-            pixels = boxBlur(pixels, targetWidth, targetHeight, RADIUS)
+        repeat(safePasses) {
+            pixels = boxBlur(pixels, targetWidth, targetHeight, safeRadius)
         }
         scaled.recycle()
 

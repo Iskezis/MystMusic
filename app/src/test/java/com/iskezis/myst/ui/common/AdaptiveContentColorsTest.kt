@@ -68,4 +68,19 @@ class AdaptiveContentColorsTest {
             AdaptiveContentColors.withAlpha(0xFFABCDEF.toInt(), 0x80),
         )
     }
+
+    @Test
+    fun `blend interpolates palette colors and clamps the fraction`() {
+        val blackOnLight = AdaptiveContentColors.paletteFor(1.0, null)
+        val whiteOnDark = AdaptiveContentColors.paletteFor(0.0, null)
+
+        assertEquals(blackOnLight, AdaptiveContentColors.blend(blackOnLight, whiteOnDark, 0f))
+        assertEquals(whiteOnDark, AdaptiveContentColors.blend(blackOnLight, whiteOnDark, 1f))
+        assertEquals(whiteOnDark, AdaptiveContentColors.blend(blackOnLight, whiteOnDark, 2f))
+
+        val middle = AdaptiveContentColors.blend(blackOnLight, whiteOnDark, 0.5f)
+        assertEquals(0xFF808080.toInt(), middle.primary)
+        assertEquals(0xAD808080.toInt(), middle.secondary)
+        assertFalse(middle.isDarkContent)
+    }
 }

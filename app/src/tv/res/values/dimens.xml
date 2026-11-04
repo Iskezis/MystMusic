@@ -26,6 +26,7 @@
     <dimen name="page_dot_size">10dp</dimen>
     <dimen name="page_dot_gap">6dp</dimen>
     <dimen name="mini_cover">64dp</dimen>
+    <dimen name="queue_now_cover">96dp</dimen>
     <dimen name="mini_control">56dp</dimen>
     <dimen name="mini_play_size">60dp</dimen>
     <dimen name="mini_progress_height">4dp</dimen>

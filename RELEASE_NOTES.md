@@ -1,37 +1,34 @@
-versionCode: 48
-## MystMusic 0.2.5 Beta 4 — correção do fundo do player
+versionCode: 49
+## MystMusic 0.2.5 Beta 5 — fila em tela cheia
 
-Corrige o fundo da capa borrada que desaparecia ao abrir o player pela segunda vez. Os controles adaptativos e todos os recursos da Beta 3 continuam iguais.
+A fila de reprodução deixou de ser uma folha inferior e passou a ocupar a tela inteira, com o fundo da capa atual borrado, cores adaptativas e abertura instantânea quando o player já calculou o fundo. Esta é a fase 22 do roadmap.
 
-### Correções desta beta
-- **Fundo na segunda abertura:** ao reabrir o player com a capa já em cache, o Coil entrega a imagem no mesmo frame em que a tela nasce. A medição do placeholder (feita para faixas sem capa) podia cancelar o desfoque real e deixar o player só com a cor de fundo do tema. Agora o pedido da capa sempre vence, a medição do placeholder é cancelada quando chega uma capa e o desfoque é aplicado normalmente em toda abertura.
-- **Sem corrida entre fundo e placeholder:** o desfoque real e a medição do placeholder usam jobs separados, com uma guarda que impede uma medição antiga de sobrescrever a paleta ou o fundo novos.
-- **Diagnóstico:** o log interno registra quando o fundo da capa é aplicado (`Fundo do player aplicado: ...`), sem gravar a URL ou dados da conta.
-
-### Cores adaptativas (mantidas da Beta 3)
-- **Contraste real:** cada área do player mede a luminância do fundo e escolhe a cor de conteúdo com maior contraste WCAG, com histerese de 15% para capas de luminância média não ficarem piscando.
-- **Três zonas independentes:** topo (voltar, título da tela), bloco de título/artista e controles (progresso, tempos, play/pause, anterior/próximo, repetição e fila) podem usar preto ou branco separadamente.
-- **Transição suave:** as cores mudam em 250 ms e o fundo faz crossfade junto, sem piscar entre faixas.
-- **Play/pause circular:** círculo preenchido com a cor do conteúdo, ícone na cor oposta e anel de foco do D-pad desenhado por dentro na TV.
-- **Barra de progresso adaptativa:** trilho com 25% de alpha, preenchimento sólido e bolinha na cor do conteúdo.
-- **Capa ausente:** o placeholder também é medido de verdade; se uma capa falhar, o player cai no placeholder sem repetir a requisição a cada atualização de estado.
-- **Temas e capas:** funciona nos temas claro, escuro e Preto AMOLED, com qualquer cor de destaque, em capas claras, escuras, brancas, pretas e coloridas.
-- **Canal de atualização:** esta Beta 4 é uma **pré-release**; ela aparece para quem escolheu **Estáveis e betas** e não é oferecida no canal **Somente estáveis**.
+### Fila em tela cheia
+- **Tela inteira:** o botão de fila do player abre a nova `QueueFragment` sobre o player, com botão de voltar, título, contagem de faixas e cartão **Tocando agora** com capa, título, artista e equalizador animado.
+- **Fundo compartilhado:** player e fila usam o mesmo `CoverBackdropView` e o mesmo `BackdropCache` por `videoId` + URL da capa. Abrir a fila com a capa em cache não baixa nem desfoca a imagem de novo.
+- **Troca de faixa:** com a fila aberta, o fundo faz crossfade de 300 ms e as cores acompanham a nova capa. Faixas sem capa usam o gradiente do placeholder.
+- **Cores adaptativas:** o topo e a lista medem a luminância do fundo separadamente, com a mesma histerese e o mesmo contraste WCAG da fase 21. Textos, ícones, fundo da linha atual, foco do D-pad e botão de repetir usam preto ou branco conforme a capa, com transição de 300 ms.
+- **Linha atual e próxima:** a lista começa na faixa tocada, mostra o cartão **Tocando agora**, a seção **A seguir** e mantém o comportamento de tocar em uma linha para pular para ela. Nenhuma ação existente da fila foi removida.
+- **Estados completos:** carregando com shimmer, fila vazia com mensagem e erro com **Tentar novamente**. O mesmo layout é usado no celular e na TV.
+- **Abertura e fechamento:** entrada deslizando de baixo para cima no celular, arrastar o cabeçalho ou o cartão para baixo para fechar, botão de voltar e transição suave ao retornar ao player. A fila pode ser aberta e fechada várias vezes.
+- **TV 32 bits:** foco inicial na faixa atual, linhas focáveis por D-pad com anel de 2 dp, fundo com blur mais leve (160 px, duas passadas) e transições mais curtas. O equalizador fica estático para economizar CPU.
 
 ### Compatibilidade
-- Atualiza por cima da Beta 3 (`versionCode 47`) e anteriores com a mesma assinatura, mantendo conta Myst, conta YouTube, playlists, histórico, downloads e estatísticas.
+- Atualiza por cima da Beta 4 (`versionCode 48`) e anteriores com a mesma assinatura, mantendo conta Myst, conta YouTube, playlists, histórico, downloads e estatísticas.
 - Nenhuma migração do Room nesta build.
 - A TV continua usando `app-tv.apk` (`armeabi-v7a`, 32 bits).
+- Esta Beta 5 é uma **pré-release**: aparece no canal **Estáveis e betas** e não é oferecida no canal **Somente estáveis**.
 
 ### Como testar
-1. Abra o player com uma música de capa clara; confirme o fundo borrado e os botões escuros.
-2. Volte, abra o player novamente com a mesma música (capa em cache) e confirme que o fundo borrado continua aparecendo.
-3. Repita com capas escuras, brancas, pretas e coloridas nos temas claro, escuro e Preto AMOLED.
-4. Troque rapidamente de faixa e role o player; o fundo e as cores devem acompanhar sem piscar.
-5. Teste uma faixa sem capa ou com capa que falhe; o placeholder deve manter tudo legível.
-6. Na TV, abra e reabra o player e confira o fundo e o anel de foco do play com o D-pad.
+1. Abra o player com uma música, toque no botão de fila e confirme que ela ocupa a tela inteira com o fundo da capa borrado.
+2. Confira o cartão **Tocando agora**, o equalizador animado, a seção **A seguir** e se a lista começa na faixa atual.
+3. Toque em outra faixa e confirme o crossfade do fundo e das cores; repita com capas claras, escuras, brancas, pretas e coloridas nos temas claro, escuro e Preto AMOLED.
+4. Abra e feche a fila várias vezes, inclusive enquanto o player continua tocando, e confirme que o fundo aparece desde o primeiro frame.
+5. Feche pelo botão de voltar, pelo gesto de arrastar para baixo e pelo botão do sistema.
+6. Teste uma fila vazia, uma faixa sem capa e uma falha de rede/capa para conferir os estados vazio, placeholder e erro com **Tentar novamente**.
+7. Na TV, abra a fila pelo D-pad, confira o foco inicial na faixa atual, navegue pelas linhas e volte ao player.
 
 ### Detalhes
-- A capa é medida fora da thread principal em uma amostra reduzida do blur já posicionado na tela (mesmo recorte `centerCrop` do fundo).
-- O helper `AdaptiveContentColors` fica em `ui/common` e será reutilizado na fila em tela cheia da fase 22.
-- As barras de status e navegação continuam seguindo o tema escuro/claro do app, porque o fundo do player é desenhado abaixo delas; os controles do player seguem a capa.
+- `QueueSheet` e `sheet_queue.xml` foram removidos; não há mais bottom sheet de fila.
+- O fundo borrado é mantido em um cache LRU de até 8 capas, sem reciclar bitmaps que ainda podem estar em uso.
+- Todo texto novo foi adicionado em `values/`, `values-en/` e `values-es/`.

@@ -344,9 +344,10 @@
     <string name="player_open_error">No se pudo abrir el reproductor. Inténtalo de nuevo.</string>
     <string name="player_queue">Cola</string>
     <string name="player_queue_title">Cola de reproducción</string>
-    <string name="player_queue_empty">La cola está vacía</string>
+    <string name="player_queue_empty">Nada en la cola</string>
     <string name="player_queue_empty_hint">Toca una canción para empezar.</string>
     <string name="player_queue_error">No se pudo cargar la cola.</string>
+    <string name="player_queue_loading">Cargando cola…</string>
     <string name="player_queue_current">Sonando</string>
     <string name="player_queue_next">A continuación</string>
     <string name="player_queue_close">Cerrar cola</string>

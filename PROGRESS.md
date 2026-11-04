@@ -321,6 +321,7 @@ Marque cada subitem só com build verde + verificação em aparelho. `versionCod
 | 41516991646 | v0.2.5-beta.3 (35e825c) | verde | Release 0.2.5 Beta 3: build mobile/tv com a keystore estável, assinatura conferida, `SHA256SUMS.txt` e assets publicados, `isPrerelease=true` verificado | `apks/app.apk`, `apks/app-tv.apk` (assets da release) |
 | 41519765930 | 65c72ac | verde | 0.2.5 Beta 4: correção da corrida entre o placeholder e o desfoque real (`placeholderJob` separado e guarda de `backdropKey`); build mobile + testes e TV verdes | — (substituídos pelos assets da release) |
 | 41520863561 | v0.2.5-beta.4 (65c72ac) | verde | Release 0.2.5 Beta 4: build mobile/tv com a keystore estável, assinatura conferida, `SHA256SUMS.txt` e assets publicados, `isPrerelease=true` verificado | `apks/app.apk`, `apks/app-tv.apk` (assets da release) |
+| 41521680082 | ced4b6e | verde | Registro da Beta 4: APKs da release copiados para `apks/`, `PROGRESS.md` e `RELEASE_NOTES.md` atualizados no commit final | — (substituídos pela Beta 5) |
 
 ## Decisões
 - YouTube Music (fase 13): a biblioteca da conta é **somente leitura**. O cache fica em tabelas próprias do Room (`yt_playlists`, `yt_playlist_tracks`, `yt_history`, `yt_sync_state`), com validade de 15 minutos e estratégia *stale-while-revalidate*: a tela mostra o cache na hora e atualiza em segundo plano. O botão/gesto de atualizar força a rede. Nenhuma escrita é enviada ao YouTube.

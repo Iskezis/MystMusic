@@ -344,9 +344,10 @@
     <string name="player_open_error">Could not open the player. Try again.</string>
     <string name="player_queue">Queue</string>
     <string name="player_queue_title">Playback queue</string>
-    <string name="player_queue_empty">The queue is empty</string>
+    <string name="player_queue_empty">Nothing queued</string>
     <string name="player_queue_empty_hint">Tap a song to start.</string>
     <string name="player_queue_error">Could not load the queue.</string>
+    <string name="player_queue_loading">Loading queue…</string>
     <string name="player_queue_current">Playing</string>
     <string name="player_queue_next">Up next</string>
     <string name="player_queue_close">Close queue</string>
